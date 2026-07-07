@@ -44,10 +44,11 @@
 
 Every advice ends in a one-tap CTA (Start SIP / Enable Round-Up / Approve glide path) — closing the **advice → action loop** inside the bank app.
 
-**Design language**: Apple iPhone-Pro-page cinema — pitch-black canvas, native SF Pro typography, gradient display
-headlines (white→silver, cosmic-orange stat accents), blue pill CTAs, frosted-glass bars, and a full motion system:
-scroll-choreographed reveals (IntersectionObserver), count-up animated stats, tab crossfades, spring-eased hovers
-and press states, with `prefers-reduced-motion` respected.
+**Design language**: Apple-product-page structure carrying real IDBI brand identity — warm white canvas, deep IDBI
+teal (#0f8c7e) as the primary action color, IDBI orange (#f2761d) for stat accents, the real IDBI Bank logo, native
+SF Pro typography, gradient display headlines, and a full motion system: scroll-choreographed reveals
+(IntersectionObserver), count-up animated stats, tab crossfades, spring-eased hovers and press states, with
+`prefers-reduced-motion` respected.
 
 ## 3. Why this wins
 

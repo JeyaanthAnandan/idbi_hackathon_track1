@@ -31,7 +31,7 @@ export default function BankHome({ onOpenMitra }) {
     <div>
       <div className="bank-header">
         <div className="bank-brand">
-          <div className="bank-logo">iD</div>
+          <div className="bank-logo"><img src="/idbi-logo.png" alt="IDBI Bank" /></div>
           <div>
             <h1>IDBI Bank GO+<sup style={{ fontSize: 8 }}>®</sup></h1>
             <span>bank aisa dost jaisa</span>

@@ -3,7 +3,7 @@ import { Donut, Bars, GrowthCurve, ScoreRing, Sparkline } from './charts.jsx';
 import { fmt, fmtCompact } from '../engine/analytics.js';
 import Icon from './Icons.jsx';
 
-const PALETTE = ['#f5f5f7', '#86868b', '#ff8a3c', '#30d158', '#48484a', '#bf5af2'];
+const PALETTE = ['#0f8c7e', '#f2761d', '#6bbdb2', '#1a9c6b', '#5c6f6c', '#8a5cf2'];
 
 // Renders the rich inline widget attached to a MITRA chat message.
 export default function ChatWidget({ widget, onChip }) {
@@ -63,7 +63,7 @@ export default function ChatWidget({ widget, onChip }) {
             <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', fontFamily: 'inherit' }}>Invested</div>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--display)' }}>{fmtCompact(data.monthly * data.years * 12)}</div>
           </div>
-          <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', padding: '9px 11px' }}>
+          <div style={{ flex: 1, background: 'rgba(15,140,126,0.08)', padding: '9px 11px' }}>
             <div style={{ fontSize: 8.5, fontWeight: 700, opacity: 0.65, fontFamily: 'inherit' }}>Projected value</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--orange)', fontFamily: 'var(--display)' }}>{fmtCompact(data.fv)}</div>
           </div>

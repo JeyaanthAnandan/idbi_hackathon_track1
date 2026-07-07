@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Hand-rolled SVG charts — zero dependencies, always render offline.
-// Colors come from CSS variables so they follow the Wealth OS dark theme.
+// Colors come from CSS variables so they follow the IDBI brand theme.
 
 export function Donut({ segments, size = 110, thickness = 16, centerTop, centerBottom }) {
   const r = (size - thickness) / 2;
@@ -123,7 +123,7 @@ export function GrowthCurve({ monthly, rate, years, height = 96 }) {
   return (
     <div style={{ position: 'relative', width: '100%', height }}>
       <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-        <path d={`${line('fv')} L100,${height - 12} L0,${height - 12} Z`} fill="rgba(255,255,255,0.09)" />
+        <path d={`${line('fv')} L100,${height - 12} L0,${height - 12} Z`} fill="rgba(15,140,126,0.1)" />
         <path d={line('fv')} fill="none" stroke="var(--ink)" strokeWidth="2" />
         <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
       </svg>
@@ -145,7 +145,7 @@ export function Sparkline({ series, height = 54, stroke = 'var(--ink)' }) {
   const d = series.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
   return (
     <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-      <path d={`${d} L100,${height} L0,${height} Z`} fill="rgba(255,255,255,0.09)" />
+      <path d={`${d} L100,${height} L0,${height} Z`} fill="rgba(15,140,126,0.1)" />
       <path d={d} fill="none" stroke={stroke} strokeWidth="1.8" />
       <circle cx={X(series.length - 1)} cy={Y(series[series.length - 1])} r="2.4" fill={stroke} />
     </svg>
@@ -165,7 +165,7 @@ export function ProjectionChart({ series, fireAge, events = [], height = 150, fo
   return (
     <div style={{ position: 'relative', width: '100%', height: height + 22 }}>
       <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-        <path d={`${line('wealth')} L100,${height - 18} L0,${height - 18} Z`} fill="rgba(255,255,255,0.09)" />
+        <path d={`${line('wealth')} L100,${height - 18} L0,${height - 18} Z`} fill="rgba(15,140,126,0.1)" />
         <path d={line('wealth')} fill="none" stroke="var(--ink)" strokeWidth="2.2" />
         <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
         <path d={line('freedomTarget')} fill="none" stroke="var(--amber)" strokeWidth="1.4" strokeDasharray="5 4" opacity="0.9" />
@@ -175,7 +175,7 @@ export function ProjectionChart({ series, fireAge, events = [], height = 150, fo
         {events.map((ev) => {
           const pt = series.find((p) => p.age === ev.age);
           if (!pt) return null;
-          return <circle key={ev.id || ev.age} cx={X(ev.age)} cy={Y(pt.wealth)} r="2.6" fill="var(--orange)" stroke="#000" strokeWidth="1" />;
+          return <circle key={ev.id || ev.age} cx={X(ev.age)} cy={Y(pt.wealth)} r="2.6" fill="var(--orange)" stroke="#fff" strokeWidth="1" />;
         })}
       </svg>
 

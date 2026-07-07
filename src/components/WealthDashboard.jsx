@@ -8,7 +8,7 @@ import { awardXP } from '../engine/xp.js';
 import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
 
-const PALETTE = ['#f5f5f7', '#86868b', '#ff8a3c', '#30d158', '#48484a'];
+const PALETTE = ['#0f8c7e', '#f2761d', '#6bbdb2', '#1a9c6b', '#5c6f6c'];
 
 // IFTTT-for-money: standing instructions MITRA executes automatically.
 const DEFAULT_RULES = [
@@ -47,7 +47,7 @@ function MoneyRules() {
           <div
             style={{
               width: 44, height: 26, borderRadius: 999, border: 'none',
-              background: r.on ? 'var(--green)' : 'rgba(0,0,0,0.16)', position: 'relative',
+              background: r.on ? 'var(--green)' : 'rgba(14,39,35,0.16)', position: 'relative',
               transition: 'background .25s', flexShrink: 0,
             }}
           >

@@ -54,33 +54,56 @@ export function ScoreRing({ score, size = 96 }) {
   );
 }
 
+// NOTE on all charts below: the SVG uses viewBox width 100 stretched via
+// preserveAspectRatio="none" to fill the container responsively. That's fine
+// for geometry (bars, lines) but <text> inside that same coordinate system
+// gets stretched horizontally by the same (large, non-uniform) factor and
+// becomes illegibly huge. So text lives in an HTML overlay instead — Y maps
+// 1:1 to px (svg height === viewBox height), X maps directly to CSS `left: X%`.
 export function Bars({ data, height = 110, format = (v) => v, highlight }) {
   const max = Math.max(...data.map((d) => d.value)) * 1.15;
   const bw = 100 / data.length;
+  const bars = data.map((d, i) => {
+    const h = (d.value / max) * (height - 26);
+    const x = i * bw + bw * 0.18;
+    const w = bw * 0.64;
+    return { ...d, h, x, w, cx: x + w / 2, hot: highlight?.(d) };
+  });
   return (
-    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-      {data.map((d, i) => {
-        const h = (d.value / max) * (height - 26);
-        const x = i * bw + bw * 0.18;
-        const w = bw * 0.64;
-        const hot = highlight?.(d);
-        return (
-          <g key={i}>
-            <rect
-              x={x} y={height - 16 - h} width={w} height={h} rx="2.5"
-              fill={hot ? 'var(--amber)' : 'var(--teal)'}
-              opacity={hot ? 1 : 0.85}
-            />
-            <text x={x + w / 2} y={height - 4} textAnchor="middle" fontSize="6.4" fontWeight="700" fill="var(--ink-soft)">
-              {d.label}
-            </text>
-            <text x={x + w / 2} y={height - 20 - h} textAnchor="middle" fontSize="6" fontWeight="800" fill="var(--ink)">
-              {format(d.value)}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        {bars.map((d, i) => (
+          <rect
+            key={i}
+            x={d.x} y={height - 16 - d.h} width={d.w} height={d.h} rx="2.5"
+            fill={d.hot ? 'var(--amber)' : 'var(--teal)'}
+            opacity={d.hot ? 1 : 0.85}
+          />
+        ))}
+      </svg>
+      {bars.map((d, i) => (
+        <span
+          key={`v${i}`}
+          style={{
+            position: 'absolute', left: `${d.cx}%`, top: height - 20 - d.h, transform: 'translate(-50%, -100%)',
+            fontSize: 10, fontWeight: 800, color: 'var(--ink)', whiteSpace: 'nowrap',
+          }}
+        >
+          {format(d.value)}
+        </span>
+      ))}
+      {bars.map((d, i) => (
+        <span
+          key={`l${i}`}
+          style={{
+            position: 'absolute', left: `${d.cx}%`, top: height - 14, transform: 'translateX(-50%)',
+            fontSize: 10, fontWeight: 600, color: 'var(--ink-soft)', whiteSpace: 'nowrap',
+          }}
+        >
+          {d.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -98,13 +121,19 @@ export function GrowthCurve({ monthly, rate, years, height = 96 }) {
   const Y = (v) => height - 12 - (v / maxV) * (height - 20);
   const line = (key) => pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.m).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ');
   return (
-    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-      <path d={`${line('fv')} L100,${height - 12} L0,${height - 12} Z`} fill="rgba(255,255,255,0.09)" />
-      <path d={line('fv')} fill="none" stroke="var(--ink)" strokeWidth="2" />
-      <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
-      <text x="1" y="8" fontSize="6.5" fontWeight="700" fill="var(--ink)">— Portfolio value</text>
-      <text x="1" y="17" fontSize="6.5" fontWeight="700" fill="var(--ink-soft)">--- Amount invested</text>
-    </svg>
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <path d={`${line('fv')} L100,${height - 12} L0,${height - 12} Z`} fill="rgba(255,255,255,0.09)" />
+        <path d={line('fv')} fill="none" stroke="var(--ink)" strokeWidth="2" />
+        <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
+      </svg>
+      <div style={{ position: 'absolute', top: 2, left: 4, fontSize: 10.5, fontWeight: 700, color: 'var(--ink)' }}>
+        — Portfolio value
+      </div>
+      <div style={{ position: 'absolute', top: 17, left: 4, fontSize: 10.5, fontWeight: 700, color: 'var(--ink-soft)' }}>
+        --- Amount invested
+      </div>
+    </div>
   );
 }
 
@@ -132,42 +161,66 @@ export function ProjectionChart({ series, fireAge, events = [], height = 150, fo
   const Y = (v) => height - 18 - (v / maxV) * (height - 34);
   const line = (key) =>
     series.map((p, i) => `${i ? 'L' : 'M'}${X(p.age).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ');
+  const axisAges = series.filter((p) => (p.age - a0) % 8 === 0);
   return (
-    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-      <path d={`${line('wealth')} L100,${height - 18} L0,${height - 18} Z`} fill="rgba(255,255,255,0.09)" />
-      <path d={line('wealth')} fill="none" stroke="var(--ink)" strokeWidth="2.2" />
-      <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
-      <path d={line('freedomTarget')} fill="none" stroke="var(--amber)" strokeWidth="1.4" strokeDasharray="5 4" opacity="0.9" />
-      {fireAge && (
-        <g>
+    <div style={{ position: 'relative', width: '100%', height: height + 22 }}>
+      <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <path d={`${line('wealth')} L100,${height - 18} L0,${height - 18} Z`} fill="rgba(255,255,255,0.09)" />
+        <path d={line('wealth')} fill="none" stroke="var(--ink)" strokeWidth="2.2" />
+        <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" />
+        <path d={line('freedomTarget')} fill="none" stroke="var(--amber)" strokeWidth="1.4" strokeDasharray="5 4" opacity="0.9" />
+        {fireAge && (
           <line x1={X(fireAge)} y1="8" x2={X(fireAge)} y2={height - 18} stroke="var(--amber)" strokeWidth="1" strokeDasharray="2 3" />
-          <text x={Math.min(X(fireAge), 78)} y="7" fontSize="6.5" fontWeight="800" fill="var(--amber)">
-            Freedom · age {fireAge}
-          </text>
-        </g>
+        )}
+        {events.map((ev) => {
+          const pt = series.find((p) => p.age === ev.age);
+          if (!pt) return null;
+          return <circle key={ev.id || ev.age} cx={X(ev.age)} cy={Y(pt.wealth)} r="2.6" fill="var(--orange)" stroke="#000" strokeWidth="1" />;
+        })}
+      </svg>
+
+      {/* text overlay — see note above Bars() for why this isn't inside the svg */}
+      {fireAge && (
+        <div
+          style={{
+            position: 'absolute', left: `${Math.min(X(fireAge), 78)}%`, top: 0,
+            fontSize: 11, fontWeight: 800, color: 'var(--amber)', whiteSpace: 'nowrap',
+          }}
+        >
+          Freedom · age {fireAge}
+        </div>
       )}
-      {/* life-event markers */}
       {events.map((ev) => {
         const pt = series.find((p) => p.age === ev.age);
         if (!pt) return null;
         return (
-          <g key={ev.id || ev.age}>
-            <circle cx={X(ev.age)} cy={Y(pt.wealth)} r="2.6" fill="var(--orange)" stroke="#000" strokeWidth="1" />
-            <text x={X(ev.age)} y={Y(pt.wealth) - 5} fontSize="5.8" fontWeight="800" fill="var(--orange)" textAnchor="middle">
-              {ev.short}
-            </text>
-          </g>
+          <div
+            key={ev.id || ev.age}
+            style={{
+              position: 'absolute', left: `${X(ev.age)}%`, top: Y(pt.wealth) - 16, transform: 'translateX(-50%)',
+              fontSize: 10, fontWeight: 800, color: 'var(--orange)', whiteSpace: 'nowrap',
+            }}
+          >
+            {ev.short}
+          </div>
         );
       })}
-      {/* age axis */}
-      {series.filter((p) => (p.age - a0) % 8 === 0).map((p) => (
-        <text key={p.age} x={X(p.age)} y={height - 7} fontSize="6" fontWeight="700" fill="var(--ink-soft)" textAnchor="middle">
+      {axisAges.map((p) => (
+        <div
+          key={p.age}
+          style={{
+            position: 'absolute', left: `${X(p.age)}%`, top: height - 12, transform: 'translateX(-50%)',
+            fontSize: 10, fontWeight: 600, color: 'var(--ink-soft)',
+          }}
+        >
           {p.age}
-        </text>
+        </div>
       ))}
-      <text x="1" y={height + 6} fontSize="6.2" fontWeight="700" fill="var(--ink-soft)">
-        <tspan fill="var(--ink)">— wealth</tspan>  <tspan fill="var(--ink-soft)">--- invested</tspan>  <tspan fill="var(--amber)">--- freedom line (25× expenses)</tspan>
-      </text>
-    </svg>
+      <div style={{ position: 'absolute', left: 0, top: height + 6, fontSize: 10, fontWeight: 600, color: 'var(--ink-soft)', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--ink)', fontWeight: 700 }}>— wealth</span>{'  '}
+        <span>--- invested</span>{'  '}
+        <span style={{ color: 'var(--amber)', fontWeight: 700 }}>--- freedom line (25× expenses)</span>
+      </div>
+    </div>
   );
 }

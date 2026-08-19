@@ -58,14 +58,14 @@ export default function ChatWidget({ widget, onChip }) {
           SIP Projection · {fmt(data.monthly)}/mo · {data.years} yrs @ {data.rate}%
         </h4>
         <GrowthCurve monthly={data.monthly} rate={data.rate} years={data.years} />
-        <div style={{ display: 'flex', gap: 0, marginTop: 10, border: '1px solid var(--line-strong)' }}>
-          <div style={{ flex: 1, borderRight: '1px solid var(--line)', padding: '9px 11px' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', fontFamily: 'inherit' }}>Invested</div>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--display)' }}>{fmtCompact(data.monthly * data.years * 12)}</div>
+        <div className="mini-stats">
+          <div className="mini-stat">
+            Invested
+            <b>{fmtCompact(data.monthly * data.years * 12)}</b>
           </div>
-          <div style={{ flex: 1, background: 'rgba(15,140,126,0.08)', padding: '9px 11px' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, opacity: 0.65, fontFamily: 'inherit' }}>Projected value</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--orange)', fontFamily: 'var(--display)' }}>{fmtCompact(data.fv)}</div>
+          <div className="mini-stat accent">
+            Projected value
+            <b>{fmtCompact(data.fv)}</b>
           </div>
         </div>
       </div>
@@ -206,18 +206,14 @@ export default function ChatWidget({ widget, onChip }) {
       <div className="widget-card">
         <h4>{data.index} · this month</h4>
         <Sparkline series={data.series} height={58} stroke={up ? 'var(--ink)' : 'var(--orange)'} />
-        <div style={{ display: 'flex', gap: 0, marginTop: 10, border: '1px solid var(--line-strong)' }}>
-          <div style={{ flex: 1, borderRight: '1px solid var(--line)', padding: '9px 11px' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', fontFamily: 'inherit' }}>Week move</div>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--display)' }}>
-              {up ? '▲' : '▼'} {Math.abs(data.weekChangePct)}%
-            </div>
+        <div className="mini-stats">
+          <div className="mini-stat">
+            Week move
+            <b>{up ? '▲' : '▼'} {Math.abs(data.weekChangePct)}%</b>
           </div>
-          <div style={{ flex: 1, padding: '9px 11px' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', fontFamily: 'inherit' }}>Your impact</div>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--display)', color: up ? 'var(--ink)' : 'var(--orange)' }}>
-              {up ? '+' : '−'}{fmt(Math.abs(data.delta))}
-            </div>
+          <div className={`mini-stat ${up ? '' : 'accent'}`}>
+            Your impact
+            <b>{up ? '+' : '−'}{fmt(Math.abs(data.delta))}</b>
           </div>
         </div>
       </div>

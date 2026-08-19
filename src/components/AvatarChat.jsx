@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
+import Ring from './Ring.jsx';
 import ChatWidget from './ChatWidgets.jsx';
 import { respond, fallbackResponse } from '../engine/advisor.js';
 import { askClaude, getApiKey } from '../engine/llm.js';
@@ -25,6 +27,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   langRef.current = lang;
   const bodyRef = useRef(null);
   const startedRef = useRef(false);
+  const wrapRef = useRef(null);
+  // the call is a full-bleed takeover: it has to escape the scrolling
+  // screen so it covers the status bar and the nav pill too
+  const [shell, setShell] = useState(null);
 
   // ── Live call state ──
   const [inCall, setInCall] = useState(false);
@@ -177,6 +183,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   }, [initialPrompt]);
 
   useEffect(() => {
+    setShell(wrapRef.current?.closest('.app-shell') ?? null);
+  }, []);
+
+  useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, typing]);
 
@@ -232,12 +242,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const last = messages[messages.length - 1];
 
   return (
-    <div className="chat-wrap">
+    <div className="chat-wrap" ref={wrapRef}>
       <div className="chat-header">
+        <Ring size={52} dot={6} color="rgba(15,140,126,0.5)">
+          <Avatar size={42} speaking={speaking} mood={typing ? 'thinking' : mood} />
+        </Ring>
         <div style={{ flex: 1 }}>
           <div className="ch-name">MITRA<sup>®</sup></div>
           <div className="ch-status">
-            <span className="status-dot" /> {typing ? 'Analysing your data…' : speaking ? 'Speaking…' : 'AI Wealth Advisor · Online'}
+            {typing ? 'Analysing · en-IN' : speaking ? `Speaking · ${lang === 'hi' ? 'hi-IN' : 'en-IN'}` : `Online · ${lang === 'hi' ? 'hi-IN' : 'en-IN'}`}
           </div>
         </div>
         <button className="icon-btn" title="Call MITRA" onClick={startCall}>
@@ -269,13 +282,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         </button>
       </div>
 
-      <div className="avatar-stage">
-        <div className="avatar-svg-wrap">
-          <Avatar speaking={speaking} mood={typing ? 'thinking' : mood} size={108} />
-        </div>
-        <div className="avatar-caption">A friend who knows your entire financial picture.</div>
-      </div>
-
       <div className="chat-body" ref={bodyRef}>
         {messages.map((m) =>
           m.from === 'user' ? (
@@ -285,10 +291,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           ) : (
             <React.Fragment key={m.id}>
               <div className="msg-row">
-                <div className="mini-avatar">
-                  <Avatar size={30} mood="happy" />
+                <div className="bubble mitra">
+                  {m.meta && <div className="bubble-meta">{m.meta}</div>}
+                  {m.text}
                 </div>
-                <div className="bubble mitra">{m.text}</div>
               </div>
               {m.widget && <ChatWidget widget={m.widget} onChip={handleSend} />}
               {m.why && (
@@ -313,9 +319,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         )}
         {typing && (
           <div className="msg-row">
-            <div className="mini-avatar">
-              <Avatar size={30} mood="thinking" />
-            </div>
             <div className="bubble mitra">
               <span className="typing"><i /><i /><i /></span>
             </div>
@@ -349,40 +352,43 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
       {toast && <div className="toast">{toast}</div>}
 
-      {inCall && (
+      {inCall && shell && createPortal(
         <div className="call-overlay">
           <div className="call-topbar">
-            <span>
-              MITRA <b>· Secure line</b>
-            </span>
-            <span>
+            <span><b>● Secure line</b></span>
+            <span className="call-timer">
               {String(Math.floor(callSecs / 60)).padStart(2, '0')}:{String(callSecs % 60).padStart(2, '0')}
             </span>
           </div>
 
           <div className="call-stage">
             <div className={`call-rings ${speaking ? 'speaking' : callListening ? 'listening' : ''}`}>
-              <Avatar size={150} speaking={speaking} mood={mood} />
+              <span className="call-inner-ring" />
+              <span className="call-orbit"><i /></span>
+              <Avatar size={160} speaking={speaking} mood={mood} />
             </div>
             <div className="call-name">
               MITRA<sup>®</sup>
             </div>
             <div className="call-status">
-              {speaking ? 'Speaking…' : callListening ? 'Listening — go ahead' : typing ? 'Thinking…' : 'On call'}
+              {speaking
+                ? 'Speaking · hands-free'
+                : callListening
+                ? 'Listening · go ahead'
+                : typing
+                ? 'Thinking…'
+                : 'On call · hands-free'}
             </div>
             <div className="call-caption">{callCaption}</div>
-            {!micOk && (
-              <div style={{ fontSize: 9.5, color: 'rgba(236,234,227,0.5)', textTransform: 'uppercase', letterSpacing: '0.14em', fontFamily: "'Space Grotesk', monospace", fontWeight: 700 }}>
-                Mic unavailable — tap a question
-              </div>
-            )}
-            <div className="call-chips">
-              {['Invest my surplus', 'Am I protected?', 'Harvest my capital gains'].map((c) => (
-                <button key={c} className="call-chip" onClick={() => handleSend(c)}>
-                  {c}
-                </button>
-              ))}
-            </div>
+            {!micOk && <div className="call-mic-note">Mic unavailable — tap a question</div>}
+          </div>
+
+          <div className="call-chips">
+            {['Invest my surplus', 'Am I protected?', 'Harvest my gains'].map((c) => (
+              <button key={c} className="call-chip" onClick={() => handleSend(c)}>
+                {c}
+              </button>
+            ))}
           </div>
 
           <div className="call-actions">
@@ -395,13 +401,24 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                 startCallListen();
               }}
             >
-              <Icon name="mic" size={17} />
+              <Icon name="mic" size={18} />
             </button>
             <button className="call-end" title="End call" onClick={endCall}>
-              <Icon name="x" size={20} />
+              <Icon name="x" size={22} />
+            </button>
+            <button
+              className={`call-mic ${voiceOn ? '' : 'on'}`}
+              title="Toggle MITRA's voice"
+              onClick={() => {
+                if (voiceOn) { stopSpeaking(); setSpeaking(false); }
+                setVoiceOn(!voiceOn);
+              }}
+            >
+              <Icon name={voiceOn ? 'speaker' : 'speakerOff'} size={18} />
             </button>
           </div>
-        </div>
+        </div>,
+        shell
       )}
     </div>
   );

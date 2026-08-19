@@ -4,7 +4,8 @@
 //    data-grounded answers with rich inline widgets. Works offline.
 // 2. Optional LLM fallback (Claude API) for free-form questions,
 //    grounded with the same computed financial context.
-// Every response: { text, widget?, chips?, mood? }
+// Every response: { text, meta?, widget?, chips?, mood? }
+// `meta` is the provenance stamp — what the engine computed to say this.
 // ─────────────────────────────────────────────────────────────
 import {
   customer,
@@ -182,6 +183,7 @@ function respondCore(text, riskProfile = 'Balanced') {
     case 'greeting':
       return {
         mood: 'happy',
+        meta: `Health score ${hs.total} · surplus detected`,
         text: `Hi ${firstName}, I've been keeping an eye on your money. Your Financial Health Score is ${hs.total}/100 (${hs.grade}) and I've spotted ${fmt(cf.surplus)} sitting idle each month. Want me to put it to work?`,
         chips: ['Invest my surplus', 'Show my portfolio', 'Analyse my spending', 'Am I protected?', "How's my financial health?"],
       };

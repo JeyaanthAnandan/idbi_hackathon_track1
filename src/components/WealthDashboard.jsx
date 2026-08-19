@@ -3,12 +3,24 @@ import { holdings, totalWealth, monthlySummary, peers } from '../data/customer.j
 import {
   fmt, fmtCompact, healthScore, cashflow, allocation, allGoalPlans, topNudges, marketPulse,
 } from '../engine/analytics.js';
-import { Donut, ScoreRing, Bars, Sparkline } from './charts.jsx';
+import { ConcentricRings, ScoreRing, Bars, Sparkline } from './charts.jsx';
 import { awardXP } from '../engine/xp.js';
 import Counter from './Counter.jsx';
+import Ring from './Ring.jsx';
 import Icon from './Icons.jsx';
 
 const PALETTE = ['#0f8c7e', '#f2761d', '#6bbdb2', '#1a9c6b', '#5c6f6c'];
+
+// What MITRA calls the thing she noticed, per nudge kind.
+const DETECTED_LABEL = {
+  drift: 'Drift detected',
+  surplus: 'Surplus detected',
+  spend: 'Spending spike',
+  tax: 'Tax headroom',
+  subs: 'Leak detected',
+  protection: 'Protection gap',
+  emergency: 'Buffer short',
+};
 
 // IFTTT-for-money: standing instructions MITRA executes automatically.
 const DEFAULT_RULES = [
@@ -47,7 +59,7 @@ function MoneyRules() {
           <div
             style={{
               width: 44, height: 26, borderRadius: 999, border: 'none',
-              background: r.on ? 'var(--green)' : 'rgba(14,39,35,0.16)', position: 'relative',
+              background: r.on ? 'var(--green)' : 'var(--line-strong)', position: 'relative',
               transition: 'background .25s', flexShrink: 0,
             }}
           >
@@ -73,27 +85,47 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
   const cf = cashflow();
   const alloc = allocation();
   const goals = allGoalPlans();
-  const nudges = topNudges(riskProfile).slice(0, 2);
+  const nudges = topNudges(riskProfile).slice(0, 3);
+  const [lead, ...rest] = nudges;
   const mp = marketPulse();
 
   return (
     <div style={{ paddingBottom: 20 }}>
       <div className="wealth-hero">
         <div className="wh-top">
-          <div className="wh-title">My Wealth.</div>
-          <div className="wh-tag">◉ 360° view · {riskProfile}</div>
+          <div className="wh-title">My wealth</div>
+          <div className="wh-tag">360° · {riskProfile}</div>
         </div>
-        <div className="wh-label">Total wealth with IDBI</div>
+        <div className="wh-label">Total with IDBI · {holdings.length} holdings</div>
         <div className="wh-value"><Counter value={totalWealth()} format={fmt} /></div>
         <div className="wh-badges">
-          <div className="wh-badge">Monthly surplus<b>{fmt(cf.surplus)}</b></div>
-          <div className="wh-badge">Savings rate<b>{cf.savingsRate.toFixed(0)}%</b></div>
-          <div className="wh-badge">Active SIPs<b>{fmt(cf.avgInvested)}/mo</b></div>
+          <div className="wh-badge">Surplus/mo<b>{fmt(cf.surplus)}</b></div>
+          <div className="wh-badge accent">Savings rate<b>{cf.savingsRate.toFixed(0)}%</b></div>
+          <div className="wh-badge">Active SIPs<b>{fmt(cf.avgInvested)}</b></div>
         </div>
       </div>
 
+      {/* Whatever MITRA flagged first gets the detected-card treatment:
+          ring, then the one sentence, then the action. The rest follow
+          in the quieter nudge style. */}
+      {lead && (
+        <div className="card">
+          <div className="drift-head">
+            <Ring size={20} orbit={false} color="var(--orange)">
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--orange)' }} />
+            </Ring>
+            <span className="eyebrow accent">{DETECTED_LABEL[lead.id] || 'MITRA detected'}</span>
+          </div>
+          <div className="drift-title">{lead.title}</div>
+          <div className="drift-body">{lead.body}</div>
+          <button className="nudge-action" onClick={() => onAsk(lead.action)}>
+            {lead.action} →
+          </button>
+        </div>
+      )}
+
       {/* Proactive AI nudges — the "timely, data-driven guidance" ask */}
-      {nudges.map((n) => (
+      {rest.map((n) => (
         <div className="nudge" key={n.id}>
           <div className="nudge-ic">
             <Icon name={n.icon} size={19} />
@@ -139,7 +171,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
           Financial health <span>AI-computed monthly</span>
         </h3>
         <div className="score-ring-wrap">
-          <ScoreRing score={hs.total} />
+          <ScoreRing score={hs.total} size={96} thickness={7} />
           <div className="score-detail">
             {hs.parts.map((p) => (
               <div className="score-row" key={p.label}>
@@ -154,14 +186,10 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
       </div>
 
       <div className="card">
-        <h3>
-          Asset allocation <span>{holdings.length} holdings</span>
-        </h3>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Donut
-            segments={alloc.map((a, i) => ({ pct: a.pct, color: PALETTE[i % PALETTE.length] }))}
-            centerTop={fmtCompact(totalWealth())}
-            centerBottom="total"
+        <h3>Allocation · concentric</h3>
+        <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+          <ConcentricRings
+            segments={alloc.map((a, i) => ({ key: a.type, pct: a.pct, color: PALETTE[i % PALETTE.length] }))}
           />
           <div className="legend">
             {alloc.map((a, i) => (

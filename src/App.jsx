@@ -24,11 +24,14 @@ function Settings() {
   }, []);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2 style={{ fontSize: 18, marginBottom: 6 }}>Settings</h2>
+    <div className="settings">
+      <div className="eyebrow">Settings · this device</div>
+      <div style={{ fontFamily: 'var(--display)', fontSize: 34, fontWeight: 600, letterSpacing: '-0.04em', marginTop: 6 }}>
+        How MITRA behaves
+      </div>
 
       <label className="settings-label">MITRA's voice</label>
-      <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6, marginBottom: 6 }}>
+      <p className="settings-note">
         Voice quality depends on your device. Pick the one that sounds most natural —
         voices marked “Natural” or “Google” usually sound best.
       </p>
@@ -55,8 +58,8 @@ function Settings() {
         ▶ Preview voice
       </button>
 
-      <label className="settings-label">AI conversation (optional)</label>
-      <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
+      <label className="settings-label">AI conversation · optional</label>
+      <p className="settings-note">
         MITRA's advisory engine runs fully on-device for this demo. Optionally plug in an
         Anthropic API key to unlock open-ended conversation (grounded in the same customer data).
       </p>
@@ -69,33 +72,35 @@ function Settings() {
         />
       </div>
       <button
-        className="primary-btn"
-        style={{ marginTop: 14 }}
+        className="ghost-btn"
         onClick={() => {
           setApiKey(key);
           setSaved(true);
           setTimeout(() => setSaved(false), 1500);
         }}
       >
-        {saved ? 'Saved' : 'Save'}
+        {saved ? 'Saved' : 'Save key'}
       </button>
 
-      <div style={{ marginTop: 26, fontSize: 11.5, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
-        <b>Prototype notes</b>
-        <br />• Hybrid AI: deterministic advisory engine + optional LLM
-        <br />• Voice: Web Speech API (mic works best in Chrome)
-        <br />• All figures computed live from synthetic bank data
-        <br />• Advisory content is illustrative, not investment advice
+      <div className="app-footnote" style={{ paddingLeft: 0, paddingRight: 0, marginTop: 14 }}>
+        Hybrid AI · deterministic engine + optional LLM
+        <br />Voice · Web Speech API, mic works best in Chrome
+        <br />All figures computed live from synthetic bank data
+        <br />Advisory content is illustrative, not investment advice
       </div>
     </div>
   );
 }
 
 const REVEAL_SELECTOR = [
-  '.balance-card', '.marquee', '.brief-strip', '.quick-grid', '.mitra-banner',
+  '.balance-card', '.brief-strip', '.mitra-banner',
   '.section-title', '.list-card', '.giant-word', '.card', '.nudge',
-  '.wealth-hero', '.sim-card', '.sim > .primary-btn', '.ob-option',
+  '.wealth-hero', '.sim-card', '.sim-hero', '.ob-options',
 ].join(', ');
+
+// Screens that run on the night surface. The whole app inverts around
+// these — status bar, nav pill and every card read the same variables.
+const NIGHT_TABS = new Set(['simulate']);
 
 export default function App() {
   const [onboarded, setOnboarded] = useState(false);
@@ -104,6 +109,8 @@ export default function App() {
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [framed, setFramed] = useState(false);
   const screenRef = useRef(null);
+
+  const night = !onboarded || NIGHT_TABS.has(tab);
 
   // Scroll choreography: elements float up and settle as they enter the
   // viewport (Apple product-page reveals), staggered slightly per element.
@@ -141,7 +148,10 @@ export default function App() {
         {framed ? 'Full window' : 'Phone demo'}
       </button>
 
-      <div className={`app-shell ${framed ? 'framed' : 'full'}`}>
+      <div
+        className={`app-shell ${framed ? 'framed' : 'full'}`}
+        data-surface={night ? 'night' : 'day'}
+      >
         {framed && (
           <>
             <div className="notch" />
@@ -149,7 +159,7 @@ export default function App() {
               <span>1:47</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 5G
-                <span style={{ display: 'inline-flex', gap: 2 }}>
+                <span style={{ display: 'inline-flex', gap: 2, alignItems: 'flex-end' }}>
                   <i style={{ width: 3, height: 8, background: 'currentColor', borderRadius: 1 }} />
                   <i style={{ width: 3, height: 11, background: 'currentColor', borderRadius: 1 }} />
                   <i style={{ width: 3, height: 14, background: 'currentColor', borderRadius: 1 }} />
@@ -167,7 +177,7 @@ export default function App() {
           </>
         )}
 
-        <div className="screen" ref={screenRef}>
+        <div className={`screen ${onboarded ? 'has-nav' : ''}`} ref={screenRef}>
           <div
             className={`tab-pane ${onboarded && tab === 'mitra' ? 'tab-pane-fill' : ''}`}
             key={onboarded ? tab : 'onboard'}
@@ -205,7 +215,7 @@ export default function App() {
               ['home', 'home', 'Home'],
               ['wealth', 'chart', 'Wealth'],
               ['mitra', null, 'MITRA'],
-              ['simulate', 'clock', 'Time Machine'],
+              ['simulate', 'clock', 'Machine'],
               ['settings', 'gear', 'Settings'],
             ].map(([id, ic, label]) =>
               id === 'mitra' ? (
@@ -213,11 +223,11 @@ export default function App() {
                   key={id}
                   className={`nav-item orb ${tab === id ? 'active' : ''}`}
                   onClick={() => setTab(id)}
+                  aria-label={label}
                 >
                   <span className="orb-ring">
-                    <Avatar size={40} mood="happy" />
+                    <Avatar size={36} mood="happy" />
                   </span>
-                  {label}
                 </button>
               ) : (
                 <button
@@ -226,7 +236,7 @@ export default function App() {
                   onClick={() => setTab(id)}
                 >
                   <span className="ni">
-                    <Icon name={ic} size={19} />
+                    <Icon name={ic} size={18} />
                   </span>
                   {label}
                 </button>

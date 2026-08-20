@@ -5,13 +5,13 @@ import AvatarChat from './components/AvatarChat.jsx';
 import Onboarding from './components/Onboarding.jsx';
 import Simulator from './components/Simulator.jsx';
 import Avatar from './components/Avatar.jsx';
-import { getApiKey, setApiKey } from './engine/llm.js';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
+import { getDeepSeekKey, setDeepSeekKey } from './engine/deepseek.js';
 
 function Settings() {
-  const [key, setKey] = useState(getApiKey());
+  const [key, setKey] = useState(getDeepSeekKey());
   const [saved, setSaved] = useState(false);
   const [voices, setVoices] = useState([]);
   const [voiceName, setVoiceName] = useState(getPreferredVoiceName());
@@ -55,15 +55,18 @@ function Settings() {
         ▶ Preview voice
       </button>
 
-      <label className="settings-label">AI conversation (optional)</label>
+      <label className="settings-label">
+        MITRA AI · DeepSeek {key ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span> : ''}
+      </label>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        MITRA's advisory engine runs fully on-device for this demo. Optionally plug in an
-        Anthropic API key to unlock open-ended conversation (grounded in the same customer data).
+        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock the AI layer —
+        reasoning-mode answers, 8 Indian languages, the Offer X-Ray scam checker, and natural-language
+        goal creation. All grounded in the same computed customer data.
       </p>
       <div className="settings-row">
         <input
           type="password"
-          placeholder="sk-ant-… (optional)"
+          placeholder="sk-… DeepSeek API key"
           value={key}
           onChange={(e) => setKey(e.target.value)}
         />
@@ -72,13 +75,17 @@ function Settings() {
         className="primary-btn"
         style={{ marginTop: 14 }}
         onClick={() => {
-          setApiKey(key);
+          setDeepSeekKey(key);
           setSaved(true);
           setTimeout(() => setSaved(false), 1500);
         }}
       >
         {saved ? 'Saved' : 'Save'}
       </button>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
+        Prototype stores the key in your browser for a zero-backend demo. In production it must live
+        server-side — the app never ships the key to a real bank build.
+      </div>
 
       <div style={{ marginTop: 26, fontSize: 11.5, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
         <b>Prototype notes</b>
@@ -97,12 +104,20 @@ const REVEAL_SELECTOR = [
   '.wealth-hero', '.sim-card', '.sim > .primary-btn', '.ob-option',
 ].join(', ');
 
+// Optional deep-link for demos / screenshots:
+//   ?demo=1&screen=home|wealth|mitra|simulate|settings&frame=1
+// jumps straight past onboarding to a given tab (and phone frame). Handy for
+// capturing marketing shots and for a "resume where I was" style entry.
+const demoParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+const DEMO = demoParams.get('demo') === '1';
+const DEMO_SCREEN = demoParams.get('screen') || 'home';
+
 export default function App() {
-  const [onboarded, setOnboarded] = useState(false);
+  const [onboarded, setOnboarded] = useState(DEMO);
   const [riskProfile, setRiskProfile] = useState('Balanced');
-  const [tab, setTab] = useState('home');
+  const [tab, setTab] = useState(DEMO ? DEMO_SCREEN : 'home');
   const [pendingPrompt, setPendingPrompt] = useState(null);
-  const [framed, setFramed] = useState(false);
+  const [framed, setFramed] = useState(demoParams.get('frame') === '1');
   const screenRef = useRef(null);
 
   // Scroll choreography: elements float up and settle as they enter the
@@ -110,6 +125,7 @@ export default function App() {
   useEffect(() => {
     const root = screenRef.current;
     if (!root || typeof IntersectionObserver === 'undefined') return;
+    if (DEMO) return; // demo/screenshot mode: everything rendered fully visible
     const els = root.querySelectorAll(REVEAL_SELECTOR);
     const io = new IntersectionObserver(
       (entries) => {
@@ -137,9 +153,11 @@ export default function App() {
 
   return (
     <>
-      <button className="frame-toggle" onClick={() => setFramed(!framed)}>
-        {framed ? 'Full window' : 'Phone demo'}
-      </button>
+      {!DEMO && (
+        <button className="frame-toggle" onClick={() => setFramed(!framed)}>
+          {framed ? 'Full window' : 'Phone demo'}
+        </button>
+      )}
 
       <div className={`app-shell ${framed ? 'framed' : 'full'}`}>
         {framed && (

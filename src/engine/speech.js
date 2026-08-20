@@ -1,6 +1,7 @@
 // Voice layer — Web Speech API. TTS for MITRA's replies, STT for the mic.
 // Voice quality varies by device, so we rank all installed voices and pick
 // the most natural-sounding one; the user can override in Settings.
+import { SPEECH_LANG } from './deepseek.js';
 
 const VOICE_PREF = 'mitra_voice';
 
@@ -38,13 +39,15 @@ export function listVoices() {
     .sort((a, b) => scoreVoice(b) - scoreVoice(a));
 }
 
-function hindiVoice() {
+// Best installed voice for any language code (hi, ta, te, bn, mr, gu, kn, ml…)
+function voiceForLang(langCode) {
   refreshVoices();
-  const hi = voices.filter((v) => v.lang.startsWith('hi'));
+  const prefix = (SPEECH_LANG[langCode] || 'en-IN').slice(0, 2);
+  const pool = voices.filter((v) => v.lang.toLowerCase().startsWith(prefix));
   return (
-    hi.find((v) => /natural|neural|online|google/i.test(v.name)) ||
-    hi.find((v) => /lekha|swara|female/i.test(v.name)) ||
-    hi[0] ||
+    pool.find((v) => /natural|neural|online|google/i.test(v.name)) ||
+    pool.find((v) => /female|lekha|swara|veena/i.test(v.name)) ||
+    pool[0] ||
     null
   );
 }
@@ -69,13 +72,13 @@ export function speak(text, { onStart, onEnd, lang = 'en' } = {}) {
   const clean = text
     .replace(/[*_#`]/g, '')
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
-    .replace(/₹/g, lang === 'hi' ? ' रुपये ' : ' rupees ')
+    .replace(/₹/g, lang === 'en' ? ' rupees ' : ' ₹ ')
     .replace(/\s+/g, ' ')
     .trim();
   const u = new SpeechSynthesisUtterance(clean);
-  const v = lang === 'hi' ? hindiVoice() : currentVoice();
+  const v = lang === 'en' ? currentVoice() : voiceForLang(lang);
   if (v) u.voice = v;
-  else if (lang === 'hi') u.lang = 'hi-IN';
+  u.lang = SPEECH_LANG[lang] || 'en-IN';
   u.rate = 0.98;
   u.pitch = 1.04;
   u.onstart = () => onStart?.();
@@ -96,7 +99,7 @@ export function listen({ onResult, onEnd, onError, lang = 'en' }) {
     return null;
   }
   const rec = new SR();
-  rec.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+  rec.lang = SPEECH_LANG[lang] || 'en-IN';
   rec.interimResults = false;
   rec.maxAlternatives = 1;
   rec.onresult = (e) => onResult?.(e.results[0][0].transcript);

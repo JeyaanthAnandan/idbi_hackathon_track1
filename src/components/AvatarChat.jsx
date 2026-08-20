@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Avatar from './Avatar.jsx';
 import ChatWidget from './ChatWidgets.jsx';
-import { respond, fallbackResponse } from '../engine/advisor.js';
-import { askClaude, getApiKey } from '../engine/llm.js';
+import { respond, fallbackResponse, financialContext } from '../engine/advisor.js';
 import { speak, stopSpeaking, listen } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
+import {
+  hasDeepSeek, reasonStream, complete, translate, analyzeOffer, extractGoal,
+  chatMessages, LANGUAGES, langLabel,
+} from '../engine/deepseek.js';
+import { sipRequired } from '../engine/analytics.js';
 
 let msgId = 0;
 const mid = () => ++msgId;
@@ -23,6 +27,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const [lang, setLang] = useState('en');
   const langRef = useRef('en');
   langRef.current = lang;
+  const [langMenu, setLangMenu] = useState(false);
+  const [reasoningMode, setReasoningMode] = useState(false);
+  const reasoningRef = useRef(false);
+  reasoningRef.current = reasoningMode;
+  const [offerMode, setOfferMode] = useState(false);
+  const offerRef = useRef(false);
+  offerRef.current = offerMode;
+  // live streaming trace for reasoner mode { reasoning, answer }
+  const [stream, setStream] = useState(null);
+  const aiKey = hasDeepSeek();
   const bodyRef = useRef(null);
   const startedRef = useRef(false);
 
@@ -120,6 +134,19 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     return () => clearInterval(id);
   }, [inCall]);
 
+  // localise a finished English reply into the active language (DeepSeek).
+  const localise = async (resp) => {
+    if (langRef.current === 'en' || !hasDeepSeek()) return resp;
+    try {
+      const text = await translate(resp.text, langRef.current);
+      return { ...resp, text };
+    } catch {
+      return resp;
+    }
+  };
+
+  const GOAL_TRIGGERS = /^(add|create|new|set)\s+(a\s+)?goal|^goal[:\-]|^i want to (buy|save|afford)|^save (up )?for/i;
+
   const handleSend = async (raw) => {
     const text = (raw ?? input).trim();
     if (!text) return;
@@ -127,34 +154,143 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     stopSpeaking();
     setSpeaking(false);
     setMessages((m) => [...m, { id: mid(), from: 'user', text }]);
-    setTyping(true);
     setMood('thinking');
 
-    // small pause so the typing indicator reads naturally
-    await new Promise((r) => setTimeout(r, 650 + Math.random() * 450));
-
-    awardXP(10, 'first-chat');
-    const ruled = respond(text, riskProfile, langRef.current);
-    if (ruled) {
-      setTyping(false);
-      pushMitra(ruled);
+    // ── Enter Offer Analyzer mode (from a chip) ──
+    if (/^check (an|another) offer/i.test(text)) {
+      setOfferMode(true);
+      offerRef.current = true;
+      pushMitra({
+        text: aiKey
+          ? 'Go ahead — paste the message, WhatsApp forward, or scheme details and I\'ll check it for red flags.'
+          : 'Add a DeepSeek key in Settings and I can analyse any offer for scams. For now, here\'s my manual checklist:',
+        mood: 'thinking',
+        widget: aiKey ? undefined : { type: 'shield', data: { checks: [
+          { flag: '"Guaranteed" high returns', why: 'Nothing safe beats ~8% guaranteed in India' },
+          { flag: 'Urgency to act now', why: 'Real investments never expire in hours' },
+          { flag: 'Pay to a personal account', why: 'Regulated firms collect only in their own name' },
+        ] } },
+      });
+      if (!aiKey) { setOfferMode(false); offerRef.current = false; }
       return;
     }
 
-    // outside the rule engine → try LLM if key present, else graceful fallback
-    if (getApiKey()) {
+    setTyping(true);
+    awardXP(10, 'first-chat');
+
+    // ── Offer Analyzer mode: the next message is the offer to inspect ──
+    if (offerRef.current) {
+      setOfferMode(false);
+      await runOfferAnalysis(text);
+      return;
+    }
+    // ── Natural-language goal creation ──
+    if (aiKey && GOAL_TRIGGERS.test(text)) {
+      await runGoalCreate(text);
+      return;
+    }
+
+    await new Promise((r) => setTimeout(r, 500 + Math.random() * 400));
+
+    // ── Rule engine first (precise, auditable numbers) ──
+    const ruled = respond(text, riskProfile, hasDeepSeek() ? 'en' : langRef.current);
+    if (ruled) {
+      setTyping(false);
+      pushMitra(await localise(ruled));
+      return;
+    }
+
+    // ── Free-form → DeepSeek (reasoning trace or grounded chat) ──
+    if (aiKey) {
+      const history = messages.filter((m) => m.text);
+      if (reasoningRef.current) {
+        await runReasoner(history, text);
+        return;
+      }
       try {
-        const history = messages.filter((m) => m.text);
-        const llmText = await askClaude(history, text, riskProfile);
+        const { content } = await complete({
+          system: financialContext(riskProfile),
+          messages: chatMessages(history, text),
+        });
         setTyping(false);
-        pushMitra({ text: llmText, mood: 'happy', chips: ['Show my portfolio', 'Invest my surplus'] });
+        pushMitra(await localise({ text: content, mood: 'happy', chips: ['Show my portfolio', 'Invest my surplus'] }));
         return;
       } catch {
-        // fall through to rule fallback
+        /* fall through */
       }
     }
     setTyping(false);
     pushMitra(fallbackResponse());
+  };
+
+  // ── Reasoning mode: stream R1's chain-of-thought, then the answer ──
+  const runReasoner = async (history, text) => {
+    setTyping(false);
+    setMood('thinking');
+    setStream({ reasoning: '', answer: '' });
+    try {
+      const { answer, reasoning } = await reasonStream({
+        system: financialContext(riskProfile) + ' Think step by step about the customer\'s numbers before answering.',
+        messages: chatMessages(history, text),
+        onReasoning: (c) => setStream((s) => ({ ...s, reasoning: (s?.reasoning || '') + c })),
+        onAnswer: (c) => setStream((s) => ({ ...s, answer: (s?.answer || '') + c })),
+      });
+      setStream(null);
+      const localised = await localise({ text: answer || 'Let me get back to you on that.', mood: 'happy' });
+      setMessages((m) => [...m, { id: mid(), from: 'mitra', ...localised, reasoning: reasoning, chips: ['Show my portfolio', 'Invest my surplus'] }]);
+      if (voiceOn) speak(localised.text, { lang: langRef.current, onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+      awardXP(25, 'reasoning');
+    } catch {
+      setStream(null);
+      pushMitra(fallbackResponse());
+    }
+  };
+
+  // ── Offer Analyzer: scam / mis-selling verdict on pasted text ──
+  const runOfferAnalysis = async (text) => {
+    setTyping(true);
+    setMood('thinking');
+    try {
+      const a = await analyzeOffer(text);
+      setTyping(false);
+      if (!a) { pushMitra(fallbackResponse()); return; }
+      const verdictLine = { safe: 'This looks legitimate', caution: 'Be careful with this one', avoid: 'Please do not proceed' }[a.verdict] || '';
+      awardXP(20, 'offer-analysis');
+      pushMitra(await localise({
+        mood: a.verdict === 'avoid' ? 'thinking' : 'happy',
+        text: `${verdictLine}. ${a.headline}`,
+        widget: { type: 'offer', data: a },
+        chips: ['Where should I invest instead?', 'Check another offer', 'Am I protected?'],
+      }));
+    } catch {
+      setTyping(false);
+      pushMitra(fallbackResponse());
+    }
+  };
+
+  // ── Natural-language goal creation → SIP plan ──
+  const runGoalCreate = async (text) => {
+    setTyping(true);
+    try {
+      const g = await extractGoal(text);
+      setTyping(false);
+      if (!g || !g.ok) {
+        pushMitra(await localise({ text: "I couldn't quite catch that goal — tell me what you want and roughly when, like \"a car in 3 years\".", mood: 'thinking', chips: ['Invest my surplus'] }));
+        return;
+      }
+      const monthly = sipRequired(g.target, 11, g.years || 3, 0);
+      awardXP(20, 'nl-goal');
+      pushMitra(await localise({
+        mood: 'excited',
+        text: `Love it — ${g.name}. To reach ${fmt(g.target)} in ${g.years} year${g.years > 1 ? 's' : ''}, invest about ${fmt(monthly)}/month in an equity SIP (~11% p.a.). ${g.note || ''} Shall I start it?`,
+        widget: { type: 'sip', data: { monthly, rate: 11, years: g.years, fv: g.target, fvIdle: g.target * 0.6 } },
+        chips: [`Start ${fmt(Math.round(monthly / 500) * 500)}/mo SIP`, 'Show my goals'],
+        cta: { label: `Start SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500 },
+      }));
+    } catch {
+      setTyping(false);
+      pushMitra(fallbackResponse());
+    }
   };
 
   // greet on first open / handle deep-linked prompt from dashboard nudges
@@ -178,7 +314,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, typing]);
+  }, [messages, typing, stream]);
 
   useEffect(
     () => () => {
@@ -240,23 +376,50 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             <span className="status-dot" /> {typing ? 'Analysing your data…' : speaking ? 'Speaking…' : 'AI Wealth Advisor · Online'}
           </div>
         </div>
+        {aiKey && (
+          <button
+            className={`icon-btn ${reasoningMode ? 'active' : ''}`}
+            title={reasoningMode ? 'Reasoning mode on — shows MITRA thinking' : 'Turn on reasoning mode'}
+            onClick={() => setReasoningMode((v) => !v)}
+          >
+            <Icon name="bulb" size={15} />
+          </button>
+        )}
         <button className="icon-btn" title="Call MITRA" onClick={startCall}>
           <Icon name="phone" size={15} />
         </button>
-        <button
-          className={`icon-btn ${lang === 'hi' ? 'active' : ''}`}
-          title="हिंदी / English"
-          onClick={() => {
-            const next = lang === 'hi' ? 'en' : 'hi';
-            setLang(next);
-            langRef.current = next;
-            stopSpeaking();
-            setSpeaking(false);
-            setTimeout(() => handleSend(next === 'hi' ? 'नमस्ते' : 'hello'), 150);
-          }}
-        >
-          {lang === 'hi' ? 'अ' : 'A'}
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            className={`icon-btn ${lang !== 'en' ? 'active' : ''}`}
+            title="Language"
+            onClick={() => setLangMenu((v) => !v)}
+          >
+            {LANGUAGES.find((l) => l.code === lang)?.short || 'A'}
+          </button>
+          {langMenu && (
+            <div className="lang-menu">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  className={`lang-item ${l.code === lang ? 'active' : ''}`}
+                  disabled={l.code !== 'en' && l.code !== 'hi' && !aiKey}
+                  onClick={() => {
+                    setLangMenu(false);
+                    if (l.code === lang) return;
+                    setLang(l.code);
+                    langRef.current = l.code;
+                    stopSpeaking();
+                    setSpeaking(false);
+                    setTimeout(() => handleSend(l.code === 'en' ? 'hello' : l.code === 'hi' ? 'नमस्ते' : 'hello'), 150);
+                  }}
+                >
+                  <span>{l.native}</span>
+                  <small>{l.label}{l.code !== 'en' && l.code !== 'hi' && !aiKey ? ' · needs AI key' : ''}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           className={`icon-btn ${voiceOn ? 'active' : ''}`}
           title="Toggle voice"
@@ -290,6 +453,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                 </div>
                 <div className="bubble mitra">{m.text}</div>
               </div>
+              {m.reasoning && (
+                <div className="why-box">
+                  <details>
+                    <summary>See how MITRA reasoned</summary>
+                    <div className="reasoning-text">{m.reasoning}</div>
+                  </details>
+                </div>
+              )}
               {m.widget && <ChatWidget widget={m.widget} onChip={handleSend} />}
               {m.why && (
                 <div className="why-box">
@@ -321,6 +492,25 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             </div>
           </div>
         )}
+        {stream && (
+          <>
+            <div className="reason-trace">
+              <div className="reason-trace-head">
+                <span className="reason-pulse" />
+                {stream.answer ? 'Answering…' : 'MITRA is reasoning through your numbers…'}
+              </div>
+              {stream.reasoning && <div className="reason-trace-body">{stream.reasoning}</div>}
+            </div>
+            {stream.answer && (
+              <div className="msg-row">
+                <div className="mini-avatar">
+                  <Avatar size={30} mood="happy" />
+                </div>
+                <div className="bubble mitra">{stream.answer}</div>
+              </div>
+            )}
+          </>
+        )}
         {!typing && last?.from === 'mitra' && last.chips && (
           <div className="chips">
             {last.chips.map((c) => (
@@ -340,7 +530,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder={listening ? 'Listening…' : 'Ask about goals, tax, SIPs…'}
+          placeholder={
+            offerMode
+              ? 'Paste the offer / message to check…'
+              : listening
+              ? 'Listening…'
+              : reasoningMode
+              ? 'Ask anything — I\'ll reason it out…'
+              : 'Ask about goals, tax, SIPs…'
+          }
         />
         <button className="send-btn" onClick={() => handleSend()} title="Send">
           <Icon name="send" size={16} />

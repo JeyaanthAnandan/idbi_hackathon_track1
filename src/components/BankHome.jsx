@@ -5,6 +5,7 @@ import { levelInfo } from '../engine/xp.js';
 import Avatar from './Avatar.jsx';
 import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
+import idbiLogo from '../assets/idbi-logo.png';
 
 const recentTxns = [
   { icon: 'bag', name: 'Swiggy', cat: 'Food Delivery · Today', amt: -485 },
@@ -31,9 +32,9 @@ export default function BankHome({ onOpenMitra }) {
     <div>
       <div className="bank-header">
         <div className="bank-brand">
-          <div className="bank-logo"><img src="/idbi-logo.png" alt="IDBI Bank" /></div>
+          <img className="bank-logo-img" src={idbiLogo} alt="IDBI Bank" />
           <div>
-            <h1>IDBI Bank GO+<sup style={{ fontSize: 8 }}>®</sup></h1>
+            <h1>GO+<sup style={{ fontSize: 8 }}>®</sup></h1>
             <span>bank aisa dost jaisa</span>
           </div>
           <div className="xp-chip">Lv.{lvl.level} — {lvl.title}</div>

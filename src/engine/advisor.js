@@ -183,7 +183,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       return {
         mood: 'happy',
         text: `Hi ${firstName}, I've been keeping an eye on your money. Your Financial Health Score is ${hs.total}/100 (${hs.grade}) and I've spotted ${fmt(cf.surplus)} sitting idle each month. Want me to put it to work?`,
-        chips: ['Invest my surplus', 'Show my portfolio', 'Analyse my spending', 'Am I protected?', "How's my financial health?"],
+        chips: ['Invest my surplus', 'Show my portfolio', 'Check an offer', 'Am I protected?', "How's my financial health?"],
       };
 
     case 'portfolio': {

@@ -480,5 +480,54 @@ export default function ChatWidget({ widget, onChip }) {
     );
   }
 
+  if (type === 'offer') {
+    const tone = { safe: 'var(--green)', caution: 'var(--amber)', avoid: 'var(--red)' }[data.verdict] || 'var(--ink-soft)';
+    const label = { safe: 'SAFE', caution: 'CAUTION', avoid: 'AVOID' }[data.verdict] || '—';
+    const score = typeof data.score === 'number' ? data.score : null;
+    return (
+      <div className="widget-card">
+        <h4>Offer X-Ray · AI verdict</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <div style={{
+            fontFamily: 'var(--display)', fontWeight: 800, fontSize: 15, color: '#fff',
+            background: tone, borderRadius: 8, padding: '5px 12px', letterSpacing: '0.04em',
+          }}>
+            {label}
+          </div>
+          {score !== null && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 3 }}>Safety score</div>
+              <div className="peer-track">
+                <div className="peer-you" style={{ width: `${score}%`, background: tone }} />
+              </div>
+            </div>
+          )}
+        </div>
+        {data.realityCheck && (
+          <div style={{ fontSize: 12.5, color: 'var(--ink)', marginBottom: 10, lineHeight: 1.5 }}>{data.realityCheck}</div>
+        )}
+        {Array.isArray(data.redFlags) && data.redFlags.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--red)', marginBottom: 4 }}>Red flags</div>
+            {data.redFlags.map((f, i) => (
+              <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', padding: '2px 0', lineHeight: 1.45 }}>— {f}</div>
+            ))}
+          </div>
+        )}
+        {Array.isArray(data.hiddenCosts) && data.hiddenCosts.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--amber)', marginBottom: 4 }}>Hidden costs</div>
+            {data.hiddenCosts.map((f, i) => (
+              <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', padding: '2px 0', lineHeight: 1.45 }}>— {f}</div>
+            ))}
+          </div>
+        )}
+        {data.action && (
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: tone, marginTop: 6 }}>{data.action}</div>
+        )}
+      </div>
+    );
+  }
+
   return null;
 }

@@ -41,6 +41,7 @@ import {
 } from './analytics.js';
 import { peers } from '../data/customer.js';
 import { goals } from '../data/customer.js';
+import { sumAction } from './portfolioState.js';
 
 const INTENTS = [
   { id: 'greeting', kw: ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening'] },
@@ -109,6 +110,10 @@ function parseSipQuery(text) {
 }
 
 const firstName = customer.name.split(' ')[0];
+// The lightest-priority goal name, used as flavour text in a few responses —
+// resolved from data so it reads correctly for any persona, not just Priya's "Europe Trip".
+const flavourGoalName = () => goals.find((g) => g.id === 'travel')?.name || goals[goals.length - 1]?.name || 'goal';
+const goalName = (id) => goals.find((g) => g.id === id)?.name || id;
 
 // ── Hindi response overlays (vernacular = accessibility) ──────
 // Same computed numbers, Hindi phrasing. Full coverage via Bhashini in prod.
@@ -208,7 +213,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           a
             ? `Biggest jump: ${a.category} at ${fmt(a.amount)} — that's ${a.deltaPct.toFixed(0)}% above your 3-month average. `
             : ''
-        }Trimming just the excess (${fmt(a ? a.amount - a.avg3m : 0)}) redirected to your Europe Trip SIP gets you there ~2 months sooner.`,
+        }Trimming just the excess (${fmt(a ? a.amount - a.avg3m : 0)}) redirected to your ${flavourGoalName()} SIP gets you there ~2 months sooner.`,
         widget: { type: 'spending', data: { categories: spendByCategory, months: monthlySummary } },
         chips: ['Show unused subscriptions', 'Invest my surplus', 'Show my goals'],
       };
@@ -234,7 +239,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           `${p.expectedReturn}% assumption comes from your ${riskProfile} model portfolio, not a promise`,
         ],
         chips: ['Yes, set up this SIP', 'Show ideal portfolio split', 'Make it ₹15,000 instead'],
-        cta: { label: `Start SIP of ${fmt(monthly)}/mo`, type: 'sip-setup', amount: monthly },
+        cta: { label: `Start SIP of ${fmt(monthly)}/mo`, type: 'sip-setup', amount: monthly, source: 'surplus' },
       };
     }
 
@@ -249,7 +254,7 @@ function respondCore(text, riskProfile = 'Balanced') {
             : 'You are broadly on track!'
         } Tap any goal and I'll build a plan for it.`,
         widget: { type: 'goals', data: { plans } },
-        chips: ['Plan my Europe trip', 'Plan retirement', 'Invest my surplus'],
+        chips: [`Plan my ${flavourGoalName()}`, 'Plan retirement', 'Invest my surplus'],
       };
     }
 
@@ -267,26 +272,41 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Tax saving estimated at 31.2% marginal rate (old regime); I'll compare regimes before you commit`,
         ],
         chips: ['Yes, start the ELSS SIP', 'Old vs new regime?', 'Show my portfolio'],
-        cta: { label: 'Start tax-saver SIP', type: 'sip-setup', amount: Math.ceil(tg.monthlyToFill / 100) * 100 },
+        cta: { label: 'Start tax-saver SIP', type: 'sip-setup', amount: Math.ceil(tg.monthlyToFill / 100) * 100, source: 'tax' },
       };
     }
 
     case 'subscriptions': {
       const unused = unusedSubscriptions();
       const waste = subscriptionWaste();
+      if (!unused.length) {
+        return {
+          mood: 'proud',
+          text: `Already handled — you cancelled every unused subscription I flagged. That's staying redirected into your goals instead of leaking away quietly.`,
+          chips: ['Invest my surplus', 'Show my goals'],
+        };
+      }
       return {
         mood: 'thinking',
         text: `I found ${unused.length} subscriptions you haven't used in months, costing ${fmt(waste)}/month (${fmt(
           waste * 12
-        )}/year). Cancelled and redirected into your Europe Trip SIP, that alone adds ${fmtCompact(sipFutureValue(waste, 11, 2))} in 2 years.`,
+        )}/year). Cancelled and redirected into your ${flavourGoalName()} SIP, that alone adds ${fmtCompact(sipFutureValue(waste, 11, 2))} in 2 years.`,
         widget: { type: 'subs', data: { unused, waste } },
         chips: ['Invest my surplus', 'Analyse my spending'],
+        cta: { label: `Cancel ${unused.length} unused subscriptions`, type: 'subs-cancel', amount: waste },
       };
     }
 
     case 'emergency': {
       const need = 400000;
       const gap = need - customer.savingsBalance;
+      if (hs.emergencyMonths >= 6) {
+        return {
+          mood: 'proud',
+          text: `Your safety net is fully funded — ${hs.emergencyMonths.toFixed(1)} months of expenses covered. Nothing to fix here; that surplus can now go straight to your goals.`,
+          chips: ['Invest my surplus', 'Show my goals'],
+        };
+      }
       return {
         mood: 'thinking',
         text: `Your safety net covers ${hs.emergencyMonths.toFixed(1)} months of expenses — the target is 6 months (${fmtCompact(
@@ -295,6 +315,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           Math.min(gap, 100000)
         )} now and auto-top-up ${fmt(10000)}/month?`,
         chips: ['Yes, set up sweep-in FD', "What's a sweep-in FD?", 'Show my health score'],
+        cta: { label: `Move ${fmt(Math.min(gap, 100000))} to sweep-in FD`, type: 'emergency-fix', amount: Math.min(gap, 100000) },
       };
     }
 
@@ -387,7 +408,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           'SIP-based rebalancing avoids capital-gains tax and exit loads vs. sell-and-buy',
         ],
         chips: ['Yes, set the glide path', 'Show ideal portfolio split', 'Show my portfolio'],
-        cta: { label: 'Approve SIP glide path', type: 'sip-setup', amount: 10000 },
+        cta: { label: 'Approve SIP glide path', type: 'sip-setup', amount: 10000, source: 'rebalance' },
       };
     }
 
@@ -450,7 +471,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Premiums indicative for age ${customer.age}, non-smoker; exact quote at issuance`,
         ],
         chips: ['Fix my protection gap', 'Show my health score', 'Talk to a human advisor'],
-        cta: { label: `Fix protection · ${fmt(pg.totalMonthly)}/mo`, type: 'sip-setup', amount: pg.totalMonthly },
+        cta: { label: `Fix protection · ${fmt(pg.totalMonthly)}/mo`, type: 'protection-fix', amount: pg.totalMonthly },
       };
     }
 
@@ -478,6 +499,14 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'xray': {
       const xr = xray();
+      if (xr.switched) {
+        return {
+          mood: 'proud',
+          text: `Already done — you're on the Direct plan for ${xr.fund}, paying ${xr.er}% instead of the old ${xr.regularEr}%. That commission drag is gone for good: staying Regular would have cost you ${fmtCompact(xr.feeLossAvoided)} over ${xr.years} years, and now it doesn't.`,
+          widget: { type: 'xray', data: xr },
+          chips: ['Show my portfolio', 'Harvest my capital gains'],
+        };
+      }
       return {
         mood: 'thinking',
         text: `I ran an X-ray on your funds and found two things worth your attention. One: your ${xr.fund} is a ${xr.plan} plan charging ${xr.er}% — the identical Direct plan costs ${xr.directEr}%. That invisible ${xr.dragPct.toFixed(1)}% commission compounds to ${fmtCompact(xr.feeLoss)} lost over ${xr.years} years. Two: it overlaps ${xr.overlapPct}% with your ${xr.overlapWith} — you're paying active fees for stocks you already own passively. Want me to switch you to Direct?`,
@@ -488,12 +517,20 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Overlap computed on top-25 holdings of both funds`,
         ],
         chips: ['Switch me to Direct plans', 'Show my portfolio', 'Harvest my capital gains'],
-        cta: { label: 'Switch to Direct plan', type: 'sip-setup', amount: 3000 },
+        cta: { label: 'Switch to Direct plan', type: 'direct-switch', amount: 0 },
       };
     }
 
     case 'harvest': {
       const lh = ltcgHarvest();
+      if (lh.harvested) {
+        return {
+          mood: 'proud',
+          text: `Already harvested for this FY — you've locked in ${fmt(sumAction('harvest'))} of tax-free gains and reset your cost basis. I'll remind you again next April when the exemption resets.`,
+          widget: { type: 'harvest', data: lh },
+          chips: ['X-ray my portfolio', 'Help me save tax', 'Show my portfolio'],
+        };
+      }
       return {
         mood: 'excited',
         text: `Here's a completely legal trick most people never use: long-term equity gains up to ₹1.25 lakh a year are tax-free. You're sitting on ${fmt(lh.gains)} of unrealised gains. Sell and instantly re-buy before March 31st — your cost basis resets, and ${fmt(lh.taxSaved)} of future tax quietly disappears. Do this every year and the habit alone compounds to ${fmtCompact(lh.habitValue)} over 20 years. Ten minutes of work, I'll handle the orders.`,
@@ -504,16 +541,23 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Tax saved = harvested gains × 12.5% LTCG rate; exit-load-free units only`,
         ],
         chips: ['Yes, harvest my gains', 'X-ray my portfolio', 'Help me save tax'],
-        cta: { label: `Harvest ${fmt(lh.harvestable)} tax-free`, type: 'sip-setup', amount: 0 },
+        cta: { label: `Harvest ${fmt(lh.harvestable)} tax-free`, type: 'harvest', amount: lh.taxSaved },
       };
     }
 
     case 'prepay': {
       const pv = prepayVsInvest(50000);
+      if (pv.loan.balance <= 0) {
+        return {
+          mood: 'proud',
+          text: `Nothing left to prepay — your ${pv.loan.name} is fully closed${pv.prepaidSoFar ? ` (${fmt(pv.prepaidSoFar)} of it prepaid early with your help)` : ''}. That EMI amount is free capacity now; want it redirected into a SIP?`,
+          chips: ['Invest my surplus', 'Show my goals'],
+        };
+      }
       const better = pv.interestSaved > pv.investGain * 0.7; // risk-adjust the equity path
       return {
         mood: 'thinking',
-        text: `The eternal question! Your education loan: ${fmt(pv.loan.balance)} left at ${pv.loan.rate}%. Prepaying ${fmt(pv.prepayAmount)} saves ${fmt(pv.interestSaved)} in interest and finishes it ${pv.monthsSaved} months early — a guaranteed ${pv.loan.rate}% return. Investing the same could make ${fmt(Math.round(pv.investGain))} at 11%, but that's not guaranteed. At ${pv.loan.rate}%, the maths says ${better ? 'prepay — a risk-free 10.5% beats a risky 11%' : 'invest'}. And the peace of being debt-free? That compounds too.`,
+        text: `The eternal question! Your ${pv.loan.name.toLowerCase()}: ${fmt(pv.loan.balance)} left at ${pv.loan.rate}%. Prepaying ${fmt(pv.prepayAmount)} saves ${fmt(pv.interestSaved)} in interest and finishes it ${pv.monthsSaved} months early — a guaranteed ${pv.loan.rate}% return. Investing the same could make ${fmt(Math.round(pv.investGain))} at 11%, but that's not guaranteed. At ${pv.loan.rate}%, the maths says ${better ? `prepay — a risk-free ${pv.loan.rate}% beats a risky 11%` : 'invest'}. And the peace of being debt-free? That compounds too.`,
         widget: {
           type: 'compare',
           data: {
@@ -530,7 +574,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           'Prepayment return is guaranteed; equity return is expected, so it is risk-adjusted before comparing',
         ],
         chips: ['Prepay ₹50,000 now', 'Invest my surplus instead', 'Show my goals'],
-        cta: { label: `Prepay ${fmt(pv.prepayAmount)} · save ${fmt(pv.interestSaved)}`, type: 'sip-setup', amount: pv.prepayAmount },
+        cta: { label: `Prepay ${fmt(pv.prepayAmount)} · save ${fmt(pv.interestSaved)}`, type: 'prepay', amount: pv.prepayAmount },
       };
     }
 
@@ -548,7 +592,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       const gc = goalCollision(modelPortfolios[riskProfile].expectedReturn);
       return {
         mood: 'thinking',
-        text: `Time for honest maths. Funding all four goals on schedule needs ${fmt(gc.needTotal)}/month — you have ${fmt(gc.capacity)}/month of investing capacity. That's a ${fmt(gc.deficit)} collision. Rather than pretending, here's my triage: fully fund the emergency fund and home first, keep retirement compounding, and push the Europe trip out ~8 months. Dreams don't die in this plan — they just queue politely.`,
+        text: `Time for honest maths. Funding all four goals on schedule needs ${fmt(gc.needTotal)}/month — you have ${fmt(gc.capacity)}/month of investing capacity. That's a ${fmt(gc.deficit)} collision. Rather than pretending, here's my triage: fully fund the emergency fund and ${goalName('home')} first, keep retirement compounding, and push the ${flavourGoalName()} out ~8 months. Dreams don't die in this plan — they just queue politely.`,
         widget: { type: 'collision', data: gc },
         why: [
           `Required SIPs computed per goal at ${modelPortfolios[riskProfile].expectedReturn}% expected return`,
@@ -556,13 +600,103 @@ function respondCore(text, riskProfile = 'Balanced') {
           'Priority order: safety → committed goals → compounding → lifestyle',
         ],
         chips: ['Apply this plan', 'Open the Time Machine', 'Show my goals'],
-        cta: { label: 'Apply the triage plan', type: 'sip-setup', amount: gc.capacity },
+        cta: { label: `Apply the triage plan · +${fmt(cf.surplus)}/mo`, type: 'sip-setup', amount: Math.max(cf.surplus, 0), source: 'collision' },
       };
     }
 
     default:
       return null; // hand off to LLM if configured, else graceful fallback
   }
+}
+
+// ── Offline Offer X-Ray: same verdict shape as the DeepSeek version, but a
+// deterministic keyword/regex scorer so the scam-check works with no AI key.
+const OFFER_SIGNALS = [
+  {
+    id: 'guarantee',
+    weight: 30,
+    re: /guarantee(d)?|assured returns?|fixed returns?|risk[- ]?free|zero[- ]?risk|no risk/i,
+    flag: 'Claims "guaranteed" / "assured" / risk-free returns',
+  },
+  {
+    id: 'highpct',
+    weight: 25,
+    re: /(\d{2,3})\s?%/,
+    test: (t, m) => m && parseInt(m[1], 10) > 8,
+    flag: 'Promises returns well above what regulated products can offer (~7–8% FD, ~11–13% long-term equity)',
+  },
+  {
+    id: 'urgency',
+    weight: 20,
+    re: /(offer|deal|scheme) (closes|ends)|hurry|act now|limited (time|seats|slots)|today only|expires (tonight|today|soon)|last chance/i,
+    flag: 'Creates urgency to decide immediately',
+  },
+  {
+    id: 'personalpay',
+    weight: 25,
+    re: /personal (upi|account|number)|pay to my|individual (bank )?account|(gpay|phonepe|paytm) (id|number) *[:\-]/i,
+    flag: 'Asks for payment to a personal UPI ID / account rather than a registered entity',
+  },
+  {
+    id: 'channel',
+    weight: 15,
+    re: /whatsapp|telegram|forwarded as received|sms tip|cold call|dm(ed)? me/i,
+    flag: 'Arrived via an unsolicited WhatsApp/Telegram/SMS channel',
+  },
+  {
+    id: 'unregistered',
+    weight: 20,
+    re: /not sebi registered|un-?registered|offshore broker|unlisted broker|no license needed/i,
+    flag: 'No verifiable SEBI/RBI registration mentioned',
+  },
+  {
+    id: 'pyramid',
+    weight: 25,
+    re: /refer (and earn|\d+ friends)|pyramid|\bmlm\b|multi-level|binary plan|join under me|downline/i,
+    flag: 'Reward structure resembles a referral / pyramid scheme, not an investment',
+  },
+  {
+    id: 'upfrontfee',
+    weight: 15,
+    re: /processing fee|advance fee|registration fee|activation fee|unlock fee|gst extra before/i,
+    flag: 'Requires an upfront "processing/activation" fee before any payout',
+    hidden: true,
+  },
+];
+
+export function analyzeOfferOffline(text) {
+  const redFlags = [];
+  const hiddenCosts = [];
+  let score = 100;
+  let highPct = null;
+
+  for (const sig of OFFER_SIGNALS) {
+    const m = text.match(sig.re);
+    if (!m) continue;
+    if (sig.test && !sig.test(text, m)) continue;
+    if (sig.id === 'highpct') highPct = parseInt(m[1], 10);
+    score -= sig.weight;
+    if (sig.hidden) hiddenCosts.push(sig.flag);
+    else redFlags.push(sig.flag);
+  }
+  score = Math.max(score, 0);
+
+  const verdict = score >= 70 ? 'safe' : score >= 40 ? 'caution' : 'avoid';
+  const headline = {
+    safe: 'Nothing obviously alarming here, but always verify before you commit.',
+    caution: "A few things don't add up — worth a closer look before proceeding.",
+    avoid: 'This carries multiple classic scam signals — please do not proceed.',
+  }[verdict];
+  const realityCheck = highPct
+    ? `A claimed ${highPct}% return can't legally be guaranteed by any SEBI-regulated product in India — that's a red flag by itself, not a bonus.`
+    : 'No unrealistic return claim detected, but that alone doesn\'t make an offer legitimate — always verify the entity independently.';
+  const action = {
+    safe: 'Still verify SEBI/AMFI registration on sebi.gov.in before investing, and never send money to a personal account.',
+    caution: 'Verify the entity on sebi.gov.in / RBI\'s Sachet portal before sending any money, and never pay to a personal UPI or account.',
+    avoid: 'Do not send money or share OTPs/KYC details. Report it on RBI\'s Sachet portal (sachet.rbi.org.in) if it keeps contacting you.',
+  }[verdict];
+
+  return { verdict, score, headline, redFlags, hiddenCosts, realityCheck, action, offline: true };
 }
 
 export function fallbackResponse() {

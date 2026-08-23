@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Avatar from './Avatar.jsx';
-import { riskQuestions, riskProfileFromScore, modelPortfolios } from '../data/customer.js';
+import { riskQuestions, riskProfileFromScore, modelPortfolios, customer } from '../data/customer.js';
+import { getSession } from '../engine/auth.js';
 import { Donut } from './charts.jsx';
 
 // Conversational risk profiling — MITRA "asks", customer taps.
@@ -8,6 +9,7 @@ import { Donut } from './charts.jsx';
 export default function Onboarding({ onDone }) {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
+  const firstName = getSession()?.name?.trim().split(' ')[0] || customer.name.split(' ')[0];
 
   const finished = step >= riskQuestions.length;
   const profile = finished ? riskProfileFromScore(score) : null;
@@ -22,7 +24,7 @@ export default function Onboarding({ onDone }) {
 
       {!finished ? (
         <>
-          <h2>Let's understand you, Priya</h2>
+          <h2>Let's understand you, {firstName}</h2>
           <p className="ob-sub">
             4 quick questions so every recommendation I make fits <b>your</b> comfort with risk — not a generic template.
           </p>

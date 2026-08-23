@@ -358,7 +358,10 @@ export default function ChatWidget({ widget, onChip }) {
     const mono = { fontFamily: 'inherit' };
     return (
       <div className="widget-card">
-        <h4>Portfolio X-Ray · {data.fund}</h4>
+        <h4>
+          Portfolio X-Ray · {data.fund}
+          {data.switched && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>✓ Direct</span>}
+        </h4>
         <div style={{ display: 'flex', gap: 0, border: '1px solid var(--line-strong)' }}>
           <div style={{ flex: 1, borderRight: '1px solid var(--line)', padding: '9px 11px' }}>
             <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', ...mono }}>You pay ({data.plan})</div>
@@ -391,7 +394,10 @@ export default function ChatWidget({ widget, onChip }) {
     const usedPct = Math.min((data.harvestable / data.exemption) * 100, 100);
     return (
       <div className="widget-card">
-        <h4>LTCG Harvest · FY 2026–27 window</h4>
+        <h4>
+          LTCG Harvest · FY 2026–27 window
+          {data.harvested && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>✓ Harvested</span>}
+        </h4>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <Donut
             segments={[{ pct: usedPct, color: 'var(--orange)' }]}

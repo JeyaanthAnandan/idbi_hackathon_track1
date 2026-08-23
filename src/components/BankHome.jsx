@@ -1,18 +1,13 @@
 import React from 'react';
 import { customer } from '../data/customer.js';
-import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap } from '../engine/analytics.js';
+import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap, topNudges } from '../engine/analytics.js';
 import { levelInfo } from '../engine/xp.js';
 import Avatar from './Avatar.jsx';
 import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
 import idbiLogo from '../assets/idbi-logo.png';
 
-const recentTxns = [
-  { icon: 'bag', name: 'Swiggy', cat: 'Food Delivery · Today', amt: -485 },
-  { icon: 'bolt', name: 'Electricity Bill', cat: 'BBPS · Yesterday', amt: -2140 },
-  { icon: 'trendUp', name: 'SIP — Nifty 50 Index', cat: 'Auto-debit · 3 Jul', amt: -8000 },
-  { icon: 'briefcase', name: 'Salary — TechCorp India', cat: 'NEFT · 1 Jul', amt: 95000 },
-];
+const selfEmployed = customer.segment.toLowerCase().includes('self-employed');
 
 const quickActions = [
   ['rupee', 'Pay / UPI'],
@@ -21,12 +16,22 @@ const quickActions = [
   ['card', 'Cards'],
 ];
 
-export default function BankHome({ onOpenMitra }) {
+export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' }) {
   const hs = healthScore();
   const cf = cashflow();
   const mp = marketPulse();
   const anomaly = spendingAnomalies()[0];
   const lvl = levelInfo();
+  const topNudge = topNudges(riskProfile)[0];
+
+  const recentTxns = [
+    { icon: 'bag', name: 'Swiggy', cat: 'Food Delivery · Today', amt: -485 },
+    { icon: 'bolt', name: 'Electricity Bill', cat: 'BBPS · Yesterday', amt: -2140 },
+    ...(cf.avgInvested > 0 ? [{ icon: 'trendUp', name: 'SIP — Auto Invest', cat: 'Auto-debit · 3 Jul', amt: -Math.round(cf.avgInvested) }] : []),
+    selfEmployed
+      ? { icon: 'briefcase', name: 'Business Receipts — UPI Collections', cat: 'Settlement · 1 Jul', amt: Math.round(cf.avgIncome) }
+      : { icon: 'briefcase', name: 'Salary — TechCorp India', cat: 'NEFT · 1 Jul', amt: Math.round(cf.avgIncome) },
+  ];
 
   return (
     <div>
@@ -39,7 +44,7 @@ export default function BankHome({ onOpenMitra }) {
           </div>
           <div className="xp-chip">Lv.{lvl.level} — {lvl.title}</div>
         </div>
-        <div className="bank-greet">Good Afternoon — Mumbai, 34°C</div>
+        <div className="bank-greet">Good Afternoon — {customer.city}, 34°C</div>
         <div className="bank-name">{customer.name}</div>
       </div>
 
@@ -66,6 +71,21 @@ export default function BankHome({ onOpenMitra }) {
         </>)}
         80C gap <b>{fmt(taxGap().gap)}</b> · idle surplus <b>{fmt(cf.surplus)}/mo</b>
       </div>
+
+      {topNudge && (
+        <div className="nudge">
+          <div className="nudge-ic">
+            <Icon name={topNudge.icon} size={19} />
+          </div>
+          <div>
+            <div className="nudge-title">{topNudge.title}</div>
+            <div className="nudge-body">{topNudge.body}</div>
+            <button className="nudge-action" onClick={() => onAsk?.(topNudge.action)}>
+              {topNudge.action} → ask MITRA
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="quick-grid">
         {quickActions.map(([ic, label]) => (

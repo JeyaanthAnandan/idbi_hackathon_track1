@@ -1,0 +1,121 @@
+import React, { useState } from 'react';
+import Avatar from './Avatar.jsx';
+import { signUp, logIn } from '../engine/auth.js';
+import { customer } from '../data/customer.js';
+
+// Entry gate before onboarding — logs the customer into their IDBI account
+// (or creates one) so MITRA has an identity to attach the risk quiz to.
+export default function Auth({ onAuthed }) {
+  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const switchMode = (m) => {
+    setMode(m);
+    setError('');
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (mode === 'signup') {
+      if (!name.trim()) return setError('Enter your full name.');
+      if (!email.trim()) return setError('Enter your email.');
+      if (password.length < 4) return setError('Password must be at least 4 characters.');
+      const res = signUp({ name, email, password });
+      if (!res.ok) return setError(res.error);
+      onAuthed(res.session);
+    } else {
+      if (!email.trim() || !password) return setError('Enter your email and password.');
+      const res = logIn({ email, password });
+      if (!res.ok) return setError(res.error);
+      onAuthed(res.session);
+    }
+  };
+
+  return (
+    <div className="onboard auth-screen">
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
+          <Avatar size={96} mood="happy" />
+        </div>
+      </div>
+
+      <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+      <p className="ob-sub">
+        {mode === 'login'
+          ? 'Log in to your IDBI account to continue.'
+          : "A few details and MITRA will get to know you next."}
+      </p>
+
+      <div className="auth-tabs">
+        <button
+          type="button"
+          className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
+          onClick={() => switchMode('login')}
+        >
+          Log in
+        </button>
+        <button
+          type="button"
+          className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
+          onClick={() => switchMode('signup')}
+        >
+          Sign up
+        </button>
+      </div>
+
+      <form className="auth-form" onSubmit={submit}>
+        {mode === 'signup' && (
+          <div className="settings-row">
+            <input
+              type="text"
+              placeholder="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+            />
+          </div>
+        )}
+        <div className="settings-row">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </div>
+        <div className="settings-row">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+          />
+        </div>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <button className="primary-btn" type="submit" style={{ marginTop: 18 }}>
+          {mode === 'login' ? 'Log in' : 'Create account'}
+        </button>
+      </form>
+
+      <button
+        className="ghost-btn"
+        type="button"
+        style={{ marginTop: 16, alignSelf: 'center' }}
+        onClick={() => onAuthed({ name: customer.name, email: 'demo@idbi.local', demo: true })}
+      >
+        Skip · try the demo as {customer.name.split(' ')[0]}
+      </button>
+
+      <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', lineHeight: 1.6 }}>
+        Prototype login — accounts are stored only in this browser, not on a server.
+      </div>
+    </div>
+  );
+}

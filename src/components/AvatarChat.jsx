@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Avatar from './Avatar.jsx';
 import ChatWidget from './ChatWidgets.jsx';
-import { respond, fallbackResponse, financialContext } from '../engine/advisor.js';
+import { respond, fallbackResponse, financialContext, analyzeOfferOffline } from '../engine/advisor.js';
 import { speak, stopSpeaking, listen } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
+import { customer } from '../data/customer.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
 import {
@@ -11,12 +12,16 @@ import {
   chatMessages, LANGUAGES, langLabel,
 } from '../engine/deepseek.js';
 import { sipRequired } from '../engine/analytics.js';
+import { applyAction } from '../engine/portfolioState.js';
+import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
 
-let msgId = 0;
+// Seeded from wall-clock time so ids from a fresh mount never collide with
+// ids already sitting in restored (persisted) history.
+let msgId = Date.now();
 const mid = () => ++msgId;
 
 export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitial }) {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(loadChatHistory);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -113,8 +118,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         mood: 'happy',
         text:
           langRef.current === 'hi'
-            ? `हाँ ${'Priya'} जी, मैं सुन रही हूँ। पैसों की कोई भी बात — बेझिझक पूछिए।`
-            : `Hi Priya, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
+            ? `हाँ ${customer.name.split(' ')[0]} जी, मैं सुन रही हूँ। पैसों की कोई भी बात — बेझिझक पूछिए।`
+            : `Hi ${customer.name.split(' ')[0]}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
       });
     }, 700);
   };
@@ -161,17 +166,9 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setOfferMode(true);
       offerRef.current = true;
       pushMitra({
-        text: aiKey
-          ? 'Go ahead — paste the message, WhatsApp forward, or scheme details and I\'ll check it for red flags.'
-          : 'Add a DeepSeek key in Settings and I can analyse any offer for scams. For now, here\'s my manual checklist:',
+        text: 'Go ahead — paste the message, WhatsApp forward, or scheme details and I\'ll check it for red flags.',
         mood: 'thinking',
-        widget: aiKey ? undefined : { type: 'shield', data: { checks: [
-          { flag: '"Guaranteed" high returns', why: 'Nothing safe beats ~8% guaranteed in India' },
-          { flag: 'Urgency to act now', why: 'Real investments never expire in hours' },
-          { flag: 'Pay to a personal account', why: 'Regulated firms collect only in their own name' },
-        ] } },
       });
-      if (!aiKey) { setOfferMode(false); offerRef.current = false; }
       return;
     }
 
@@ -247,11 +244,12 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   };
 
   // ── Offer Analyzer: scam / mis-selling verdict on pasted text ──
+  // Uses DeepSeek when a key is set (richer, free-form reasoning); otherwise
+  // falls back to the deterministic rule-based scorer — works fully offline.
   const runOfferAnalysis = async (text) => {
     setTyping(true);
     setMood('thinking');
-    try {
-      const a = await analyzeOffer(text);
+    const finish = async (a) => {
       setTyping(false);
       if (!a) { pushMitra(fallbackResponse()); return; }
       const verdictLine = { safe: 'This looks legitimate', caution: 'Be careful with this one', avoid: 'Please do not proceed' }[a.verdict] || '';
@@ -262,9 +260,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         widget: { type: 'offer', data: a },
         chips: ['Where should I invest instead?', 'Check another offer', 'Am I protected?'],
       }));
+    };
+    if (!aiKey) {
+      await new Promise((r) => setTimeout(r, 500));
+      await finish(analyzeOfferOffline(text));
+      return;
+    }
+    try {
+      const a = await analyzeOffer(text);
+      await finish(a || analyzeOfferOffline(text));
     } catch {
-      setTyping(false);
-      pushMitra(fallbackResponse());
+      await finish(analyzeOfferOffline(text));
     }
   };
 
@@ -285,7 +291,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         text: `Love it — ${g.name}. To reach ${fmt(g.target)} in ${g.years} year${g.years > 1 ? 's' : ''}, invest about ${fmt(monthly)}/month in an equity SIP (~11% p.a.). ${g.note || ''} Shall I start it?`,
         widget: { type: 'sip', data: { monthly, rate: 11, years: g.years, fv: g.target, fvIdle: g.target * 0.6 } },
         chips: [`Start ${fmt(Math.round(monthly / 500) * 500)}/mo SIP`, 'Show my goals'],
-        cta: { label: `Start SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500 },
+        cta: { label: `Start SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500, source: 'nlgoal' },
       }));
     } catch {
       setTyping(false);
@@ -303,6 +309,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
     if (!startedRef.current) {
       startedRef.current = true;
+      if (messages.length > 0) return; // restored history — pick up where we left off
       setTyping(true);
       setTimeout(() => {
         setTyping(false);
@@ -311,6 +318,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
+
+  useEffect(() => {
+    saveChatHistory(messages);
+  }, [messages]);
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
@@ -342,27 +353,97 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   };
 
   const handleCta = (cta) => {
-    if (cta.type === 'roundup') {
-      awardXP(30, 'roundup');
-      showToast(`Round-Up investing enabled · +30 XP`);
-      setTimeout(() => {
-        pushMitra({
+    const follow = (resp) => setTimeout(() => pushMitra(resp), 900);
+
+    switch (cta.type) {
+      case 'roundup':
+        applyAction('roundup', cta.amount);
+        awardXP(30, 'roundup');
+        showToast(`Round-Up investing enabled · +30 XP`);
+        follow({
           mood: 'excited',
           text: `Round-Up is live. From your next UPI payment, I'll quietly sweep the spare change into a liquid fund — roughly ${fmt(cta.amount)}/month of invisible investing. Small drops, big ocean.`,
           chips: ['Invest my surplus', 'Show my goals'],
         });
-      }, 900);
-      return;
+        return;
+
+      case 'protection-fix':
+        applyAction('protection-fix', cta.amount);
+        awardXP(35, 'protection-fix');
+        showToast(`Protection gap fixed · +35 XP`);
+        follow({
+          mood: 'excited',
+          text: `Done — your life and health cover now meet the adequacy rule, for ${fmt(cta.amount)}/month. Your family's downside is covered no matter what happens to your income.`,
+          chips: ['Show my health score', 'Show my portfolio', "Am I on track for my goals?"],
+        });
+        return;
+
+      case 'direct-switch':
+        applyAction('direct-switch', 0);
+        awardXP(25, 'xray-switch');
+        showToast(`Switched to Direct plan · +25 XP`);
+        follow({
+          mood: 'excited',
+          text: `Switched. Same fund, same manager, same holdings — just without the distributor's cut. That saved percentage compounds silently for you from today.`,
+          chips: ['Harvest my capital gains', 'Show my portfolio'],
+        });
+        return;
+
+      case 'harvest':
+        applyAction('harvest', cta.amount);
+        awardXP(20, 'harvest');
+        showToast(`${fmt(cta.amount)} tax-free gains locked in · +20 XP`);
+        follow({
+          mood: 'excited',
+          text: `Orders placed — sold and re-bought instantly, cost basis reset, ${fmt(cta.amount)} of tax quietly avoided. I'll remind you to do this again next FY.`,
+          chips: ['X-ray my portfolio', 'Show my portfolio'],
+        });
+        return;
+
+      case 'prepay':
+        applyAction('prepay', cta.amount);
+        awardXP(30, 'prepay');
+        showToast(`Loan prepaid by ${fmt(cta.amount)} · +30 XP`);
+        follow({
+          mood: 'excited',
+          text: `${fmt(cta.amount)} applied to your loan principal — the interest and tenure both just shrank. One step closer to debt-free.`,
+          chips: ['Invest my surplus', 'Show my goals'],
+        });
+        return;
+
+      case 'subs-cancel':
+        applyAction('subs-cancel', cta.amount);
+        awardXP(15, 'subs-cancel');
+        showToast(`Unused subscriptions cancelled · +15 XP`);
+        follow({
+          mood: 'excited',
+          text: `Cancelled. ${fmt(cta.amount)}/month stops leaking out — that's now free capacity for your goals instead.`,
+          chips: ['Invest my surplus', 'Show my goals'],
+        });
+        return;
+
+      case 'emergency-fix':
+        applyAction('emergency-fix', cta.amount);
+        awardXP(25, 'emergency-fix');
+        showToast(`Sweep-in FD funded · +25 XP`);
+        follow({
+          mood: 'excited',
+          text: `Moved. Your safety net is now at the full 6-month target, still earning FD rates and withdrawable instantly if you ever need it.`,
+          chips: ["How's my financial health?", 'Invest my surplus'],
+        });
+        return;
+
+      case 'sip-setup':
+      default:
+        applyAction('sip', cta.amount, { source: cta.source });
+        awardXP(40, 'sip-setup');
+        showToast(`SIP mandate of ${fmt(cta.amount)}/mo created · +40 XP`);
+        follow({
+          mood: 'excited',
+          text: `Done. Your SIP of ${fmt(cta.amount)}/month is set up, debiting on the 5th — right after salary credit. I'll review it every quarter and nudge you to step it up when your income grows. You just future-proofed yourself, that felt good didn't it?`,
+          chips: ['Show my goals', "How's my financial health?", 'Compare me with my peers'],
+        });
     }
-    awardXP(40, 'sip-setup');
-    showToast(`SIP mandate of ${fmt(cta.amount)}/mo created · +40 XP`);
-    setTimeout(() => {
-      pushMitra({
-        mood: 'excited',
-        text: `Done. Your SIP of ${fmt(cta.amount)}/month is set up, debiting on the 5th — right after salary credit. I'll review it every quarter and nudge you to step it up when your income grows. You just future-proofed yourself, that felt good didn't it?`,
-        chips: ['Show my goals', "How's my financial health?", 'Compare me with my peers'],
-      });
-    }, 900);
   };
 
   const last = messages[messages.length - 1];
@@ -380,18 +461,23 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           <button
             className={`icon-btn ${reasoningMode ? 'active' : ''}`}
             title={reasoningMode ? 'Reasoning mode on — shows MITRA thinking' : 'Turn on reasoning mode'}
+            aria-label={reasoningMode ? 'Reasoning mode on — shows MITRA thinking' : 'Turn on reasoning mode'}
+            aria-pressed={reasoningMode}
             onClick={() => setReasoningMode((v) => !v)}
           >
             <Icon name="bulb" size={15} />
           </button>
         )}
-        <button className="icon-btn" title="Call MITRA" onClick={startCall}>
+        <button className="icon-btn" title="Call MITRA" aria-label="Call MITRA" onClick={startCall}>
           <Icon name="phone" size={15} />
         </button>
         <div style={{ position: 'relative' }}>
           <button
             className={`icon-btn ${lang !== 'en' ? 'active' : ''}`}
             title="Language"
+            aria-label={`Language: ${langLabel(lang)}`}
+            aria-haspopup="menu"
+            aria-expanded={langMenu}
             onClick={() => setLangMenu((v) => !v)}
           >
             {LANGUAGES.find((l) => l.code === lang)?.short || 'A'}
@@ -423,6 +509,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         <button
           className={`icon-btn ${voiceOn ? 'active' : ''}`}
           title="Toggle voice"
+          aria-label={voiceOn ? 'Voice replies on — tap to mute' : 'Voice replies off — tap to unmute'}
+          aria-pressed={voiceOn}
           onClick={() => {
             if (voiceOn) { stopSpeaking(); setSpeaking(false); }
             setVoiceOn(!voiceOn);
@@ -523,7 +611,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       </div>
 
       <div className="chat-input">
-        <button className={`mic-btn ${listening ? 'listening' : ''}`} onClick={handleMic} title="Speak to MITRA">
+        <button className={`mic-btn ${listening ? 'listening' : ''}`} onClick={handleMic} title="Speak to MITRA" aria-label={listening ? 'Listening…' : 'Speak to MITRA'}>
           <Icon name="mic" size={16} />
         </button>
         <input
@@ -540,7 +628,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               : 'Ask about goals, tax, SIPs…'
           }
         />
-        <button className="send-btn" onClick={() => handleSend()} title="Send">
+        <button className="send-btn" onClick={() => handleSend()} title="Send" aria-label="Send message">
           <Icon name="send" size={16} />
         </button>
       </div>
@@ -587,6 +675,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             <button
               className={`call-mic ${callListening ? 'on' : ''}`}
               title="Push to talk"
+              aria-label="Push to talk"
               onClick={() => {
                 stopSpeaking();
                 setSpeaking(false);
@@ -595,7 +684,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             >
               <Icon name="mic" size={17} />
             </button>
-            <button className="call-end" title="End call" onClick={endCall}>
+            <button className="call-end" title="End call" aria-label="End call" onClick={endCall}>
               <Icon name="x" size={20} />
             </button>
           </div>

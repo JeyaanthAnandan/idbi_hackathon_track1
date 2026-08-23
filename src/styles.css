@@ -38,6 +38,92 @@
   font-family: var(--font);
 }
 
+/* ── Dark mode ─────────────────────────────────────
+   Follows the OS by default; overridable in Settings via a
+   data-theme attribute on <html> ("light" | "dark" | absent = system). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1715;
+    --card: #17211f;
+    --card-2: #1c2825;
+    --ink: #eef4f2;
+    --ink-soft: #9db3ae;
+    --blue: #2bb4a2;
+    --blue-link: #4fd0bd;
+    --blue-hover: #3ec3af;
+    --orange: #ff9152;
+    --amber: #ff9152;
+    --green: #35c98a;
+    --red: #ef6255;
+    --slate: #9db3ae;
+    --paper: #17211f;
+
+    --teal: #2bb4a2;
+    --teal-2: #5bd0bf;
+    --teal-dark: #3ec3af;
+    --teal-deep: #9cd6cc;
+    --mint: #6bbdb2;
+
+    --line: rgba(238, 244, 242, 0.1);
+    --line-strong: rgba(238, 244, 242, 0.18);
+    --chart-track: rgba(238, 244, 242, 0.09);
+    --glass: #17211f;
+    --glass-2: #1c2825;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f1715;
+  --card: #17211f;
+  --card-2: #1c2825;
+  --ink: #eef4f2;
+  --ink-soft: #9db3ae;
+  --blue: #2bb4a2;
+  --blue-link: #4fd0bd;
+  --blue-hover: #3ec3af;
+  --orange: #ff9152;
+  --amber: #ff9152;
+  --green: #35c98a;
+  --red: #ef6255;
+  --slate: #9db3ae;
+  --paper: #17211f;
+
+  --teal: #2bb4a2;
+  --teal-2: #5bd0bf;
+  --teal-dark: #3ec3af;
+  --teal-deep: #9cd6cc;
+  --mint: #6bbdb2;
+
+  --line: rgba(238, 244, 242, 0.1);
+  --line-strong: rgba(238, 244, 242, 0.18);
+  --chart-track: rgba(238, 244, 242, 0.09);
+  --glass: #17211f;
+  --glass-2: #1c2825;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+:root[data-theme='dark'] body { background: #070c0b; }
+:root[data-theme='dark'] .grad-text, :root[data-theme='dark'] .balance-value,
+:root[data-theme='dark'] .wh-value, :root[data-theme='dark'] .giant-word,
+:root[data-theme='dark'] .onboard h2, :root[data-theme='dark'] .sim h2,
+:root[data-theme='dark'] .bank-name {
+  background: linear-gradient(180deg, #eef4f2 20%, #b9cdc8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body { background: #070c0b; }
+  :root:not([data-theme='light']) .grad-text, :root:not([data-theme='light']) .balance-value,
+  :root:not([data-theme='light']) .wh-value, :root:not([data-theme='light']) .giant-word,
+  :root:not([data-theme='light']) .onboard h2, :root:not([data-theme='light']) .sim h2,
+  :root:not([data-theme='light']) .bank-name {
+    background: linear-gradient(180deg, #eef4f2 20%, #b9cdc8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 ::selection { background: rgba(15, 140, 126, 0.25); }
@@ -667,6 +753,26 @@ input[type='range']::-webkit-slider-thumb:active { transform: scale(1.15); }
 }
 .primary-btn:hover { background: var(--blue-hover); transform: scale(1.01); }
 .primary-btn:active { transform: scale(0.98); }
+.primary-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ob-option:disabled { cursor: not-allowed; }
+.ob-option:disabled:hover { transform: none; background: var(--card); }
+.ob-option:disabled::after { content: none; }
+.upload-zone {
+  width: 100%; text-align: left; background: var(--card); border: 1px dashed var(--line-strong);
+  border-radius: 16px; padding: 17px 18px; font-size: 14.5px; margin-bottom: 12px;
+  font-family: var(--font); transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+}
+
+/* ── Auth (login / sign up) ───────────────────────────── */
+.auth-tabs { display: flex; gap: 4px; background: var(--card-2); border-radius: 980px; padding: 4px; margin: 22px 0 18px; }
+.auth-tab {
+  flex: 1; border: none; background: transparent; border-radius: 980px; padding: 10px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  font-family: var(--font); transition: all 0.3s var(--ease);
+}
+.auth-tab.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.auth-form { display: flex; flex-direction: column; }
+.auth-error { color: var(--red); font-size: 12.5px; font-weight: 500; margin-top: 10px; text-align: center; }
 
 /* ── Bottom nav ────────────────────────────────── */
 .bottom-nav {
@@ -721,7 +827,7 @@ input[type='range']::-webkit-slider-thumb:active { transform: scale(1.15); }
   font-size: 13px; font-family: var(--font); outline: none;
   background: var(--card); color: var(--ink);
 }
-.settings-row select option { background: #fff; }
+.settings-row select option { background: var(--card); color: var(--ink); }
 .settings-label {
   font-size: 15px; font-weight: 700; margin: 26px 0 6px; display: block; letter-spacing: -0.01em;
   font-family: var(--display);

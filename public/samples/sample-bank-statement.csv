@@ -1,0 +1,38 @@
+date,description,amount,type
+2026-06-01,Salary Credit,95000,credit
+2026-06-02,Rent - Landlord NEFT,28500,debit
+2026-06-03,BESCOM Electricity Bill,1800,debit
+2026-06-05,BigBasket,3200,debit
+2026-06-07,Swiggy,650,debit
+2026-06-09,Amazon,2400,debit
+2026-06-11,Uber,380,debit
+2026-06-14,Netflix,649,debit
+2026-06-16,Spotify,119,debit
+2026-06-18,SIP - Nifty 50 Index Fund,5000,debit
+2026-06-20,Zomato,540,debit
+2026-06-22,Indian Oil Petrol Pump,1600,debit
+2026-06-25,Apollo Pharmacy,720,debit
+2026-07-01,Salary Credit,95000,credit
+2026-07-02,Rent - Landlord NEFT,28500,debit
+2026-07-03,BESCOM Electricity Bill,1750,debit
+2026-07-05,BigBasket,2900,debit
+2026-07-08,Swiggy,890,debit
+2026-07-10,Myntra,3600,debit
+2026-07-12,Uber,420,debit
+2026-07-14,Netflix,649,debit
+2026-07-16,Spotify,119,debit
+2026-07-18,SIP - Nifty 50 Index Fund,5000,debit
+2026-07-21,Zomato,610,debit
+2026-07-23,Indian Oil Petrol Pump,1550,debit
+2026-08-01,Salary Credit,95000,credit
+2026-08-02,Rent - Landlord NEFT,28500,debit
+2026-08-03,BESCOM Electricity Bill,1900,debit
+2026-08-05,BigBasket,3100,debit
+2026-08-08,Swiggy,720,debit
+2026-08-11,Uber,360,debit
+2026-08-14,Netflix,649,debit
+2026-08-16,Spotify,119,debit
+2026-08-18,SIP - Nifty 50 Index Fund,5000,debit
+2026-08-20,Zomato,480,debit
+2026-08-22,Indian Oil Petrol Pump,1700,debit
+2026-08-24,Apollo Pharmacy,540,debit

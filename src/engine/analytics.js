@@ -18,6 +18,7 @@ import {
   fundFacts,
   loans,
 } from '../data/customer.js';
+import { getAppliedState, hasAction, sumAction } from './portfolioState.js';
 
 export const fmt = (n) =>
   '₹' +
@@ -30,26 +31,55 @@ export const fmtCompact = (n) => {
   return '₹' + Math.round(n);
 };
 
+// Dining spend snaps back to its 3-month average once the "dining alert"
+// Money Rule is switched on — the freed-up amount is recoverable surplus.
+function diningRecovered() {
+  if (!getAppliedState().rules.dining) return 0;
+  const d = spendByCategory.find((c) => c.category.startsWith('Dining'));
+  return d && d.amount > d.avg3m ? d.amount - d.avg3m : 0;
+}
+
+// Savings balance once the "fix my emergency fund" nudge has been actioned —
+// topped up to the 6-month target rather than actually moving money around.
+function effectiveSavingsBalance() {
+  return hasAction('emergency-fix') ? Math.max(customer.savingsBalance, 400000) : customer.savingsBalance;
+}
+
 // ---- Cashflow ------------------------------------------------
 export function cashflow() {
   const last = monthlySummary[monthlySummary.length - 1];
   const avgIncome = monthlySummary.reduce((s, m) => s + m.income, 0) / monthlySummary.length;
-  const avgSpend = monthlySummary.reduce((s, m) => s + m.spend, 0) / monthlySummary.length;
-  const avgInvested = monthlySummary.reduce((s, m) => s + m.invested, 0) / monthlySummary.length;
-  const surplus = avgIncome - avgSpend - avgInvested;
-  const savingsRate = ((avgIncome - avgSpend) / avgIncome) * 100;
+  const avgSpendRaw = monthlySummary.reduce((s, m) => s + m.spend, 0) / monthlySummary.length;
+  const rawBaseAvgInvested = monthlySummary.reduce((s, m) => s + m.invested, 0) / monthlySummary.length;
+  // "salary-day auto-invest" is what keeps this baseline SIP going without willpower.
+  const baseAvgInvested = getAppliedState().rules.salary ? rawBaseAvgInvested : 0;
+
+  const subsRecovered = sumAction('subs-cancel');
+  const avgSpend = Math.max(avgSpendRaw - subsRecovered - diningRecovered(), 0);
+
+  const committedSip = sumAction('sip');
+  const roundupAdded = hasAction('roundup') ? roundup().monthly : 0;
+  const stepupBonus = getAppliedState().rules.stepup ? Math.round(rawBaseAvgInvested * 0.1) : 0;
+  const avgInvested = baseAvgInvested + committedSip + roundupAdded + stepupBonus;
+
+  const protectionCost = sumAction('protection-fix');
+  const surplus = avgIncome - avgSpend - avgInvested - protectionCost;
+  const savingsRate = avgIncome > 0 ? ((avgIncome - avgSpend) / avgIncome) * 100 : 0;
   return { last, avgIncome, avgSpend, avgInvested, surplus, savingsRate };
 }
 
 // ---- Spending anomalies -------------------------------------
 export function spendingAnomalies() {
+  const diningOff = getAppliedState().rules.dining;
   return spendByCategory
+    .map((c) => (diningOff && c.category.startsWith('Dining') ? { ...c, amount: c.avg3m } : c))
     .map((c) => ({ ...c, deltaPct: ((c.amount - c.avg3m) / c.avg3m) * 100 }))
     .filter((c) => c.deltaPct > 15 && !c.essential)
     .sort((a, b) => b.deltaPct - a.deltaPct);
 }
 
 export function unusedSubscriptions() {
+  if (hasAction('subs-cancel')) return [];
   return subscriptions.filter((s) => s.lastUsed.startsWith('unused'));
 }
 
@@ -83,7 +113,9 @@ export function equityExposure() {
 export function healthScore() {
   const cf = cashflow();
   const monthlyExpense = cf.avgSpend;
-  const emergencyMonths = customer.savingsBalance / monthlyExpense;
+  const emergencyMonths = monthlyExpense > 0
+    ? effectiveSavingsBalance() / monthlyExpense
+    : (effectiveSavingsBalance() > 0 ? 99 : 0);
 
   const parts = [
     {
@@ -147,31 +179,48 @@ export function allGoalPlans(expectedReturn = 11) {
 
 // ---- Tax -----------------------------------------------------
 export function taxGap() {
-  const gap = tax.section80CLimit - tax.section80CUsed;
+  const filled = hasAction('sip', 'tax');
+  const section80CUsed = filled ? tax.section80CLimit : tax.section80CUsed;
+  const originalGap = tax.section80CLimit - tax.section80CUsed;
+  const gap = tax.section80CLimit - section80CUsed;
   const monthsLeft = 9; // Jul–Mar of FY
-  return { ...tax, gap, monthlyToFill: gap / monthsLeft, estSaving: gap * 0.312 };
+  return {
+    ...tax,
+    section80CUsed,
+    gap,
+    filled,
+    monthlyToFill: gap / monthsLeft,
+    estSaving: (filled ? originalGap : gap) * 0.312,
+  };
 }
 
 // ---- Protection gap: term & health insurance adequacy --------
 // Rule of thumb: term cover ≥ 15× annual income; health ≥ ₹15L in metros.
 export function protectionGap() {
+  const fixed = hasAction('protection-fix');
   const annualIncome = customer.monthlyIncome * 12;
   const termNeeded = annualIncome * 15;
-  const termGap = Math.max(termNeeded - insurance.termCover, 0);
   const healthNeeded = 1500000;
-  const healthGap = Math.max(healthNeeded - insurance.healthCover, 0);
+  const termCover = fixed ? termNeeded : insurance.termCover;
+  const healthCover = fixed ? healthNeeded : insurance.healthCover;
+  const termGap = Math.max(termNeeded - termCover, 0);
+  const healthGap = Math.max(healthNeeded - healthCover, 0);
   // indicative premiums at her age: term ~₹55/L/yr, super top-up ~₹230/L/yr
-  const termPremium = Math.round((termGap / 100000) * 55 / 12);
-  const healthPremium = Math.round((healthGap / 100000) * 230 / 12);
+  const gapTermPremium = Math.round((Math.max(termNeeded - insurance.termCover, 0) / 100000) * 55 / 12);
+  const gapHealthPremium = Math.round((Math.max(healthNeeded - insurance.healthCover, 0) / 100000) * 230 / 12);
   return {
     ...insurance,
+    termCover,
+    healthCover,
     termNeeded,
     termGap,
     healthNeeded,
     healthGap,
-    termPremium,
-    healthPremium,
-    totalMonthly: termPremium + healthPremium,
+    fixed,
+    termPremium: fixed ? 0 : gapTermPremium,
+    healthPremium: fixed ? 0 : gapHealthPremium,
+    // once fixed, this is the ongoing cost being paid (locked in when accepted)
+    totalMonthly: fixed ? sumAction('protection-fix') : gapTermPremium + gapHealthPremium,
   };
 }
 
@@ -256,9 +305,11 @@ export function projectWealth({ extraMonthly = 0, annualRatePct = 11, events = [
 
 // ---- Portfolio X-Ray: hidden fees + overlap ------------------
 export function xray() {
+  const switched = hasAction('direct-switch');
   const f = fundFacts.elss;
   const elssValue = holdings.find((h) => h.label.includes('ELSS')).value;
-  const dragPct = f.er - f.directEr; // what the Regular-plan commission costs
+  const regularDragPct = f.er - f.directEr; // what the Regular-plan commission costs
+  const dragPct = switched ? 0 : regularDragPct;
   const years = 15;
   const grow = (ratePct) => {
     let v = elssValue;
@@ -266,15 +317,19 @@ export function xray() {
     for (let m = 0; m < years * 12; m++) v = v * (1 + r) + f.monthlySip;
     return v;
   };
-  const feeLoss = grow(12) - grow(12 - dragPct);
+  const feeLossAvoided = grow(12) - grow(12 - regularDragPct); // what staying Regular would have cost
+  const feeLoss = switched ? 0 : feeLossAvoided;
   return {
     fund: f.name,
-    plan: f.plan,
-    er: f.er,
+    plan: switched ? 'Direct' : f.plan,
+    er: switched ? f.directEr : f.er,
+    regularEr: f.er,
     directEr: f.directEr,
     dragPct,
     years,
     feeLoss,
+    feeLossAvoided,
+    switched,
     overlapPct: fundFacts.overlapPct,
     overlapWith: fundFacts.index.name,
   };
@@ -282,18 +337,20 @@ export function xray() {
 
 // ---- LTCG harvesting: use the ₹1.25L exemption every year ----
 export function ltcgHarvest() {
+  const harvested = hasAction('harvest');
   const equity = holdings.filter((h) => h.type === 'Mutual Fund');
   const gains = equity.reduce((s, h) => s + (h.value - (h.cost || h.value)), 0);
   const exemption = 125000;
-  const harvestable = Math.min(gains, exemption);
+  const harvestable = harvested ? 0 : Math.min(gains, exemption);
   const taxSaved = harvestable * 0.125;
-  const habitValue = sipFutureValue(taxSaved / 12, 11, 20); // do it yearly for 20y
-  return { gains, exemption, harvestable, taxSaved, habitValue };
+  const habitValue = sipFutureValue((harvested ? sumAction('harvest') : taxSaved) / 12, 11, 20); // do it yearly for 20y
+  return { gains, exemption, harvestable, taxSaved, habitValue, harvested };
 }
 
 // ---- Prepay loan vs invest -----------------------------------
 export function prepayVsInvest(prepayAmount = 50000) {
-  const loan = loans[0];
+  const prepaidSoFar = sumAction('prepay');
+  const loan = { ...loans[0], balance: Math.max(loans[0].balance - prepaidSoFar, 0) };
   const interestRemaining = (balance, emi, rate, cap = 600) => {
     let b = balance, interest = 0, months = 0;
     const r = rate / 100 / 12;
@@ -311,7 +368,7 @@ export function prepayVsInvest(prepayAmount = 50000) {
   const monthsSaved = now.months - after.months;
   const investValue = prepayAmount * Math.pow(1 + 0.11, now.months / 12);
   const investGain = investValue - prepayAmount;
-  return { loan, prepayAmount, interestSaved, monthsSaved, investGain, loanMonths: now.months };
+  return { loan, prepayAmount, interestSaved, monthsSaved, investGain, loanMonths: now.months, prepaidSoFar };
 }
 
 // ---- Money Persona: behavioural fingerprint ------------------
@@ -369,7 +426,7 @@ export function topNudges(riskProfile = 'Balanced') {
   const dr = drift(riskProfile);
   const nudges = [];
 
-  if (Math.abs(dr.biggestGap.gap) > 10)
+  if (Math.abs(dr.biggestGap.gap) > 10 && !hasAction('sip', 'rebalance'))
     nudges.push({
       id: 'drift',
       icon: 'scale',

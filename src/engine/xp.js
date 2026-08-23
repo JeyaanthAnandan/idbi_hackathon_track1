@@ -22,6 +22,11 @@ export function levelInfo(xp = getXP()) {
   return { level: lvl, title, xp };
 }
 
+export function resetXP() {
+  localStorage.removeItem(XP_KEY);
+  localStorage.removeItem(AWARDED_KEY);
+}
+
 // Awards each `reason` only once, so demo actions don't farm XP.
 export function awardXP(points, reason) {
   const awarded = JSON.parse(localStorage.getItem(AWARDED_KEY) || '[]');

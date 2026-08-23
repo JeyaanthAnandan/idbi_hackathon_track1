@@ -53,7 +53,9 @@
 
 /* ── Night surface ───────────────────────────────
    Onboarding, Time Machine and the live call run on this. Every
-   component below reads the same variables, so they invert wholesale. */
+   component below reads the same variables, so they invert wholesale.
+   Independent of the light/dark THEME below — this is per-screen, not
+   user-controlled. */
 [data-surface='night'] {
   --bg: #06201c;
   --card: rgba(234, 243, 241, 0.05);
@@ -67,6 +69,92 @@
   --nav-bg: #0b2e29;
   --nav-line: rgba(234, 243, 241, 0.14);
   --paper: #06201c;
+}
+
+/* ── Dark mode ─────────────────────────────────────
+   Follows the OS by default; overridable in Settings via a
+   data-theme attribute on <html> ("light" | "dark" | absent = system). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1715;
+    --card: #17211f;
+    --card-2: #1c2825;
+    --ink: #eef4f2;
+    --ink-soft: #9db3ae;
+    --blue: #2bb4a2;
+    --blue-link: #4fd0bd;
+    --blue-hover: #3ec3af;
+    --orange: #ff9152;
+    --amber: #ff9152;
+    --green: #35c98a;
+    --red: #ef6255;
+    --slate: #9db3ae;
+    --paper: #17211f;
+
+    --teal: #2bb4a2;
+    --teal-2: #5bd0bf;
+    --teal-dark: #3ec3af;
+    --teal-deep: #9cd6cc;
+    --mint: #6bbdb2;
+
+    --line: rgba(238, 244, 242, 0.1);
+    --line-strong: rgba(238, 244, 242, 0.18);
+    --chart-track: rgba(238, 244, 242, 0.09);
+    --glass: #17211f;
+    --glass-2: #1c2825;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f1715;
+  --card: #17211f;
+  --card-2: #1c2825;
+  --ink: #eef4f2;
+  --ink-soft: #9db3ae;
+  --blue: #2bb4a2;
+  --blue-link: #4fd0bd;
+  --blue-hover: #3ec3af;
+  --orange: #ff9152;
+  --amber: #ff9152;
+  --green: #35c98a;
+  --red: #ef6255;
+  --slate: #9db3ae;
+  --paper: #17211f;
+
+  --teal: #2bb4a2;
+  --teal-2: #5bd0bf;
+  --teal-dark: #3ec3af;
+  --teal-deep: #9cd6cc;
+  --mint: #6bbdb2;
+
+  --line: rgba(238, 244, 242, 0.1);
+  --line-strong: rgba(238, 244, 242, 0.18);
+  --chart-track: rgba(238, 244, 242, 0.09);
+  --glass: #17211f;
+  --glass-2: #1c2825;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+:root[data-theme='dark'] body { background: #070c0b; }
+:root[data-theme='dark'] .grad-text, :root[data-theme='dark'] .balance-value,
+:root[data-theme='dark'] .wh-value, :root[data-theme='dark'] .giant-word,
+:root[data-theme='dark'] .onboard h2, :root[data-theme='dark'] .sim h2,
+:root[data-theme='dark'] .bank-name {
+  background: linear-gradient(180deg, #eef4f2 20%, #b9cdc8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body { background: #070c0b; }
+  :root:not([data-theme='light']) .grad-text, :root:not([data-theme='light']) .balance-value,
+  :root:not([data-theme='light']) .wh-value, :root:not([data-theme='light']) .giant-word,
+  :root:not([data-theme='light']) .onboard h2, :root:not([data-theme='light']) .sim h2,
+  :root:not([data-theme='light']) .bank-name {
+    background: linear-gradient(180deg, #eef4f2 20%, #b9cdc8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -261,12 +349,10 @@ body {
 /* ── Bank home ─────────────────────────────────── */
 .bank-header { padding: 14px 22px 0; position: relative; }
 .bank-brand { display: flex; align-items: center; gap: 11px; }
-.bank-logo {
-  width: 38px; height: 38px; border-radius: 10px;
-  background: #fff; border: 1px solid var(--line);
-  display: grid; place-items: center; padding: 4px; flex-shrink: 0;
+.bank-logo-img {
+  height: 34px; width: auto; border-radius: 7px; display: block; flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(14, 39, 35, 0.12);
 }
-.bank-logo img { width: 100%; height: 100%; object-fit: contain; }
 .bank-brand h1 { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
 .bank-brand span {
   font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
@@ -534,6 +620,49 @@ body {
   text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px;
 }
 .bubble.user { background: var(--blue); color: #fff; border-bottom-right-radius: 8px; padding: 14px 18px; line-height: 1.5; }
+.why-box summary { cursor: pointer; font-weight: 500; font-size: 12px; color: var(--blue-link); }
+.why-box li { margin: 7px 0 0 16px; line-height: 1.55; }
+.reasoning-text { margin-top: 8px; line-height: 1.6; white-space: pre-wrap; font-size: 11.5px; color: var(--ink-soft); }
+
+/* live reasoning trace (deepseek-reasoner streaming) */
+.reason-trace {
+  margin: 0 0 12px 38px; max-width: 86%;
+  background: rgba(15, 140, 126, 0.07); border: 1px solid rgba(15, 140, 126, 0.2);
+  border-radius: 14px; padding: 12px 14px; animation: rise 0.4s var(--ease) both;
+}
+.reason-trace-head {
+  display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600;
+  color: var(--blue); letter-spacing: 0.01em;
+}
+.reason-pulse {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0;
+  animation: reasonPulse 1.1s ease-in-out infinite;
+}
+@keyframes reasonPulse { 0%, 100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+.reason-trace-body {
+  margin-top: 8px; font-size: 11px; line-height: 1.6; color: var(--ink-soft);
+  white-space: pre-wrap; max-height: 168px; overflow-y: auto; scrollbar-width: thin;
+  border-top: 1px dashed rgba(15, 140, 126, 0.25); padding-top: 8px;
+}
+
+/* language dropdown menu */
+.lang-menu {
+  position: absolute; top: 44px; right: 0; z-index: 40;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 6px; width: 190px;
+  max-height: 320px; overflow-y: auto; animation: rise 0.25s var(--ease) both;
+}
+.lang-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 9px 12px; border-radius: 9px; font-family: var(--font); color: var(--ink);
+  transition: background 0.2s var(--ease);
+}
+.lang-item:hover:not(:disabled) { background: var(--card-2); }
+.lang-item.active { background: rgba(15, 140, 126, 0.1); }
+.lang-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.lang-item span { font-size: 14px; font-weight: 600; }
+.lang-item small { font-size: 10.5px; color: var(--ink-soft); }
 
 .why-box { margin: 0 0 12px 0; max-width: 88%; }
 .why-box details {
@@ -757,6 +886,26 @@ input[type='range']::-webkit-slider-thumb:active { transform: scale(1.15); }
 /* on the day surface the primary button reverts to teal */
 .app-shell:not([data-surface='night']) .primary-btn { background: var(--blue); color: #fff; }
 .app-shell:not([data-surface='night']) .primary-btn:hover { background: var(--blue-hover); }
+.primary-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ob-option:disabled { cursor: not-allowed; }
+.ob-option:disabled:hover { transform: none; background: var(--card); }
+.ob-option:disabled::after { content: none; }
+.upload-zone {
+  width: 100%; text-align: left; background: var(--card); border: 1px dashed var(--line-strong);
+  border-radius: 16px; padding: 17px 18px; font-size: 14.5px; margin-bottom: 12px;
+  font-family: var(--font); transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+}
+
+/* ── Auth (login / sign up) ───────────────────────────── */
+.auth-tabs { display: flex; gap: 4px; background: var(--card-2); border-radius: 980px; padding: 4px; margin: 22px 0 18px; }
+.auth-tab {
+  flex: 1; border: none; background: transparent; border-radius: 980px; padding: 10px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  font-family: var(--font); transition: all 0.3s var(--ease);
+}
+.auth-tab.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.auth-form { display: flex; flex-direction: column; }
+.auth-error { color: var(--red); font-size: 12.5px; font-weight: 500; margin-top: 10px; text-align: center; }
 
 /* ── Bottom nav — floating dark pill ───────────── */
 .bottom-nav {
@@ -812,7 +961,7 @@ input[type='range']::-webkit-slider-thumb:active { transform: scale(1.15); }
   background: transparent; color: var(--ink);
 }
 .settings-row input:focus, .settings-row select:focus { border-color: var(--blue); }
-.settings-row select option { background: #fff; color: #06201c; }
+.settings-row select option { background: var(--card); color: var(--ink); }
 .settings-label {
   font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--ink-soft); margin: 28px 0 8px; display: block;

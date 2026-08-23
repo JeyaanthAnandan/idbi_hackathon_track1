@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Avatar from './Avatar.jsx';
 import Ring from './Ring.jsx';
-import { riskQuestions, riskProfileFromScore, modelPortfolios } from '../data/customer.js';
+import { riskQuestions, riskProfileFromScore, modelPortfolios, customer } from '../data/customer.js';
+import { getSession } from '../engine/auth.js';
 import { ConcentricRings } from './charts.jsx';
 
 // Conversational risk profiling — MITRA "asks", customer taps.
@@ -10,6 +11,7 @@ import { ConcentricRings } from './charts.jsx';
 export default function Onboarding({ onDone }) {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
+  const firstName = getSession()?.name?.trim().split(' ')[0] || customer.name.split(' ')[0];
 
   const finished = step >= riskQuestions.length;
   const profile = finished ? riskProfileFromScore(score) : null;
@@ -36,7 +38,7 @@ export default function Onboarding({ onDone }) {
         <p>
           {finished
             ? "That's everything I need. Every number from here on is yours."
-            : 'MITRA is listening. Four taps and every number after this is yours, not a template’s.'}
+            : `MITRA is listening, ${firstName}. Four taps and every number after this is yours, not a template’s.`}
         </p>
       </div>
 

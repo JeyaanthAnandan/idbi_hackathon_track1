@@ -1,26 +1,39 @@
 import React from 'react';
 import { customer } from '../data/customer.js';
-import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap } from '../engine/analytics.js';
+import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap, topNudges } from '../engine/analytics.js';
+import { levelInfo } from '../engine/xp.js';
 import Avatar from './Avatar.jsx';
 import Ring from './Ring.jsx';
 import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
-import { levelInfo } from '../engine/xp.js';
 import { ScoreRing } from './charts.jsx';
+import idbiLogo from '../assets/idbi-logo.png';
 
-const recentTxns = [
-  { icon: 'bag', name: 'Swiggy', cat: 'Food delivery · today', amt: -485 },
-  { icon: 'bolt', name: 'Electricity bill', cat: 'BBPS · yesterday', amt: -2140 },
-  { icon: 'trendUp', name: 'SIP — Nifty 50 Index', cat: 'Auto-debit · 3 Jul', amt: -8000 },
-  { icon: 'briefcase', name: 'Salary — TechCorp India', cat: 'NEFT · 1 Jul', amt: 95000 },
+const selfEmployed = customer.segment.toLowerCase().includes('self-employed');
+
+const quickActions = [
+  ['rupee', 'Pay / UPI'],
+  ['mobile', 'Recharge'],
+  ['bank', 'Deposits'],
+  ['card', 'Cards'],
 ];
 
-export default function BankHome({ onOpenMitra }) {
+export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' }) {
   const hs = healthScore();
   const lvl = levelInfo();
   const cf = cashflow();
   const mp = marketPulse();
   const anomaly = spendingAnomalies()[0];
+  const topNudge = topNudges(riskProfile)[0];
+
+  const recentTxns = [
+    { icon: 'bag', name: 'Swiggy', cat: 'Food delivery · today', amt: -485 },
+    { icon: 'bolt', name: 'Electricity bill', cat: 'BBPS · yesterday', amt: -2140 },
+    ...(cf.avgInvested > 0 ? [{ icon: 'trendUp', name: 'SIP — Auto Invest', cat: 'Auto-debit · 3 Jul', amt: -Math.round(cf.avgInvested) }] : []),
+    selfEmployed
+      ? { icon: 'briefcase', name: 'Business Receipts — UPI Collections', cat: 'Settlement · 1 Jul', amt: Math.round(cf.avgIncome) }
+      : { icon: 'briefcase', name: 'Salary — TechCorp India', cat: 'NEFT · 1 Jul', amt: Math.round(cf.avgIncome) },
+  ];
 
   // the daily brief — three computed lines, nothing editorial
   const brief = [
@@ -47,12 +60,12 @@ export default function BankHome({ onOpenMitra }) {
     <div>
       <div className="bank-header">
         <div className="bank-brand">
-          <div className="bank-logo"><img src="/idbi-logo.png" alt="IDBI Bank" /></div>
+          <img className="bank-logo-img" src={idbiLogo} alt="IDBI Bank" />
           <div>
             <h1>IDBI GO+<sup style={{ fontSize: 8 }}>®</sup></h1>
             <span>bank aisa dost jaisa</span>
           </div>
-          <div className="xp-chip">{lvl.title}</div>
+          <div className="xp-chip">Lv.{lvl.level} — {lvl.title}</div>
         </div>
       </div>
 
@@ -60,7 +73,7 @@ export default function BankHome({ onOpenMitra }) {
       <div className="balance-card">
         <div className="balance-top">
           <div>
-            <div className="balance-greet">Good afternoon · Mumbai 34°C</div>
+            <div className="balance-greet">Good afternoon · {customer.city}, 34°C</div>
             <div className="bank-name">{customer.name}</div>
           </div>
           <ScoreRing score={hs.total} size={66} label="Health" onNight />
@@ -76,6 +89,21 @@ export default function BankHome({ onOpenMitra }) {
         </div>
       </div>
 
+      {topNudge && (
+        <div className="nudge">
+          <div className="nudge-ic">
+            <Icon name={topNudge.icon} size={19} />
+          </div>
+          <div>
+            <div className="nudge-title">{topNudge.title}</div>
+            <div className="nudge-body">{topNudge.body}</div>
+            <button className="nudge-action" onClick={() => onAsk?.(topNudge.action)}>
+              {topNudge.action} → ask MITRA
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* THE integration point — avatar advisor embedded in the bank app */}
       <button className="mitra-banner" onClick={onOpenMitra}>
         <Ring size={66} dot={8} color="rgba(15,140,126,0.45)">
@@ -87,6 +115,17 @@ export default function BankHome({ onOpenMitra }) {
           <div className="mb-sub">Let me put it to work for your goals →</div>
         </div>
       </button>
+
+      <div className="quick-grid">
+        {quickActions.map(([ic, label]) => (
+          <button className="quick-item" key={label}>
+            <span className="qi">
+              <Icon name={ic} size={20} />
+            </span>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="section-title">
         <span>Daily brief · computed today</span>

@@ -5,6 +5,7 @@ import {
 } from '../engine/analytics.js';
 import { ConcentricRings, ScoreRing, Bars, Sparkline } from './charts.jsx';
 import { awardXP } from '../engine/xp.js';
+import { getRules, toggleRule } from '../engine/portfolioState.js';
 import Counter from './Counter.jsx';
 import Ring from './Ring.jsx';
 import Icon from './Icons.jsx';
@@ -23,25 +24,28 @@ const DETECTED_LABEL = {
 };
 
 // IFTTT-for-money: standing instructions MITRA executes automatically.
-const DEFAULT_RULES = [
-  { id: 'salary', when: 'Salary lands (1st)', then: 'Auto-invest ₹8,000 before I can spend it', on: true },
-  { id: 'sweep', when: 'Balance crosses ₹2,00,000', then: 'Sweep excess into FD @ 7%', on: false },
-  { id: 'dining', when: 'Dining crosses ₹10,000/mo', then: 'Alert me + pause food-app cards', on: false },
-  { id: 'stepup', when: 'Salary increment detected', then: 'Step up all SIPs by the same %', on: false },
+// Each one reads live state (portfolioState) so flipping it actually moves
+// the numbers elsewhere on this dashboard — not just a decorative switch.
+const RULE_DEFS = [
+  { id: 'salary', when: 'Salary lands (1st)', then: 'Auto-invest ₹8,000 before I can spend it' },
+  { id: 'sweep', when: 'Balance crosses ₹2,00,000', then: 'Sweep excess into FD @ 7%' },
+  { id: 'dining', when: 'Dining crosses ₹10,000/mo', then: 'Alert me + pause food-app cards' },
+  { id: 'stepup', when: 'Salary increment detected', then: 'Step up all SIPs by 10%' },
 ];
 
-function MoneyRules() {
-  const [rules, setRules] = useState(DEFAULT_RULES);
+function MoneyRules({ onChange }) {
+  const [rules, setRules] = useState(getRules());
   const toggle = (id) => {
-    setRules((rs) => rs.map((r) => (r.id === id ? { ...r, on: !r.on } : r)));
+    setRules(toggleRule(id).rules);
     awardXP(15, `rule-${id}`);
+    onChange?.();
   };
   return (
     <div className="card">
       <h3>
         Money rules <span>runs while you sleep</span>
       </h3>
-      {rules.map((r) => (
+      {RULE_DEFS.map((r) => (
         <div
           key={r.id}
           style={{
@@ -57,15 +61,18 @@ function MoneyRules() {
             <div style={{ fontSize: 13.5, fontWeight: 500, marginTop: 3 }}>{r.then}</div>
           </div>
           <div
+            role="switch"
+            aria-checked={rules[r.id]}
+            aria-label={r.then}
             style={{
               width: 44, height: 26, borderRadius: 999, border: 'none',
-              background: r.on ? 'var(--green)' : 'var(--line-strong)', position: 'relative',
+              background: rules[r.id] ? 'var(--green)' : 'var(--line-strong)', position: 'relative',
               transition: 'background .25s', flexShrink: 0,
             }}
           >
             <span
               style={{
-                position: 'absolute', top: 2, left: r.on ? 20 : 2, width: 22, height: 22,
+                position: 'absolute', top: 2, left: rules[r.id] ? 20 : 2, width: 22, height: 22,
                 borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
                 transition: 'left .25s',
               }}
@@ -81,6 +88,7 @@ function MoneyRules() {
 }
 
 export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
+  const [, bump] = useState(0);
   const hs = healthScore();
   const cf = cashflow();
   const alloc = allocation();
@@ -215,7 +223,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         />
       </div>
 
-      <MoneyRules />
+      <MoneyRules onChange={() => bump((v) => v + 1)} />
 
       <div className="card">
         <h3>

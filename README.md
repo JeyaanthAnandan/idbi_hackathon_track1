@@ -14,7 +14,7 @@
 - The bank already *has* comprehensive behavioural data (salary credits, spends, deposits, SIPs) but it is **not converted into advice**.
 - Customers get generic product pushes, not **timely, personalized, data-driven guidance**.
 
-## 2. The Solution — 12 capabilities, all working in the prototype
+## 2. The Solution — 27 capabilities, all working in the prototype
 
 | # | Capability | What it does |
 |---|---|---|
@@ -42,7 +42,21 @@
 | 22 | **Money Persona** | Shareable behavioural card ("The Disciplined Dreamer") with discipline/consistency/indulgence/protection scores from 6 months of data |
 | 23 | **Goal Collision triage** | All 4 goals need ₹55K/mo vs ₹26K capacity — MITRA admits the deficit and proposes priority-ordered funding instead of pretending |
 
+### AI layer — powered by DeepSeek (optional key, grounded in the same computed data)
+
+| # | Capability | What it does |
+|---|---|---|
+| 24 | **Reasoning Mode** | Free-form questions route to `deepseek-reasoner` (R1) and the **chain-of-thought streams live** in the chat — judges watch MITRA reason through Priya's actual numbers in real time, then the answer lands with a "See how MITRA reasoned" trace |
+| 25 | **Vernacular AI (8 languages)** | Any reply — rule-based or AI — translated live into Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, with ₹ amounts and product names preserved exactly. Speaks and listens in each. *This is the "accessible to a large number of customers" mandate, delivered* |
+| 26 | **Offer X-Ray** | Paste any WhatsApp forward / scheme pitch / insurance line → DeepSeek returns a Safe/Caution/Avoid verdict, safety score, red flags, hidden costs and a reality-check vs SEBI/RBI norms. Turns the static Fraud Shield into a real analyzer |
+| 27 | **Natural-language goals** | *"I want a MacBook next year"* → DeepSeek extracts amount + timeframe → instant SIP plan and one-tap start. No forms |
+
 Every advice ends in a one-tap CTA (Start SIP / Enable Round-Up / Approve glide path) — closing the **advice → action loop** inside the bank app.
+
+**Hybrid AI architecture** — the deterministic engine computes every number (auditable, SEBI-defensible, works
+offline); DeepSeek adds reasoning, language and open-ended understanding on top of that same grounded context. The
+app is fully functional with **no key**; paste a DeepSeek key in Settings and features 24–27 light up. *Prototype
+note: the key is browser-stored for a zero-backend demo — in a real bank build it must live server-side.*
 
 **Design language**: Apple-product-page structure carrying real IDBI brand identity — warm white canvas, deep IDBI
 teal (#0f8c7e) as the primary action color, IDBI orange (#f2761d) for stat accents, the real IDBI Bank logo, native

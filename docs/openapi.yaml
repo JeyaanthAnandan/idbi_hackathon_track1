@@ -1,0 +1,2155 @@
+openapi: 3.1.0
+info:
+  title: MITRA Wealth Advisor API
+  version: 1.0.0-draft
+  description: >
+    Backend contract for MITRA — IDBI Bank's avatar-based AI wealth advisor.
+    All monetary amounts are integer PAISE (₹1,234.50 → 123450).
+    See docs/API_CONTRACT.md for narrative context and rationale.
+  contact:
+    name: MITRA Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.mitra.sandbox.idbi.internal/v1
+    description: Sandbox (ap-south-1)
+  - url: http://localhost:4010
+    description: >
+      Local Prism mock. Prism serves paths WITHOUT the /v1 prefix, so point the
+      client base URL at http://localhost:4010 (not .../v1) when mocking.
+      Start with: npx @stoplight/prism-cli mock docs/openapi.yaml --port 4010
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Bootstrap
+  - name: Auth
+  - name: Consent
+  - name: Ingestion
+  - name: Insights
+  - name: Reference
+  - name: Actions
+  - name: Goals
+  - name: Risk
+  - name: Advisor
+  - name: Privacy
+  - name: Ops
+
+paths:
+  # ── Bootstrap ────────────────────────────────────────────────
+  /me/snapshot:
+    get:
+      tags: [Bootstrap]
+      summary: Full customer snapshot — replaces src/data/customer.js
+      operationId: getSnapshot
+      parameters:
+        - name: include
+          in: query
+          description: Comma-separated sections to return. Omit for all.
+          schema:
+            type: string
+            example: profile,holdings,cashflow,goals
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Snapshot' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ── Auth ─────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Create a sandbox account (production federates to IDBI IdP)
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12, format: password }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      responses:
+        '204': { description: Logged out }
+
+  /auth/session:
+    get:
+      tags: [Auth]
+      operationId: getSession
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ── Consent ──────────────────────────────────────────────────
+  /providers:
+    get:
+      tags: [Consent]
+      summary: Linkable data providers (AA / FIP / RTA)
+      operationId: listProviders
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Provider' }
+
+  /consents:
+    get:
+      tags: [Consent]
+      summary: All consents — the customer's DPDP consent dashboard
+      operationId: listConsents
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Consent' }
+    post:
+      tags: [Consent]
+      summary: Request an Account Aggregator consent
+      operationId: createConsent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consent' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /consents/{consentId}:
+    parameters:
+      - $ref: '#/components/parameters/ConsentId'
+    get:
+      tags: [Consent]
+      operationId: getConsent
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consent' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Consent]
+      summary: Revoke consent and purge derived data per dataLife
+      operationId: revokeConsent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Revoked }
+
+  /consents/{consentId}/fetch:
+    post:
+      tags: [Consent]
+      summary: Trigger an FI data pull
+      operationId: fetchConsentData
+      parameters:
+        - $ref: '#/components/parameters/ConsentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ── Ingestion ────────────────────────────────────────────────
+  /ingest/uploads:
+    post:
+      tags: [Ingestion]
+      summary: Get a presigned S3 URL for a statement upload
+      operationId: createUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, contentType, sizeBytes, documentType]
+              properties:
+                filename: { type: string }
+                contentType:
+                  type: string
+                  enum: [text/csv, application/pdf, application/vnd.ms-excel, application/x-ofx]
+                sizeBytes: { type: integer, maximum: 26214400 }
+                documentType:
+                  type: string
+                  enum: [BANK_STATEMENT, HOLDINGS_STATEMENT, CAS, ITR]
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadTicket' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /ingest/jobs:
+    post:
+      tags: [Ingestion]
+      summary: Start extraction + categorisation for uploaded files
+      operationId: createIngestJob
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uploadIds, documentType]
+              properties:
+                uploadIds:
+                  type: array
+                  items: { type: string }
+                  minItems: 1
+                documentType:
+                  type: string
+                  enum: [BANK_STATEMENT, HOLDINGS_STATEMENT, CAS, ITR]
+      responses:
+        '202':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+
+  /ingest/jobs/{jobId}:
+    get:
+      tags: [Ingestion]
+      operationId: getIngestJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngestJob' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /transactions/{txnId}:
+    patch:
+      tags: [Ingestion]
+      summary: Correct a transaction category (feeds the categoriser)
+      operationId: patchTransaction
+      parameters:
+        - name: txnId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category: { $ref: '#/components/schemas/SpendCategory' }
+                essential: { type: boolean }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+
+  # ── Insights ─────────────────────────────────────────────────
+  /insights/health-score:
+    get:
+      tags: [Insights]
+      operationId: getHealthScore
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthScore' }
+
+  /insights/nudges:
+    get:
+      tags: [Insights]
+      operationId: getNudges
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 7, maximum: 20 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Nudge' }
+                  provenance: { $ref: '#/components/schemas/Provenance' }
+
+  /nudges/{nudgeId}/dismiss:
+    post:
+      tags: [Insights]
+      operationId: dismissNudge
+      parameters:
+        - name: nudgeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  enum: [NOT_RELEVANT, ALREADY_DONE, TOO_EXPENSIVE, LATER]
+      responses:
+        '204': { description: Dismissed }
+
+  /insights/allocation-drift:
+    get:
+      tags: [Insights]
+      operationId: getAllocationDrift
+      parameters:
+        - name: riskProfile
+          in: query
+          schema: { $ref: '#/components/schemas/RiskBand' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllocationDrift' }
+
+  /insights/portfolio-xray:
+    get:
+      tags: [Insights]
+      summary: Hidden fee drag and holdings overlap
+      operationId: getPortfolioXray
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PortfolioXray' }
+
+  /insights/protection-gap:
+    get:
+      tags: [Insights]
+      operationId: getProtectionGap
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProtectionGap' }
+
+  /insights/tax-optimisation:
+    get:
+      tags: [Insights]
+      operationId: getTaxOptimisation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxOptimisation' }
+
+  /insights/goal-collision:
+    get:
+      tags: [Insights]
+      summary: Can current capacity fund every goal?
+      operationId: getGoalCollision
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GoalCollision' }
+
+  /insights/spending-anomalies:
+    get:
+      tags: [Insights]
+      operationId: getSpendingAnomalies
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/SpendingAnomaly' }
+                  provenance: { $ref: '#/components/schemas/Provenance' }
+
+  /insights/money-persona:
+    get:
+      tags: [Insights]
+      operationId: getMoneyPersona
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MoneyPersona' }
+
+  /insights/wealth-projection:
+    post:
+      tags: [Insights]
+      summary: Wealth Time Machine — must return a scenario band, not one curve
+      operationId: projectWealth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extraMonthlyInvestment: { type: integer, minimum: 0 }
+                expectedReturnPct: { type: number, minimum: 0, maximum: 30, default: 11 }
+                toAge: { type: integer, minimum: 18, maximum: 100, default: 60 }
+                events:
+                  type: array
+                  items: { $ref: '#/components/schemas/LifeEvent' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WealthProjection' }
+
+  /simulate/sip:
+    post:
+      tags: [Insights]
+      operationId: simulateSip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [FUTURE_VALUE, REQUIRED_SIP] }
+                monthlyAmount: { type: integer }
+                targetAmount: { type: integer }
+                years: { type: number, minimum: 0.5, maximum: 50 }
+                expectedReturnPct: { type: number, default: 11 }
+                alreadySaved: { type: integer, default: 0 }
+                stepUpPct: { type: number, default: 0 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SipResult' }
+
+  /simulate/prepay-vs-invest:
+    post:
+      tags: [Insights]
+      operationId: simulatePrepayVsInvest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [liabilityId, prepayAmount]
+              properties:
+                liabilityId: { type: string }
+                prepayAmount: { type: integer, minimum: 1 }
+                expectedReturnPct: { type: number, default: 11 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrepayComparison' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Reference ────────────────────────────────────────────────
+  /market/pulse:
+    get:
+      tags: [Reference]
+      operationId: getMarketPulse
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketPulse' }
+
+  /benchmarks/peers:
+    get:
+      tags: [Reference]
+      summary: Cohort comparison. 403 if the cohort is smaller than k=1000.
+      operationId: getPeerBenchmarks
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PeerBenchmarks' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /products/catalogue:
+    get:
+      tags: [Reference]
+      operationId: getProductCatalogue
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: riskBand
+          in: query
+          schema: { $ref: '#/components/schemas/RiskBand' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+
+  /policy/assumptions:
+    get:
+      tags: [Reference]
+      summary: Every advisory constant, versioned and dated
+      operationId: getPolicyAssumptions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policyVersion: { type: string }
+                  effectiveFrom: { type: string, format: date }
+                  assumptions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Assumption' }
+
+  # ── Actions ──────────────────────────────────────────────────
+  /actions:
+    get:
+      tags: [Actions]
+      operationId: listActions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AppliedAction' }
+    post:
+      tags: [Actions]
+      summary: Apply advice (SIMULATED in sandbox, EXECUTED in production)
+      operationId: applyAction
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActionRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppliedAction' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /actions/{actionId}:
+    delete:
+      tags: [Actions]
+      summary: Reverse a reversible action
+      operationId: reverseAction
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Reversed }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /rules:
+    get:
+      tags: [Actions]
+      operationId: getRules
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MoneyRules' }
+    patch:
+      tags: [Actions]
+      operationId: patchRules
+      parameters:
+        - name: If-Match
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoneyRules' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MoneyRules' }
+        '412': { description: ETag mismatch }
+
+  # ── Goals ────────────────────────────────────────────────────
+  /goals:
+    get:
+      tags: [Goals]
+      operationId: listGoals
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Goal' }
+    post:
+      tags: [Goals]
+      operationId: createGoal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoalInput' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Goal' }
+
+  /goals/{goalId}:
+    parameters:
+      - name: goalId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Goals]
+      operationId: getGoal
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Goal' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Goals]
+      operationId: patchGoal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoalInput' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Goal' }
+    delete:
+      tags: [Goals]
+      operationId: deleteGoal
+      responses:
+        '204': { description: Deleted }
+
+  /goals/{goalId}/plan:
+    get:
+      tags: [Goals]
+      operationId: getGoalPlan
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: expectedReturnPct
+          in: query
+          schema: { type: number, default: 11 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GoalPlan' }
+
+  /goals/extract:
+    post:
+      tags: [Goals]
+      summary: Natural language → structured goal
+      operationId: extractGoal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 500 }
+                language: { $ref: '#/components/schemas/LanguageCode' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  goal: { $ref: '#/components/schemas/GoalInput' }
+                  estimated: { type: boolean }
+                  note: { type: string }
+
+  # ── Risk ─────────────────────────────────────────────────────
+  /risk-profile:
+    get:
+      tags: [Risk]
+      operationId: getRiskProfile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskProfile' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /risk-profile/questionnaire:
+    get:
+      tags: [Risk]
+      operationId: getRiskQuestionnaire
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  questions:
+                    type: array
+                    items: { $ref: '#/components/schemas/RiskQuestion' }
+
+  /risk-profile/assessment:
+    post:
+      tags: [Risk]
+      summary: Submit assessment. Conservative band wins on divergence.
+      operationId: submitRiskAssessment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      questionId: { type: string }
+                      optionId: { type: string }
+                derivedSignals:
+                  type: object
+                  properties:
+                    observedEquityPct: { type: number }
+                    incomeVolatilityCv: { type: number }
+                    age: { type: integer }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskProfile' }
+
+  # ── Advisor ──────────────────────────────────────────────────
+  /advisor/messages:
+    post:
+      tags: [Advisor]
+      summary: Ask MITRA. Streams SSE when Accept is text/event-stream.
+      operationId: sendAdvisorMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                conversationId: { type: string }
+                message: { type: string, maxLength: 2000 }
+                language: { $ref: '#/components/schemas/LanguageCode' }
+                mode:
+                  type: string
+                  enum: [AUTO, DETERMINISTIC, REASONING]
+                  default: AUTO
+                clientContext:
+                  type: object
+                  properties:
+                    screen: { type: string }
+      responses:
+        '200':
+          description: Complete reply (non-streaming) or SSE stream
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdvisorReply' }
+            text/event-stream:
+              schema: { type: string }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /advisor/conversations:
+    get:
+      tags: [Advisor]
+      operationId: listConversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        conversationId: { type: string }
+                        startedAt: { type: string, format: date-time }
+                        lastMessageAt: { type: string, format: date-time }
+                        messageCount: { type: integer }
+                        preview: { type: string }
+
+  /advisor/conversations/{conversationId}:
+    parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Advisor]
+      operationId: getConversation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId: { type: string }
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdvisorReply' }
+    delete:
+      tags: [Advisor]
+      operationId: deleteConversation
+      responses:
+        '204': { description: Deleted }
+
+  /advisor/offer-analysis:
+    post:
+      tags: [Advisor]
+      summary: Scam / mis-selling detection on a pasted offer
+      operationId: analyseOffer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offerText]
+              properties:
+                offerText: { type: string, maxLength: 4000 }
+                channel:
+                  type: string
+                  enum: [WHATSAPP, SMS, EMAIL, TELEGRAM, CALL, IN_PERSON, OTHER]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfferAnalysis' }
+
+  /advisor/translate:
+    post:
+      tags: [Advisor]
+      operationId: translate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, targetLanguage]
+              properties:
+                text: { type: string, maxLength: 4000 }
+                targetLanguage: { $ref: '#/components/schemas/LanguageCode' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text: { type: string }
+                  targetLanguage: { $ref: '#/components/schemas/LanguageCode' }
+
+  /advisor/escalate:
+    post:
+      tags: [Advisor]
+      summary: Hand off to a human relationship manager
+      operationId: escalateToHuman
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversationId: { type: string }
+                reason: { type: string }
+                preferredCallbackWindow: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticketId: { type: string }
+                  callbackWindow: { type: string }
+                  rmName: { type: string }
+
+  # ── Privacy ──────────────────────────────────────────────────
+  /privacy/data-export:
+    get:
+      tags: [Privacy]
+      summary: DPDP portability — async, emailed link
+      operationId: requestDataExport
+      responses:
+        '202':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobAccepted' }
+
+  /privacy/erasure:
+    post:
+      tags: [Privacy]
+      summary: DPDP right to erasure
+      operationId: requestErasure
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId: { type: string }
+                  completionSlaDate: { type: string, format: date }
+                  retainedData:
+                    type: array
+                    items: { type: string }
+                    description: Records retained under statutory obligation
+
+  /privacy/consent-log:
+    get:
+      tags: [Privacy]
+      operationId: getConsentLog
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        at: { type: string, format: date-time }
+                        event: { type: string, enum: [GRANTED, REVOKED, EXPIRED, PAUSED, DATA_FETCHED] }
+                        consentId: { type: string }
+                        actor: { type: string }
+
+  /privacy/advice-log:
+    get:
+      tags: [Privacy]
+      summary: Every recommendation shown, with inputs and engine version
+      operationId: getAdviceLog
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        at: { type: string, format: date-time }
+                        adviceType: { type: string }
+                        summary: { type: string }
+                        engineVersion: { type: string }
+                        inputSnapshotRef: { type: string }
+                        customerAction: { type: string, enum: [SHOWN, DISMISSED, ACTED_ON] }
+                  nextCursor: { type: string }
+
+  # ── Ops ──────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Ops]
+      operationId: health
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+
+  /version:
+    get:
+      tags: [Ops]
+      operationId: version
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api: { type: string }
+                  engine: { type: string }
+                  policy: { type: string }
+                  builtAt: { type: string, format: date-time }
+
+# ══════════════════════════════════════════════════════════════
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID. Replay-safe for 24h.
+      schema: { type: string, format: uuid }
+    ConsentId:
+      name: consentId
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing, expired or invalid token
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: No consent covers this data, or insufficient scope
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Not found for this customer
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: State conflict
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Semantically invalid
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unavailable:
+      description: Upstream unavailable
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        traceId: { type: string }
+      required: [type, title, status]
+
+    Paise:
+      type: integer
+      description: Amount in paise. ₹1,234.50 → 123450.
+      format: int64
+
+    LanguageCode:
+      type: string
+      enum: [en, hi, ta, te, bn, mr, gu, kn, ml]
+      default: en
+
+    RiskBand:
+      type: string
+      enum: [CONSERVATIVE, BALANCED, AGGRESSIVE]
+
+    Staleness:
+      type: string
+      enum: [fresh, stale, expired]
+
+    Provenance:
+      type: object
+      required: [computedAt, engineVersion, staleness]
+      properties:
+        computedAt: { type: string, format: date-time }
+        engineVersion: { type: string, example: analytics@2.1.0 }
+        dataAsOf: { type: string, format: date-time }
+        sources:
+          type: array
+          items: { type: string }
+        staleness: { $ref: '#/components/schemas/Staleness' }
+
+    Assumption:
+      type: object
+      properties:
+        key: { type: string, example: EMERGENCY_MONTHS_TARGET }
+        value: {}
+        unit: { type: string }
+        source: { type: string, example: IDBI advisory policy v2 }
+        effectiveFrom: { type: string, format: date }
+
+    Explain:
+      type: object
+      description: Why this number. Required for audit reconstruction.
+      properties:
+        policyVersion: { type: string }
+        inputs: { type: object, additionalProperties: true }
+        assumptions:
+          type: array
+          items: { $ref: '#/components/schemas/Assumption' }
+        formula: { type: string }
+
+    AuthSession:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresIn: { type: integer }
+        tokenType: { type: string, default: Bearer }
+        customerId: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        onboardingState:
+          type: string
+          enum: [NEW, RISK_PROFILE_PENDING, ACCOUNTS_PENDING, COMPLETE]
+        mfaRequired: { type: boolean }
+
+    Profile:
+      type: object
+      properties:
+        customerId: { type: string }
+        name: { type: string }
+        maskedName: { type: string }
+        age: { type: integer }
+        segment:
+          type: string
+          enum: [SALARIED_PROFESSIONAL, SELF_EMPLOYED, RETIRED, STUDENT, HOMEMAKER, OTHER]
+        city: { type: string }
+        relationshipSince: { type: integer }
+        kycStatus: { type: string, enum: [VERIFIED, PENDING, EXPIRED] }
+        kycRisk: { type: string, enum: [LOW, MEDIUM, HIGH] }
+        panLinked: { type: boolean }
+        riskProfile: { $ref: '#/components/schemas/RiskProfile' }
+        locale: { type: string }
+        preferredLanguage: { $ref: '#/components/schemas/LanguageCode' }
+
+    Account:
+      type: object
+      properties:
+        accountId: { type: string }
+        type: { type: string, enum: [SAVINGS, CURRENT, FD, RD, DEMAT, PPF, NPS] }
+        institution: { type: string }
+        maskedNumber: { type: string }
+        balance: { $ref: '#/components/schemas/Paise' }
+        currency: { type: string, default: INR }
+        linkedVia: { type: string, enum: [ACCOUNT_AGGREGATOR, STATEMENT_UPLOAD, INTERNAL, MANUAL] }
+        consentId: { type: string }
+        lastSyncedAt: { type: string, format: date-time }
+
+    Holding:
+      type: object
+      properties:
+        holdingId: { type: string }
+        assetClass:
+          type: string
+          enum: [EQUITY_MF, DEBT_MF, HYBRID_MF, EQUITY_DIRECT, FD, GOLD, REAL_ESTATE, CASH, NPS, PPF, EPF, OTHER]
+        instrumentType: { type: string }
+        label: { type: string }
+        isin: { type: string }
+        folio: { type: string }
+        units: { type: number }
+        navAsOf: { type: string, format: date }
+        currentValue: { $ref: '#/components/schemas/Paise' }
+        investedValue: { $ref: '#/components/schemas/Paise' }
+        unrealisedGain: { $ref: '#/components/schemas/Paise' }
+        xirr: { type: number }
+        liquid: { type: boolean }
+        plan: { type: string, enum: [DIRECT, REGULAR, NA] }
+        expenseRatio: { type: number }
+        sipAmount: { $ref: '#/components/schemas/Paise' }
+        sipActive: { type: boolean }
+        source: { type: string }
+      required: [holdingId, assetClass, label, currentValue]
+
+    Liability:
+      type: object
+      properties:
+        liabilityId: { type: string }
+        type:
+          type: string
+          enum: [HOME_LOAN, EDUCATION_LOAN, PERSONAL_LOAN, VEHICLE_LOAN, BUSINESS_LOAN, CREDIT_CARD, GOLD_LOAN]
+        label: { type: string }
+        outstanding: { $ref: '#/components/schemas/Paise' }
+        interestRatePct: { type: number }
+        emi: { $ref: '#/components/schemas/Paise' }
+        tenureMonthsRemaining: { type: integer }
+        nextDueDate: { type: string, format: date }
+
+    SpendCategory:
+      type: string
+      enum:
+        - RENT_UTILITIES
+        - GROCERIES
+        - DINING_DELIVERY
+        - SHOPPING
+        - TRANSPORT_FUEL
+        - SUBSCRIPTIONS
+        - HEALTH_FITNESS
+        - ENTERTAINMENT
+        - EDUCATION
+        - INSURANCE_PREMIUM
+        - EMI_LOAN
+        - INVESTMENTS
+        - TRANSFERS
+        - CASH_WITHDRAWAL
+        - BUSINESS_EXPENSE
+        - FAMILY_SOCIAL
+        - OTHER
+
+    Transaction:
+      type: object
+      properties:
+        txnId: { type: string }
+        accountId: { type: string }
+        date: { type: string, format: date }
+        description: { type: string }
+        normalisedMerchant: { type: string }
+        amount: { $ref: '#/components/schemas/Paise' }
+        direction: { type: string, enum: [CREDIT, DEBIT] }
+        category: { $ref: '#/components/schemas/SpendCategory' }
+        essential: { type: boolean }
+        categoryConfidence: { type: number, minimum: 0, maximum: 1 }
+        categorySource: { type: string, enum: [RULE, MODEL, CUSTOMER] }
+        balanceAfter: { $ref: '#/components/schemas/Paise' }
+
+    MonthlyCashflow:
+      type: object
+      properties:
+        month: { type: string, pattern: '^\d{4}-\d{2}$' }
+        income: { $ref: '#/components/schemas/Paise' }
+        spend: { $ref: '#/components/schemas/Paise' }
+        invested: { $ref: '#/components/schemas/Paise' }
+
+    CategorySpend:
+      type: object
+      properties:
+        category: { $ref: '#/components/schemas/SpendCategory' }
+        displayName: { type: string }
+        amount: { $ref: '#/components/schemas/Paise' }
+        trailing3mAvg: { $ref: '#/components/schemas/Paise' }
+        essential: { type: boolean }
+        txnCount: { type: integer }
+
+    RecurringPayment:
+      type: object
+      description: >
+        Replaces the prototype's `subscriptions[].lastUsed`. A bank feed can prove a
+        charge recurred; it cannot prove the customer used the service.
+      properties:
+        merchantId: { type: string }
+        name: { type: string }
+        amount: { $ref: '#/components/schemas/Paise' }
+        cadence: { type: string, enum: [WEEKLY, MONTHLY, QUARTERLY, ANNUAL] }
+        firstSeen: { type: string, format: date }
+        lastCharged: { type: string, format: date }
+        engagementSignal: { type: string, enum: [ACTIVE, DORMANT, UNKNOWN] }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+
+    Cashflow:
+      type: object
+      properties:
+        currency: { type: string, default: INR }
+        monthly:
+          type: array
+          items: { $ref: '#/components/schemas/MonthlyCashflow' }
+        spendByCategory:
+          type: array
+          items: { $ref: '#/components/schemas/CategorySpend' }
+        recurringPayments:
+          type: array
+          items: { $ref: '#/components/schemas/RecurringPayment' }
+
+    GoalInput:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [EMERGENCY_FUND, HOME, VEHICLE, EDUCATION, WEDDING, TRAVEL, RETIREMENT, BUSINESS, CUSTOM]
+        name: { type: string, maxLength: 60 }
+        icon: { type: string }
+        targetAmount: { $ref: '#/components/schemas/Paise' }
+        targetDate: { type: string, format: date }
+        priority: { type: string, enum: [HIGH, MEDIUM, LOW] }
+        linkedHoldingIds:
+          type: array
+          items: { type: string }
+
+    Goal:
+      allOf:
+        - $ref: '#/components/schemas/GoalInput'
+        - type: object
+          properties:
+            goalId: { type: string }
+            savedAmount: { $ref: '#/components/schemas/Paise' }
+            system: { type: boolean }
+            createdAt: { type: string, format: date-time }
+
+    GoalPlan:
+      type: object
+      properties:
+        goalId: { type: string }
+        requiredMonthlySip: { $ref: '#/components/schemas/Paise' }
+        currentMonthlyContribution: { $ref: '#/components/schemas/Paise' }
+        shortfall: { $ref: '#/components/schemas/Paise' }
+        progressPct: { type: number }
+        onTrack: { type: boolean }
+        projectedShortfallAtTarget: { $ref: '#/components/schemas/Paise' }
+        recommendedProducts:
+          type: array
+          items:
+            type: object
+            properties:
+              productId: { type: string }
+              allocationPct: { type: number }
+              rationale: { type: string }
+        scenarios: { $ref: '#/components/schemas/ScenarioBand' }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    GoalCollision:
+      type: object
+      properties:
+        totalMonthlyNeed: { $ref: '#/components/schemas/Paise' }
+        availableCapacity: { $ref: '#/components/schemas/Paise' }
+        deficit: { $ref: '#/components/schemas/Paise' }
+        proposal:
+          type: array
+          items:
+            type: object
+            properties:
+              goalId: { type: string }
+              name: { type: string }
+              need: { $ref: '#/components/schemas/Paise' }
+              allocated: { $ref: '#/components/schemas/Paise' }
+              fundedRatio: { type: number }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    TaxDeduction:
+      type: object
+      properties:
+        section: { type: string, example: 80C }
+        limit: { $ref: '#/components/schemas/Paise' }
+        used: { $ref: '#/components/schemas/Paise' }
+        verified: { type: boolean }
+
+    Tax:
+      type: object
+      properties:
+        assessmentYear: { type: string }
+        regime: { type: string, enum: [OLD, NEW, UNDECIDED] }
+        regimeConfirmedByCustomer: { type: boolean }
+        estimatedSlabRatePct: { type: number }
+        deductions:
+          type: array
+          items: { $ref: '#/components/schemas/TaxDeduction' }
+
+    TaxOptimisation:
+      type: object
+      properties:
+        section80C:
+          type: object
+          properties:
+            limit: { $ref: '#/components/schemas/Paise' }
+            used: { $ref: '#/components/schemas/Paise' }
+            gap: { $ref: '#/components/schemas/Paise' }
+            monthsRemainingInFy: { type: integer }
+            monthlyToFill: { $ref: '#/components/schemas/Paise' }
+            estimatedTaxSaving: { $ref: '#/components/schemas/Paise' }
+        ltcgHarvest:
+          type: object
+          properties:
+            unrealisedGains: { $ref: '#/components/schemas/Paise' }
+            annualExemption: { $ref: '#/components/schemas/Paise' }
+            harvestableNow: { $ref: '#/components/schemas/Paise' }
+            estimatedTaxSaved: { $ref: '#/components/schemas/Paise' }
+        regimeComparison:
+          type: object
+          properties:
+            oldRegimeTax: { $ref: '#/components/schemas/Paise' }
+            newRegimeTax: { $ref: '#/components/schemas/Paise' }
+            recommended: { type: string, enum: [OLD, NEW] }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    InsurancePolicy:
+      type: object
+      properties:
+        policyId: { type: string }
+        type: { type: string, enum: [TERM_LIFE, ENDOWMENT, ULIP, HEALTH, CRITICAL_ILLNESS, PERSONAL_ACCIDENT, MOTOR] }
+        sumAssured: { $ref: '#/components/schemas/Paise' }
+        annualPremium: { $ref: '#/components/schemas/Paise' }
+        provider: { type: string }
+        portable: { type: boolean, description: false for employer group cover — lapses on job change }
+        expiresAt: { type: string, format: date, nullable: true }
+
+    ProtectionGap:
+      type: object
+      properties:
+        life:
+          type: object
+          properties:
+            currentCover: { $ref: '#/components/schemas/Paise' }
+            recommendedCover: { $ref: '#/components/schemas/Paise' }
+            gap: { $ref: '#/components/schemas/Paise' }
+            estimatedMonthlyPremium: { $ref: '#/components/schemas/Paise' }
+            employerDependentCover: { $ref: '#/components/schemas/Paise' }
+        health:
+          type: object
+          properties:
+            currentCover: { $ref: '#/components/schemas/Paise' }
+            recommendedCover: { $ref: '#/components/schemas/Paise' }
+            gap: { $ref: '#/components/schemas/Paise' }
+            estimatedMonthlyPremium: { $ref: '#/components/schemas/Paise' }
+        dependents: { type: integer }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    HealthScoreComponent:
+      type: object
+      properties:
+        key: { type: string, enum: [SAVINGS_RATE, EMERGENCY_COVER, DIVERSIFICATION, GOAL_READINESS, PROTECTION, DEBT_LOAD] }
+        label: { type: string }
+        score: { type: number }
+        max: { type: number }
+        actual: { type: number }
+        target: { type: number }
+        unit: { type: string, enum: [PCT, MONTHS, RATIO, PAISE] }
+        note: { type: string }
+
+    HealthScore:
+      type: object
+      properties:
+        total: { type: integer, minimum: 0, maximum: 100 }
+        grade: { type: string, enum: [NEEDS_WORK, FAIR, GOOD, EXCELLENT] }
+        components:
+          type: array
+          items: { $ref: '#/components/schemas/HealthScoreComponent' }
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              month: { type: string }
+              total: { type: integer }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    Nudge:
+      type: object
+      properties:
+        nudgeId: { type: string }
+        kind:
+          type: string
+          enum: [SURPLUS_IDLE, ALLOCATION_DRIFT, SPEND_ANOMALY, TAX_GAP, SUBSCRIPTION_WASTE, PROTECTION_GAP, EMERGENCY_FUND_LOW, FEE_DRAG, LTCG_HARVEST, LOAN_PREPAY]
+        priority: { type: integer }
+        severity: { type: string, enum: [CRITICAL, WARNING, OPPORTUNITY, INFO] }
+        icon: { type: string }
+        title: { type: string }
+        body: { type: string }
+        quantifiedBenefit:
+          type: object
+          properties:
+            amount: { $ref: '#/components/schemas/Paise' }
+            horizonYears: { type: number }
+            metric: { type: string }
+        suggestedAction:
+          type: object
+          properties:
+            type: { $ref: '#/components/schemas/ActionType' }
+            params: { type: object, additionalProperties: true }
+        cta: { type: string }
+        dismissible: { type: boolean }
+        expiresAt: { type: string, format: date-time }
+        explain: { $ref: '#/components/schemas/Explain' }
+
+    SpendingAnomaly:
+      type: object
+      properties:
+        category: { $ref: '#/components/schemas/SpendCategory' }
+        displayName: { type: string }
+        amount: { $ref: '#/components/schemas/Paise' }
+        baseline: { $ref: '#/components/schemas/Paise' }
+        deltaPct: { type: number }
+        topMerchants:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              amount: { $ref: '#/components/schemas/Paise' }
+              txnCount: { type: integer }
+
+    AllocationSlice:
+      type: object
+      properties:
+        assetClass: { type: string }
+        name: { type: string }
+        pct: { type: number }
+        value: { $ref: '#/components/schemas/Paise' }
+
+    AllocationDrift:
+      type: object
+      properties:
+        riskProfile: { $ref: '#/components/schemas/RiskBand' }
+        current:
+          type: array
+          items: { $ref: '#/components/schemas/AllocationSlice' }
+        target:
+          type: array
+          items: { $ref: '#/components/schemas/AllocationSlice' }
+        biggestGap:
+          type: object
+          properties:
+            name: { type: string }
+            gapPct: { type: number }
+            correctionAmount: { $ref: '#/components/schemas/Paise' }
+        rebalanceMethod: { type: string, enum: [SIP_REDIRECT, LUMPSUM_SWITCH, STP] }
+        taxImpactOfSwitch: { $ref: '#/components/schemas/Paise' }
+        expectedReturnPct: { type: number }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    PortfolioXray:
+      type: object
+      properties:
+        totalExpenseDragPct: { type: number }
+        annualFeeCost: { $ref: '#/components/schemas/Paise' }
+        projectedFeeLoss:
+          type: object
+          properties:
+            horizonYears: { type: integer }
+            amount: { $ref: '#/components/schemas/Paise' }
+        regularPlanHoldings:
+          type: array
+          items:
+            type: object
+            properties:
+              holdingId: { type: string }
+              label: { type: string }
+              currentEr: { type: number }
+              directEr: { type: number }
+              annualSaving: { $ref: '#/components/schemas/Paise' }
+        overlaps:
+          type: array
+          items:
+            type: object
+            properties:
+              holdingA: { type: string }
+              holdingB: { type: string }
+              overlapPct: { type: number }
+              sharedTopHoldings:
+                type: array
+                items: { type: string }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    MoneyPersona:
+      type: object
+      description: All fields computed. The prototype hardcoded title, traits and one stat.
+      properties:
+        archetype: { type: string }
+        tagline: { type: string }
+        traits:
+          type: array
+          items:
+            type: object
+            properties:
+              text: { type: string }
+              evidence: { type: string }
+        stats:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string, enum: [Discipline, Consistency, Indulgence, Protection] }
+              score: { type: integer, minimum: 0, maximum: 100 }
+              basis: { type: string }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    LifeEvent:
+      type: object
+      properties:
+        age: { type: integer }
+        label: { type: string }
+        oneTimeCost: { $ref: '#/components/schemas/Paise' }
+        monthlyDelta: { type: integer, description: Signed change to monthly investing capacity }
+
+    ScenarioBand:
+      type: object
+      description: Mandatory on every projection. One curve at one return rate is mis-selling.
+      properties:
+        pessimistic: { $ref: '#/components/schemas/Scenario' }
+        base: { $ref: '#/components/schemas/Scenario' }
+        optimistic: { $ref: '#/components/schemas/Scenario' }
+
+    Scenario:
+      type: object
+      properties:
+        returnPct: { type: number }
+        wealthAtTargetAge: { $ref: '#/components/schemas/Paise' }
+        financialFreedomAge: { type: integer, nullable: true }
+
+    WealthProjection:
+      type: object
+      properties:
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              age: { type: integer }
+              wealth: { $ref: '#/components/schemas/Paise' }
+              invested: { $ref: '#/components/schemas/Paise' }
+              freedomTarget: { $ref: '#/components/schemas/Paise' }
+        financialFreedomAge: { type: integer, nullable: true }
+        wealthAtTargetAge: { $ref: '#/components/schemas/Paise' }
+        scenarios: { $ref: '#/components/schemas/ScenarioBand' }
+        disclaimer: { type: string }
+        explain: { $ref: '#/components/schemas/Explain' }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    SipResult:
+      type: object
+      properties:
+        mode: { type: string, enum: [FUTURE_VALUE, REQUIRED_SIP] }
+        monthlyAmount: { $ref: '#/components/schemas/Paise' }
+        futureValue: { $ref: '#/components/schemas/Paise' }
+        totalInvested: { $ref: '#/components/schemas/Paise' }
+        totalGain: { $ref: '#/components/schemas/Paise' }
+        scenarios: { $ref: '#/components/schemas/ScenarioBand' }
+        disclaimer: { type: string }
+        explain: { $ref: '#/components/schemas/Explain' }
+
+    PrepayComparison:
+      type: object
+      properties:
+        liabilityId: { type: string }
+        prepayAmount: { $ref: '#/components/schemas/Paise' }
+        prepayRoute:
+          type: object
+          properties:
+            interestSaved: { $ref: '#/components/schemas/Paise' }
+            monthsSaved: { type: integer }
+            effectiveReturnPct: { type: number }
+        investRoute:
+          type: object
+          properties:
+            projectedGain: { $ref: '#/components/schemas/Paise' }
+            postTaxGain: { $ref: '#/components/schemas/Paise' }
+            expectedReturnPct: { type: number }
+        recommendation: { type: string, enum: [PREPAY, INVEST, SPLIT] }
+        rationale: { type: string }
+        explain: { $ref: '#/components/schemas/Explain' }
+
+    MarketPulse:
+      type: object
+      properties:
+        index: { type: string, example: NIFTY 50 }
+        level: { type: number }
+        weekChangePct: { type: number }
+        monthChangePct: { type: number }
+        ytdChangePct: { type: number }
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              close: { type: number }
+        headline: { type: string }
+        yourPortfolioImpact:
+          type: object
+          properties:
+            equityValue: { $ref: '#/components/schemas/Paise' }
+            weekDelta: { $ref: '#/components/schemas/Paise' }
+        asOf: { type: string, format: date-time }
+        dataProvider: { type: string }
+
+    PeerBenchmarks:
+      type: object
+      properties:
+        cohort: { type: string }
+        cohortSize: { type: integer, minimum: 1000, description: k-anonymity floor }
+        percentile: { type: integer }
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              label: { type: string }
+              you: { type: number }
+              cohortMedian: { type: number }
+              cohortP90: { type: number }
+              unit: { type: string }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    Product:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        category: { type: string }
+        sebiCategory: { type: string }
+        isin: { type: string }
+        riskometer: { type: string, enum: [LOW, LOW_TO_MODERATE, MODERATE, MODERATELY_HIGH, HIGH, VERY_HIGH] }
+        expenseRatio: { type: number }
+        plan: { type: string, enum: [DIRECT, REGULAR] }
+        benchmark: { type: string }
+        trailingReturns:
+          type: object
+          properties:
+            oneYear: { type: number }
+            threeYear: { type: number }
+            fiveYear: { type: number }
+        minSipAmount: { $ref: '#/components/schemas/Paise' }
+        idbiDistributed: { type: boolean }
+        disclaimer: { type: string }
+
+    Provider:
+      type: object
+      properties:
+        providerId: { type: string }
+        label: { type: string }
+        kind: { type: string, enum: [ACCOUNT_AGGREGATOR, FIP, RTA, BROKER] }
+        fiTypes:
+          type: array
+          items: { type: string, enum: [DEPOSIT, TERM_DEPOSIT, RECURRING_DEPOSIT, MUTUAL_FUNDS, EQUITIES, INSURANCE_POLICIES, NPS, GSTR] }
+        status: { type: string, enum: [AVAILABLE, DEGRADED, UNAVAILABLE] }
+        logoUrl: { type: string }
+
+    ConsentRequest:
+      type: object
+      required: [providerId, fiTypes, purposeCode]
+      properties:
+        providerId: { type: string }
+        fiTypes:
+          type: array
+          items: { type: string }
+        purposeCode: { type: string, example: '101' }
+        purposeText: { type: string }
+        fetchType: { type: string, enum: [ONETIME, PERIODIC] }
+        frequency:
+          type: object
+          properties:
+            unit: { type: string, enum: [HOUR, DAY, MONTH, YEAR] }
+            value: { type: integer }
+        dataRange:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        consentExpiry: { type: string, format: date-time }
+        dataLife:
+          type: object
+          properties:
+            unit: { type: string, enum: [MONTH, YEAR, INF] }
+            value: { type: integer }
+
+    Consent:
+      type: object
+      properties:
+        consentId: { type: string }
+        providerId: { type: string }
+        status: { type: string, enum: [PENDING, ACTIVE, PAUSED, REVOKED, EXPIRED, REJECTED] }
+        redirectUrl: { type: string }
+        fiTypes:
+          type: array
+          items: { type: string }
+        purposeCode: { type: string }
+        grantedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        lastFetchedAt: { type: string, format: date-time }
+        linkedAccounts:
+          type: array
+          items:
+            type: object
+            properties:
+              accountId: { type: string }
+              maskedNumber: { type: string }
+              institution: { type: string }
+
+    UploadTicket:
+      type: object
+      properties:
+        uploadId: { type: string }
+        uploadUrl: { type: string, format: uri }
+        method: { type: string, enum: [PUT, POST] }
+        headers: { type: object, additionalProperties: { type: string } }
+        expiresIn: { type: integer }
+
+    JobAccepted:
+      type: object
+      properties:
+        jobId: { type: string }
+        status: { type: string, enum: [QUEUED, RUNNING] }
+        pollAfterMs: { type: integer }
+
+    IngestJob:
+      type: object
+      properties:
+        jobId: { type: string }
+        status: { type: string, enum: [QUEUED, RUNNING, COMPLETED, FAILED, PARTIAL] }
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string, enum: [VIRUS_SCAN, EXTRACT, NORMALISE, CATEGORISE, PERSIST, RECOMPUTE] }
+              status: { type: string, enum: [PENDING, RUNNING, COMPLETED, FAILED, SKIPPED] }
+              detail: { type: string }
+        result:
+          type: object
+          properties:
+            transactionsImported: { type: integer }
+            holdingsImported: { type: integer }
+            periodCovered:
+              type: object
+              properties:
+                from: { type: string, format: date }
+                to: { type: string, format: date }
+            needsReview:
+              type: array
+              items: { $ref: '#/components/schemas/Transaction' }
+            warnings:
+              type: array
+              items: { type: string }
+        error: { $ref: '#/components/schemas/Problem' }
+
+    ActionType:
+      type: string
+      enum:
+        - START_SIP
+        - ENABLE_ROUNDUP
+        - SWITCH_TO_DIRECT
+        - HARVEST_LTCG
+        - PREPAY_LOAN
+        - CANCEL_SUBSCRIPTION
+        - TOP_UP_PROTECTION
+        - FIX_EMERGENCY_FUND
+        - REBALANCE
+
+    ActionRequest:
+      type: object
+      required: [type, mode]
+      properties:
+        type: { $ref: '#/components/schemas/ActionType' }
+        mode: { type: string, enum: [SIMULATED, EXECUTED] }
+        params: { type: object, additionalProperties: true }
+        sourceNudgeId: { type: string }
+        acknowledgedDisclosures:
+          type: array
+          items: { type: string, enum: [MARKET_RISK, EXPENSE_RATIO, NO_GUARANTEED_RETURN, LOCK_IN_PERIOD, EXIT_LOAD, TAX_IMPLICATION] }
+
+    AppliedAction:
+      type: object
+      properties:
+        actionId: { type: string }
+        type: { $ref: '#/components/schemas/ActionType' }
+        mode: { type: string, enum: [SIMULATED, EXECUTED] }
+        status: { type: string, enum: [APPLIED, PENDING_MANDATE, EXECUTED, FAILED, REVERSED] }
+        params: { type: object, additionalProperties: true }
+        appliedAt: { type: string, format: date-time }
+        reversible: { type: boolean }
+        impact:
+          type: object
+          properties:
+            monthlySurplusDelta: { type: integer }
+            healthScoreDelta: { type: number }
+            projectedWealthDelta: { type: integer }
+        auditRef: { type: string }
+
+    MoneyRules:
+      type: object
+      properties:
+        salaryDayAutoInvest: { type: boolean }
+        sweepToFd: { type: boolean }
+        diningAlert: { type: boolean }
+        annualStepUp: { type: boolean }
+
+    RiskQuestion:
+      type: object
+      properties:
+        questionId: { type: string }
+        text: { type: string }
+        dimension: { type: string, enum: [CAPACITY, TOLERANCE, NEED, KNOWLEDGE] }
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              optionId: { type: string }
+              label: { type: string }
+              score: { type: integer }
+
+    RiskProfile:
+      type: object
+      properties:
+        band: { $ref: '#/components/schemas/RiskBand' }
+        score: { type: integer }
+        capacity: { type: string, enum: [LOW, MODERATE, HIGH] }
+        tolerance: { type: string, enum: [LOW, MODERATE, HIGH] }
+        need: { type: string, enum: [LOW, MODERATE, HIGH] }
+        source: { type: string, enum: [QUESTIONNAIRE, DERIVED, ADVISOR_OVERRIDE] }
+        derivedSuggestion: { $ref: '#/components/schemas/RiskBand' }
+        divergenceNote: { type: string }
+        assessedAt: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        targetAllocation:
+          type: array
+          items:
+            type: object
+            properties:
+              assetClass: { type: string }
+              pct: { type: number }
+
+    Citation:
+      type: object
+      description: Every number in an advisor reply names the field and source it came from.
+      properties:
+        field: { type: string, example: loan.interestRatePct }
+        value: {}
+        source: { type: string }
+        asOf: { type: string, format: date }
+
+    AdvisorReply:
+      type: object
+      properties:
+        messageId: { type: string }
+        conversationId: { type: string }
+        role: { type: string, enum: [user, assistant] }
+        text: { type: string }
+        intent: { type: string }
+        handler: { type: string, enum: [DETERMINISTIC, LLM, HYBRID] }
+        reasoning: { type: string }
+        mood: { type: string, enum: [idle, happy, thinking, concerned, celebrating] }
+        widget:
+          type: object
+          properties:
+            type: { type: string }
+            payload: { type: object, additionalProperties: true }
+        chips:
+          type: array
+          items: { type: string }
+        disclosures:
+          type: array
+          items: { type: string }
+        citations:
+          type: array
+          items: { $ref: '#/components/schemas/Citation' }
+        guardrail:
+          type: object
+          properties:
+            triggered: { type: boolean }
+            policy: { type: string }
+            action: { type: string, enum: [BLOCKED, REWRITTEN, FLAGGED] }
+        language: { $ref: '#/components/schemas/LanguageCode' }
+        tokensUsed: { type: integer }
+        latencyMs: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    OfferAnalysis:
+      type: object
+      properties:
+        verdict: { type: string, enum: [SAFE, CAUTION, AVOID] }
+        safetyScore: { type: integer, minimum: 0, maximum: 100 }
+        headline: { type: string }
+        redFlags:
+          type: array
+          items:
+            type: object
+            properties:
+              flag:
+                type: string
+                enum: [GUARANTEED_RETURNS, UNREGISTERED_ENTITY, URGENCY_PRESSURE, PERSONAL_UPI_COLLECTION, UNVERIFIABLE_TRACK_RECORD, PYRAMID_STRUCTURE, UNREALISTIC_RETURNS, IMPERSONATION]
+              detail: { type: string }
+              severity: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+        hiddenCosts:
+          type: array
+          items: { type: string }
+        realityCheck: { type: string }
+        recommendedAction: { type: string }
+        reportingLinks:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              url: { type: string, format: uri }
+        provenance: { $ref: '#/components/schemas/Provenance' }
+
+    Snapshot:
+      type: object
+      properties:
+        profile: { $ref: '#/components/schemas/Profile' }
+        accounts:
+          type: array
+          items: { $ref: '#/components/schemas/Account' }
+        holdings:
+          type: array
+          items: { $ref: '#/components/schemas/Holding' }
+        liabilities:
+          type: array
+          items: { $ref: '#/components/schemas/Liability' }
+        cashflow: { $ref: '#/components/schemas/Cashflow' }
+        goals:
+          type: array
+          items: { $ref: '#/components/schemas/Goal' }
+        tax: { $ref: '#/components/schemas/Tax' }
+        insurance:
+          type: array
+          items: { $ref: '#/components/schemas/InsurancePolicy' }
+        dependents: { type: integer }
+        provenance: { $ref: '#/components/schemas/Provenance' }

@@ -761,7 +761,15 @@ body {
 .send-btn:active { transform: scale(0.92); }
 .mic-btn { background: transparent; border: 1px solid var(--line-strong); color: var(--ink); }
 .mic-btn:hover { border-color: var(--blue); color: var(--blue); }
-.mic-btn.listening { background: var(--red); border-color: var(--red); color: #fff; animation: pulse 1.2s infinite; }
+.mic-btn.listening { background: var(--red); border-color: var(--red); color: #fff; animation: pulse 1.2s infinite; transition: transform 90ms linear; }
+/* Sarvam transcribes after the mic closes — a distinct "understanding" beat
+   so the customer knows MITRA heard them and is still working. */
+.mic-btn.transcribing { background: var(--orange); border-color: var(--orange); color: #fff; animation: micThinking 1s ease-in-out infinite; cursor: progress; }
+.mic-btn.transcribing:disabled { opacity: 1; }
+@keyframes micThinking {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(217, 58, 43, 0.5); }
   70% { box-shadow: 0 0 0 10px rgba(217, 58, 43, 0); }
@@ -1007,7 +1015,16 @@ input[type='range']::-webkit-slider-thumb:active { transform: scale(1.15); }
   content: ''; position: absolute; inset: 0; border-radius: 50%;
   border: 1px solid rgba(234, 243, 241, 0.14);
 }
-.call-rings .call-inner-ring { position: absolute; inset: 26px; border-radius: 50%; border: 1px solid rgba(234, 243, 241, 0.14); }
+.call-rings .call-inner-ring {
+  position: absolute; inset: 26px; border-radius: 50%; border: 1px solid rgba(234, 243, 241, 0.14);
+  transition: transform 90ms linear, border-color 200ms var(--ease);
+}
+/* --mic-level (0–1) is fed live from the analyser, so the ring actually
+   responds to the customer's voice instead of animating on a fixed loop. */
+.call-rings.listening .call-inner-ring {
+  transform: scale(calc(1 + var(--mic-level, 0) * 0.14));
+  border-color: rgba(242, 118, 29, calc(0.2 + var(--mic-level, 0) * 0.8));
+}
 .call-rings .call-orbit { position: absolute; inset: 0; animation: dotOrbit 9s linear infinite; }
 .call-rings .call-orbit i {
   position: absolute; top: -6px; left: 50%; margin-left: -6px;

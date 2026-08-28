@@ -42,12 +42,24 @@
 | 22 | **Money Persona** | Shareable behavioural card ("The Disciplined Dreamer") with discipline/consistency/indulgence/protection scores from 6 months of data |
 | 23 | **Goal Collision triage** | All 4 goals need ₹55K/mo vs ₹26K capacity — MITRA admits the deficit and proposes priority-ordered funding instead of pretending |
 
+### Voice layer — powered by Sarvam AI (ships configured)
+
+| # | Capability | What it does |
+|---|---|---|
+| V1 | **Speaks 9 Indian languages** | **Bulbul v3** gives MITRA a genuine Indian voice in English, Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada and Malayalam — on every device. The browser's own speech engine has no Tamil, Telugu, Kannada or Malayalam voice installed on most phones; this is the difference between a demo and a product |
+| V2 | **Understands whatever you speak** | **Saaras v3** transcribes the mic *and identifies the language on its own* (0.99 confidence in testing). The customer never picks a language from a menu — they just talk, and MITRA switches to answer them in it |
+| V3 | **One audited rule set, nine languages** | **Mayura** translates the question into English, the deterministic engine computes the answer, and the reply is translated back in `modern-colloquial` mode — which keeps SIP, ELSS, equity fund and every ₹ figure intact inside a native-script sentence. Nine languages share one auditable engine instead of nine forked rule sets |
+| V4 | **Hands-free vernacular call** | Tap 📞 and hold a conversation: MITRA speaks, listens, detects end-of-turn from the waveform, understands, and answers — entirely in the customer's language, with live captions |
+
+**Why this matters for a public-sector bank**: the mandate is reaching customers who *aren't* served today.
+Those customers don't type English. Voice in their own language is the access mechanism, not a garnish.
+
 ### AI layer — powered by DeepSeek (optional key, grounded in the same computed data)
 
 | # | Capability | What it does |
 |---|---|---|
 | 24 | **Reasoning Mode** | Free-form questions route to `deepseek-reasoner` (R1) and the **chain-of-thought streams live** in the chat — judges watch MITRA reason through Priya's actual numbers in real time, then the answer lands with a "See how MITRA reasoned" trace |
-| 25 | **Vernacular AI (8 languages)** | Any reply — rule-based or AI — translated live into Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, with ₹ amounts and product names preserved exactly. Speaks and listens in each. *This is the "accessible to a large number of customers" mandate, delivered* |
+| 25 | **Vernacular AI** | Translation fallback when Sarvam is off — see the Voice layer above, which now owns this end to end |
 | 26 | **Offer X-Ray** | Paste any WhatsApp forward / scheme pitch / insurance line → DeepSeek returns a Safe/Caution/Avoid verdict, safety score, red flags, hidden costs and a reality-check vs SEBI/RBI norms. Turns the static Fraud Shield into a real analyzer |
 | 27 | **Natural-language goals** | *"I want a MacBook next year"* → DeepSeek extracts amount + timeframe → instant SIP plan and one-tap start. No forms |
 
@@ -55,8 +67,12 @@ Every advice ends in a one-tap CTA (Start SIP / Enable Round-Up / Approve glide 
 
 **Hybrid AI architecture** — the deterministic engine computes every number (auditable, SEBI-defensible, works
 offline); DeepSeek adds reasoning, language and open-ended understanding on top of that same grounded context. The
-app is fully functional with **no key**; paste a DeepSeek key in Settings and features 24–27 light up. *Prototype
-note: the key is browser-stored for a zero-backend demo — in a real bank build it must live server-side.*
+app is fully functional with **no key**; paste a DeepSeek key in Settings and features 24–27 light up.
+
+**Voice degrades gracefully too**: with a Sarvam key (shipped in `.env`) MITRA speaks and hears all 9 languages;
+without one she silently falls back to the Web Speech API at English + Hindi, exactly as before. Nothing breaks
+on stage. *Prototype note: both keys are browser-side for a zero-backend demo — in a real bank build they must
+live server-side behind a proxy.*
 
 **Design language**: Apple-product-page structure carrying real IDBI brand identity — warm white canvas, deep IDBI
 teal (#0f8c7e) as the primary action color, IDBI orange (#f2761d) for stat accents, the real IDBI Bank logo, native
@@ -91,7 +107,8 @@ SF Pro typography, gradient display headlines, and a full motion system: scroll-
 │  Synthetic customer 360°: KYC, salary, 6-mo transactions, holdings, goals, tax,       │
 │  market feed, cohort stats  (prod: core banking + AA framework + NSE/AMC feeds)       │
 └───────────────────────────────────────────────────────────────────────────────────────┘
-Voice: Web Speech API (TTS+STT, en-IN & hi-IN) · Avatar: animated SVG with lip-sync & moods
+Voice: Sarvam AI — Bulbul v3 TTS + Saaras v3 STT (9 languages, auto-detected) + Mayura translation,
+       with Web Speech API as the offline fallback · Avatar: animated SVG with lip-sync & moods
 ```
 
 ## 5. Run it
@@ -105,7 +122,8 @@ npm run dev        # → http://localhost:5173
 1. Answer the 4 risk questions → investor profile + model portfolio → **+50 XP**.
 2. MITRA greets you by voice: health score + ₹18,000/month idle surplus.
 3. Tap **"Invest my surplus"** → projection widget → open **"🔍 Why this advice?"** → tap the orange CTA → SIP created.
-4. Tap **अ** → repeat in Hindi, by voice: *"टैक्स बचाओ"*.
+4. Tap **अ** → repeat in Hindi, by voice: *"टैक्स बचाओ"*. Or skip the menu entirely: tap 🎤 and just
+   **speak Tamil** — MITRA detects the language, switches, and answers in Tamil with the same computed ₹ figures.
 5. **Wealth tab** → Market Pulse, health breakdown, **You vs People Like You**, drift nudge → "Rebalance my portfolio".
 6. **Time Machine®** → drag extra SIP to ₹18,000 → *"freedom never arrives on your current path… now it's age 54."* Bear/bull stress-test. One tap sends the plan to MITRA.
 7. Ask: *"I got a WhatsApp offer with 30% guaranteed returns"* → **Fraud Shield** scam check.
@@ -117,19 +135,23 @@ npm run dev        # → http://localhost:5173
 13. Ask: *"Talk to a human advisor"* → RM callback booked with auto-prepared brief.
 14. Toggle **📱 Phone demo** to show it living inside the mobile banking shell.
 
-> Optional: paste an Anthropic API key in **Settings** for open-ended conversation. Everything else runs fully offline.
+> Sarvam AI ships configured in `.env` (copy `.env.example` to use your own key) — that's MITRA's voice and all
+> 9 languages. Optionally paste a DeepSeek key in **Settings** for open-ended reasoning. Everything else runs offline.
 
 ## 6. Production roadmap
 
 - **Data**: RBI Account Aggregator + core-banking feeds for true 360° (other-bank assets included)
-- **Avatar & voice**: 3D lip-synced avatar (MetaHuman / Ready Player Me); neural TTS in 12 Indian languages via **Bhashini**
+- **Avatar & voice**: 3D lip-synced avatar (MetaHuman / Ready Player Me). Neural TTS/STT in 9 Indian languages is
+  **already live via Sarvam AI**; production moves the key server-side and adds Punjabi + Odia (Bulbul supports both)
 - **Compliance**: immutable advice audit-log (already explainable), SEBI IA guardrails, human-RM escalation for complex cases
 - **Execution**: live MF/FD/SGB order APIs, NPCI e-mandates, nudges as push notifications
 - **Learning loop**: accepted/rejected-nudge feedback trains per-customer personalization; cohort benchmarks from real anonymised segments
 
 ## 7. Tech stack
 
-React 18 + Vite · hand-rolled SVG chart engine (zero chart deps) · Web Speech API (en-IN/hi-IN) · optional Anthropic Claude API · no backend needed for the prototype.
+React 18 + Vite · hand-rolled SVG chart engine (zero chart deps) · **Sarvam AI** (Bulbul v3 TTS, Saaras v3 STT,
+Mayura translation — 9 Indian languages) with Web Speech API fallback · optional DeepSeek API for reasoning ·
+no backend needed for the prototype.
 
 ---
 *All financial figures are computed live from synthetic data. Illustrative only — not investment advice.*

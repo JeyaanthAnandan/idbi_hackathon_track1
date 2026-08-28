@@ -9,7 +9,11 @@ import Avatar from './components/Avatar.jsx';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
-import { getDeepSeekKey, setDeepSeekKey } from './engine/deepseek.js';
+import { getDeepSeekKey, setDeepSeekKey, LANGUAGES } from './engine/deepseek.js';
+import {
+  hasSarvam, getSarvamKey, setSarvamKey, clearSarvamKey, sarvamKeyFromEnv,
+  SARVAM_SPEAKERS, getSarvamSpeaker, setSarvamSpeaker, verifySarvamKey,
+} from './engine/sarvam.js';
 import { getSession, logOut, isOnboarded, markOnboarded, getStoredRiskProfile, setStoredRiskProfile } from './engine/auth.js';
 import { PERSONA_LIST, getActivePersonaId, switchPersona, customer } from './data/customer.js';
 
@@ -110,11 +114,133 @@ function AccountSection() {
   );
 }
 
+// Sarvam is MITRA's voice. It ships configured from .env, so this panel is
+// about *choosing how she sounds* rather than about pasting a key — the key
+// field is only there so a judge can swap in their own on a hosted build.
+function SarvamSection() {
+  const [speaker, setSpeaker] = useState(getSarvamSpeaker());
+  const [previewLang, setPreviewLang] = useState('hi');
+  const [key, setKey] = useState(() => (sarvamKeyFromEnv() ? '' : getSarvamKey()));
+  const [status, setStatus] = useState(null); // 'checking' | 'ok' | 'fail'
+  const [playing, setPlaying] = useState(false);
+  const active = hasSarvam();
+  const fromEnv = sarvamKeyFromEnv();
+
+  const PREVIEW = {
+    en: "Hi, I'm MITRA. Your surplus this month is 18,500 rupees — shall we put it to work?",
+    hi: 'नमस्ते, मैं मित्रा हूँ। इस महीने आपके पास 18,500 रुपये बचे हैं — इन्हें निवेश करें?',
+    ta: 'வணக்கம், நான் மித்ரா. இந்த மாதம் உங்களிடம் 18,500 ரூபாய் மிச்சம் இருக்கு — முதலீடு செய்யலாமா?',
+    te: 'నమస్కారం, నేను మిత్ర. ఈ నెల మీ దగ్గర 18,500 రూపాయలు మిగిలాయి — పెట్టుబడి పెడదామా?',
+    bn: 'নমস্কার, আমি মিত্রা। এই মাসে আপনার 18,500 টাকা বেঁচেছে — বিনিয়োগ করব?',
+    mr: 'नमस्कार, मी मित्रा. या महिन्यात तुमच्याकडे 18,500 रुपये शिल्लक आहेत — गुंतवणूक करूया?',
+    gu: 'નમસ્તે, હું મિત્રા છું. આ મહિને તમારી પાસે 18,500 રૂપિયા બચ્યા છે — રોકાણ કરીએ?',
+    kn: 'ನಮಸ್ಕಾರ, ನಾನು ಮಿತ್ರಾ. ಈ ತಿಂಗಳು ನಿಮ್ಮ ಬಳಿ 18,500 ರೂಪಾಯಿ ಉಳಿದಿದೆ — ಹೂಡಿಕೆ ಮಾಡೋಣವೇ?',
+    ml: 'നമസ്കാരം, ഞാൻ മിത്ര. ഈ മാസം നിങ്ങൾക്ക് 18,500 രൂപ ബാക്കിയുണ്ട് — നിക്ഷേപിക്കാമോ?',
+  };
+
+  return (
+    <>
+      <label className="settings-label">
+        MITRA's voice · Sarvam AI{' '}
+        {active && <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span>}
+      </label>
+      <p className="settings-note">
+        Bulbul v3 speaks all 9 languages with a real Indian voice, and Saaras v3 works out
+        which language you spoke — so you can just talk, in whatever you're comfortable in.
+        {fromEnv && ' Configured for this build.'}
+      </p>
+
+      <div className="settings-row">
+        <select
+          value={speaker}
+          onChange={(e) => {
+            setSpeaker(e.target.value);
+            setSarvamSpeaker(e.target.value);
+          }}
+        >
+          {SARVAM_SPEAKERS.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.label} — {v.tone}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="settings-row">
+        <select value={previewLang} onChange={(e) => setPreviewLang(e.target.value)}>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              Preview in {l.label} ({l.native})
+            </option>
+          ))}
+        </select>
+      </div>
+      <button
+        className="ghost-btn"
+        disabled={playing}
+        onClick={() => {
+          setPlaying(true);
+          speak(PREVIEW[previewLang] || PREVIEW.en, {
+            lang: previewLang,
+            onEnd: () => setPlaying(false),
+          });
+        }}
+      >
+        {playing ? '● Speaking…' : '▶ Hear this voice'}
+      </button>
+
+      <div className="settings-row">
+        <input
+          type="password"
+          placeholder={fromEnv ? 'Using the built-in key — paste to override' : 'sk_… Sarvam API key'}
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+        />
+      </div>
+      <div className="settings-row" style={{ display: 'flex', gap: 8 }}>
+        <button
+          className="ghost-btn"
+          disabled={status === 'checking'}
+          onClick={async () => {
+            setStatus('checking');
+            const hadOverride = !sarvamKeyFromEnv();
+            const previous = getSarvamKey();
+            key.trim() ? setSarvamKey(key) : clearSarvamKey();
+            try {
+              await verifySarvamKey();
+              setStatus('ok');
+            } catch {
+              // never leave a dead key in place — restore what worked before
+              if (hadOverride) setSarvamKey(previous);
+              else clearSarvamKey();
+              setStatus('fail');
+            }
+            setTimeout(() => setStatus(null), 2600);
+          }}
+        >
+          {status === 'checking' ? 'Checking…' : status === 'ok' ? 'Key verified' : status === 'fail' ? 'Key rejected' : 'Save & test key'}
+        </button>
+        {!fromEnv && key && (
+          <button
+            className="ghost-btn"
+            onClick={() => {
+              clearSarvamKey();
+              setKey('');
+            }}
+          >
+            Reset
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
 function Settings() {
   const [key, setKey] = useState(getDeepSeekKey());
   const [saved, setSaved] = useState(false);
   const [voices, setVoices] = useState([]);
   const [voiceName, setVoiceName] = useState(getPreferredVoiceName());
+  const sarvamActive = hasSarvam();
 
   useEffect(() => {
     setVoices(listVoices());
@@ -134,41 +260,51 @@ function Settings() {
       <ThemePicker />
       <PersonaPicker />
 
-      <label className="settings-label">MITRA's voice</label>
-      <p className="settings-note">
-        Voice quality depends on your device. Pick the one that sounds most natural —
-        voices marked “Natural” or “Google” usually sound best.
-      </p>
-      <div className="settings-row">
-        <select
-          value={voiceName}
-          onChange={(e) => {
-            setVoiceName(e.target.value);
-            setPreferredVoiceName(e.target.value);
-          }}
-        >
-          <option value="">Auto (best available)</option>
-          {voices.map((v) => (
-            <option key={v.name} value={v.name}>
-              {v.name} ({v.lang})
-            </option>
-          ))}
-        </select>
-      </div>
-      <button
-        className="ghost-btn"
-        onClick={() => speak(`Hi ${customer.name.split(' ')[0]}! I'm MITRA, your wealth advisor. This is how I sound.`)}
-      >
-        ▶ Preview voice
-      </button>
+      <SarvamSection />
+
+      {/* Only worth showing when Sarvam is off — otherwise the browser voice
+          never runs, and offering a dead setting is just confusing. */}
+      {!sarvamActive && (
+        <>
+          <label className="settings-label">Fallback voice · this device</label>
+          <p className="settings-note">
+            Sarvam is off, so MITRA uses your browser's voice. Quality depends on your device —
+            voices marked “Natural” or “Google” usually sound best, and most devices have no
+            Tamil, Telugu, Kannada or Malayalam voice at all.
+          </p>
+          <div className="settings-row">
+            <select
+              value={voiceName}
+              onChange={(e) => {
+                setVoiceName(e.target.value);
+                setPreferredVoiceName(e.target.value);
+              }}
+            >
+              <option value="">Auto (best available)</option>
+              {voices.map((v) => (
+                <option key={v.name} value={v.name}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            className="ghost-btn"
+            onClick={() => speak(`Hi ${customer.name.split(' ')[0]}! I'm MITRA, your wealth advisor. This is how I sound.`)}
+          >
+            ▶ Preview voice
+          </button>
+        </>
+      )}
 
       <label className="settings-label">
         MITRA AI · DeepSeek {key ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span> : ''}
       </label>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock the AI layer —
-        reasoning-mode answers, 8 Indian languages, the Offer X-Ray scam checker, and natural-language
-        goal creation. All grounded in the same computed customer data.
+        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock the reasoning
+        layer — visible chain-of-thought answers, the Offer X-Ray scam checker, and natural-language
+        goal creation. Languages and voice are handled by Sarvam above. All grounded in the same
+        computed customer data.
       </p>
       <div className="settings-row">
         <input
@@ -195,7 +331,8 @@ function Settings() {
 
       <div className="app-footnote" style={{ paddingLeft: 0, paddingRight: 0, marginTop: 14 }}>
         Hybrid AI · deterministic engine + optional LLM
-        <br />Voice · Web Speech API, mic works best in Chrome
+        <br />Voice · {sarvamActive ? 'Sarvam Bulbul v3 + Saaras v3, with Web Speech fallback' : 'Web Speech API, mic works best in Chrome'}
+        <br />Languages · 9 Indian languages, spoken language auto-detected
         <br />All figures computed live from synthetic bank data
         <br />Advisory content is illustrative, not investment advice
       </div>

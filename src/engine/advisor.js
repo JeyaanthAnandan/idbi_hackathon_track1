@@ -42,6 +42,7 @@ import {
 } from './analytics.js';
 import { peers } from '../data/customer.js';
 import { goals } from '../data/customer.js';
+import { loans } from '../data/customer.js';
 import { sumAction } from './portfolioState.js';
 
 const INTENTS = [
@@ -701,24 +702,57 @@ export function analyzeOfferOffline(text) {
   return { verdict, score, headline, redFlags, hiddenCosts, realityCheck, action, offline: true };
 }
 
-export function fallbackResponse() {
+// `hasAI` changes what this admits to. With an AI engine configured, reaching
+// here means the network call failed — telling the customer to "connect a key"
+// they already have reads as broken. Without one, the hint is the right advice.
+export function fallbackResponse(hasAI = false) {
   return {
     mood: 'thinking',
-    text: `I want to give you a precise, data-backed answer for that. Meanwhile, here's what I can dig into right now — or connect an AI key in settings for open-ended questions.`,
+    text: hasAI
+      ? `I couldn't reach my reasoning engine just then — looks like a connection hiccup. Ask me again in a moment, or pick one of these and I'll answer from your data right now.`
+      : `I want to give you a precise, data-backed answer for that. Meanwhile, here's what I can dig into right now — or connect an AI key in settings for open-ended questions.`,
     chips: ['Show my portfolio', 'Analyse my spending', 'Invest my surplus', 'Help me save tax'],
   };
 }
 
-// Grounding context sent to the LLM so free-form answers stay personal
+// Guard for generated prose. MITRA's copy is now written by a model, and a
+// model asked for "your holdings" will happily add the numbers up itself — in
+// testing it produced ₹3,96,900 for a portfolio the engine computes as
+// ₹6,26,900. So every ₹ figure in a generated reply is checked back against the
+// facts it was given, and a reply quoting a number nobody computed is rejected
+// in favour of the deterministic template. Better plain and right than fluent
+// and wrong, in a bank.
+export function figuresAreGrounded(reply, facts) {
+  const digitsOf = (t) => (t.match(/[\d,]*\d/g) || []).map((d) => d.replace(/,/g, ''));
+  const known = digitsOf(facts).join(' ');
+  // 4+ digits only: short numbers are ages, years, percents and compact forms
+  // like "6.27 L", none of which are the misquote risk this is guarding.
+  const claimed = digitsOf(reply).filter((d) => d.length >= 4);
+  const unknown = claimed.filter((d) => !known.includes(d));
+  return { ok: unknown.length === 0, unknown };
+}
+
+// Grounding context sent to the LLM. Since MITRA's prose is now generated
+// rather than templated, this block is the ONLY place her numbers come from —
+// so it carries every figure the deterministic engine has computed, and the
+// instruction to quote them verbatim. A model that rounds ₹25,125 to "about
+// ₹25,000" in a compliance demo is the failure mode this guards against.
 export function financialContext(riskProfile) {
   const cf = cashflow();
   const hs = healthScore();
   const tg = taxGap();
+  const pg = protectionGap();
+  const sw = subscriptionWaste();
   return `You are MITRA, IDBI Bank's warm, trustworthy AI wealth advisor avatar. Reply in 2-4 short sentences, always grounded in this customer's real data. Use ₹ and Indian number formats. Never give guaranteed-return promises; add brief risk framing for market products.
+CRITICAL: every figure below is computed from the customer's actual accounts. Quote them EXACTLY as written — never round, re-derive, average or invent a number. If a figure you need is not listed, say you'll pull it up rather than estimating.
+Open with a SHORT first sentence — under 12 words, no figures in it. Her reply is spoken aloud as it is written, and speech can only start once that first sentence is complete, so a long opener makes her sound slow.
 Customer: ${customer.name}, ${customer.age}, ${customer.segment}, ${customer.city}. Risk profile: ${riskProfile}.
-Total wealth: ${fmt(totalWealth())}. Savings balance: ${fmt(customer.savingsBalance)}. Monthly income ${fmt(cf.avgIncome)}, avg spend ${fmt(cf.avgSpend)}, current SIP ${fmt(cf.avgInvested)}/mo, investable surplus ${fmt(cf.surplus)}/mo. Savings rate ${cf.savingsRate.toFixed(0)}%.
+Total wealth: ${fmt(totalWealth())}. Savings balance: ${fmt(customer.savingsBalance)}. Monthly income ${fmt(cf.avgIncome)}, avg spend ${fmt(cf.avgSpend)}, monthly SIP CONTRIBUTION ${fmt(cf.avgInvested)}/mo (this is a per-month payment, not a balance), investable surplus ${fmt(cf.surplus)}/mo. Savings rate ${cf.savingsRate.toFixed(0)}%.
 Financial health score: ${hs.total}/100 (${hs.grade}). Emergency cover: ${hs.emergencyMonths.toFixed(1)}/6 months.
-Holdings: ${holdings.map((h) => `${h.label} ${fmt(h.value)}`).join('; ')}.
+Holdings, as CURRENT VALUE held (not monthly payments): ${holdings.map((h) => `${h.label} = ${fmt(h.value)} held`).join('; ')}.
 Goals: ${goals.map((g) => `${g.name} target ${fmt(g.target)} in ${g.horizonYears}y, saved ${fmt(g.saved)}`).join('; ')}.
-80C used ${fmt(tg.section80CUsed)} of ₹1,50,000.`;
+80C used ${fmt(tg.section80CUsed)} of ${fmt(tg.section80CLimit)}; gap ${fmt(tg.gap)}, est tax saving ${fmt(Math.round(tg.estSaving))}.
+Protection: term cover ${fmt(pg.termCover)} against ${fmt(pg.termNeeded)} needed; health cover ${fmt(pg.healthCover)} against ${fmt(pg.healthNeeded)} needed.
+Unused subscriptions: ${fmt(sw)}/month across ${unusedSubscriptions().length} services.
+Loans: ${loans.length ? loans.map((l) => `${l.name} ${fmt(l.balance)} at ${l.rate}%, EMI ${fmt(l.emi)}/mo`).join('; ') : 'none'}.`;
 }

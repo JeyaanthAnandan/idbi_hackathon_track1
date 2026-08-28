@@ -4,3 +4,6 @@ dist/
 *.log
 *.zip
 .claude/scheduled_tasks.lock
+.env
+.env.local
+!.env.example

@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
 import Ring from './Ring.jsx';
 import ChatWidget from './ChatWidgets.jsx';
-import { respond, fallbackResponse, financialContext, analyzeOfferOffline } from '../engine/advisor.js';
-import { speak, stopSpeaking, listen } from '../engine/speech.js';
+import {
+  respond, fallbackResponse, financialContext, analyzeOfferOffline, figuresAreGrounded,
+} from '../engine/advisor.js';
+import { speak, speakStream, stopSpeaking, listen } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
 import { customer } from '../data/customer.js';
 import { awardXP } from '../engine/xp.js';
@@ -16,6 +18,9 @@ import {
 import { sipRequired } from '../engine/analytics.js';
 import { applyAction } from '../engine/portfolioState.js';
 import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
+import {
+  hasSarvam, translateSarvam, translateToEnglish, chatSarvam, chatSarvamStream, toSarvamLang,
+} from '../engine/sarvam.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
 // ids already sitting in restored (persisted) history.
@@ -43,7 +48,18 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   offerRef.current = offerMode;
   // live streaming trace for reasoner mode { reasoning, answer }
   const [stream, setStream] = useState(null);
+  // Sarvam turns the mic into a real Indian-language ear: it transcribes after
+  // recording (so there's a short "understanding" beat) and reports which
+  // language was actually spoken.
+  const [transcribing, setTranscribing] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  // true only while a reply had to be spoken by the browser instead of Sarvam,
+  // so a degraded voice is visible rather than just sounding broken
+  const [voiceDegraded, setVoiceDegraded] = useState(false);
   const aiKey = hasDeepSeek();
+  const voiceAI = hasSarvam();
+  // vernacular needs *either* engine — Sarvam translates, DeepSeek translates
+  const canTranslate = voiceAI || aiKey;
   const bodyRef = useRef(null);
   const startedRef = useRef(false);
   const wrapRef = useRef(null);
@@ -65,18 +81,35 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setTimeout(() => setToast(null), 2600);
   };
 
+  // MITRA follows the customer's language instead of making them set it.
+  // Saaras hands back the language it heard; we switch and say so once.
+  const applyDetectedLang = (detected) => {
+    if (!detected || detected === langRef.current) return;
+    setLang(detected);
+    langRef.current = detected;
+    showToast(`Heard ${langLabel(detected)} — replying in ${langLabel(detected)}`);
+    awardXP(15, 'lang-detect');
+  };
+
   // Hands-free loop: after MITRA finishes speaking on a call, she listens again.
   const startCallListen = () => {
     if (!inCallRef.current) return;
     const rec = listen({
       lang: langRef.current,
-      onResult: (t) => {
+      onLevel: setMicLevel,
+      onTranscribing: setTranscribing,
+      onResult: (t, detected) => {
         setCallListening(false);
+        applyDetectedLang(detected);
         handleSend(t);
       },
-      onEnd: () => setCallListening(false),
-      onError: () => {
+      onEnd: () => { setCallListening(false); setMicLevel(0); },
+      onError: (e) => {
         setCallListening(false);
+        setMicLevel(0);
+        setTranscribing(false);
+        // "no speech" just means the customer stayed quiet — keep the line open
+        if (e === 'no-speech') { startCallListen(); return; }
         setMicOk(false);
       },
     });
@@ -91,11 +124,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const pushMitra = (resp) => {
     setMood(resp.mood || 'happy');
     setMessages((m) => [...m, { id: mid(), from: 'mitra', ...resp }]);
+    const onFallback = () => showToast("Sarvam voice unreachable — using this device's voice");
+    const onStart = (engine) => {
+      setVoiceDegraded(engine === 'device');
+      setSpeaking(true);
+    };
     if (inCallRef.current) {
       setCallCaption(resp.text);
       speak(resp.text, {
         lang: langRef.current,
-        onStart: () => setSpeaking(true),
+        onFallback,
+        onStart,
         onEnd: () => {
           setSpeaking(false);
           startCallListen();
@@ -106,7 +145,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     if (voiceOn) {
       speak(resp.text, {
         lang: langRef.current,
-        onStart: () => setSpeaking(true),
+        onFallback,
+        onStart,
         onEnd: () => setSpeaking(false),
       });
     }
@@ -119,14 +159,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setMicOk(true);
     setCallCaption('');
     stopSpeaking();
-    setTimeout(() => {
-      pushMitra({
-        mood: 'happy',
-        text:
-          langRef.current === 'hi'
-            ? `हाँ ${customer.name.split(' ')[0]} जी, मैं सुन रही हूँ। पैसों की कोई भी बात — बेझिझक पूछिए।`
-            : `Hi ${customer.name.split(' ')[0]}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
-      });
+    setTimeout(async () => {
+      const first = customer.name.split(' ')[0];
+      // hand-written Hindi stays; every other language is localised live
+      const greeting =
+        langRef.current === 'hi'
+          ? { mood: 'happy', text: `हाँ ${first} जी, मैं सुन रही हूँ। पैसों की कोई भी बात — बेझिझक पूछिए।` }
+          : await localise({
+              mood: 'happy',
+              text: `Hi ${first}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
+            });
+      pushMitra(greeting);
     }, 700);
   };
 
@@ -145,11 +188,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     return () => clearInterval(id);
   }, [inCall]);
 
-  // localise a finished English reply into the active language (DeepSeek).
+  // Localise a finished English reply into the active language.
+  // Sarvam's Mayura is preferred: 'modern-colloquial' keeps SIP, ELSS and the
+  // ₹ figures in English inside a native-script sentence — which is how Indian
+  // customers actually discuss money, and it keeps every number auditable.
   const localise = async (resp) => {
-    if (langRef.current === 'en' || !hasDeepSeek()) return resp;
+    if (langRef.current === 'en' || !canTranslate) return resp;
     try {
-      const text = await translate(resp.text, langRef.current);
+      const text = hasSarvam()
+        ? await translateSarvam(resp.text, langRef.current)
+        : await translate(resp.text, langRef.current);
       return { ...resp, text };
     } catch {
       return resp;
@@ -182,48 +230,185 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     awardXP(10, 'first-chat');
 
     // ── Offer Analyzer mode: the next message is the offer to inspect ──
+    // The raw text goes through untranslated on purpose — a scam's URLs,
+    // UPI handles and numbers are the evidence, and translating mangles them.
     if (offerRef.current) {
       setOfferMode(false);
       await runOfferAnalysis(text);
       return;
     }
+
+    // MITRA's advisory engine — and every ₹ figure it quotes — is written once,
+    // in English. Sarvam translates the question in and the answer back out, so
+    // all nine languages get the same audited numbers rather than nine forked
+    // rule sets. The customer still sees their own words in their own script.
+    let engineText = text;
+    if (langRef.current !== 'en' && voiceAI) {
+      try {
+        engineText = await translateToEnglish(text);
+      } catch {
+        /* translation down — let the engine try the raw text */
+      }
+    }
+
     // ── Natural-language goal creation ──
-    if (aiKey && GOAL_TRIGGERS.test(text)) {
-      await runGoalCreate(text);
+    if (aiKey && GOAL_TRIGGERS.test(engineText)) {
+      await runGoalCreate(engineText);
       return;
     }
 
-    await new Promise((r) => setTimeout(r, 500 + Math.random() * 400));
+    // No artificial "thinking" pause here any more. It was 500–900ms of theatre
+    // added back when the rule engine answered instantly; stacked on top of real
+    // translation and synthesis latency it just made MITRA feel slow.
 
-    // ── Rule engine first (precise, auditable numbers) ──
-    const ruled = respond(text, riskProfile, hasDeepSeek() ? 'en' : langRef.current);
+    // ── The engine still computes; the LLM now does the talking ──
+    // respond() gives us the intent's real numbers plus the widget, CTA and
+    // "why" trace — the parts that carry auditable data into the UI. What we no
+    // longer use is its hand-written sentence: that gets generated, grounded in
+    // financialContext(), so MITRA never says the same thing twice.
+    const ruled = respond(engineText, riskProfile, canTranslate ? 'en' : langRef.current);
+    const history = messages.filter((m) => m.text);
+    const FREE_CHIPS = ['Show my portfolio', 'Invest my surplus', "How's my financial health?"];
+
+    if (voiceAI) {
+      const generated = await runGenerated(history, engineText, ruled);
+      if (generated) return;
+    }
+
+    // Generation unavailable (no key, or Sarvam unreachable) — the templates
+    // are kept precisely for this: MITRA still answers, from the same numbers.
     if (ruled) {
       setTyping(false);
       pushMitra(await localise(ruled));
       return;
     }
 
-    // ── Free-form → DeepSeek (reasoning trace or grounded chat) ──
     if (aiKey) {
-      const history = messages.filter((m) => m.text);
       if (reasoningRef.current) {
-        await runReasoner(history, text);
+        await runReasoner(history, engineText);
         return;
       }
       try {
         const { content } = await complete({
           system: financialContext(riskProfile),
-          messages: chatMessages(history, text),
+          messages: chatMessages(history, engineText),
         });
-        setTyping(false);
-        pushMitra(await localise({ text: content, mood: 'happy', chips: ['Show my portfolio', 'Invest my surplus'] }));
-        return;
+        if (content) {
+          setTyping(false);
+          pushMitra(await localise({ text: content, mood: 'happy', chips: FREE_CHIPS }));
+          return;
+        }
       } catch {
-        /* fall through */
+        /* fall through to Sarvam */
       }
     }
+
+    if (voiceAI) {
+      try {
+        const content = await chatSarvam({
+          system: financialContext(riskProfile),
+          messages: chatMessages(history, engineText),
+        });
+        if (content) {
+          setTyping(false);
+          pushMitra(await localise({ text: content, mood: 'happy', chips: FREE_CHIPS }));
+          return;
+        }
+      } catch {
+        /* both engines unreachable — fall through to the honest fallback */
+      }
+    }
+
     setTyping(false);
-    pushMitra(fallbackResponse());
+    pushMitra(await localise(fallbackResponse(aiKey || voiceAI)));
+  };
+
+  // ── Generated reply: streams text into the bubble AND speech into the ear ──
+  // Two streams run off one LLM response. Tokens land in the message as they
+  // arrive (first token ~1.2s), and each completed sentence is handed straight
+  // to TTS, so MITRA starts speaking while she is still composing. `ruled`
+  // carries the engine's computed widget/CTA/why, which get attached to the
+  // finished message — the generated prose never has to produce a number the
+  // UI depends on.
+  const runGenerated = async (history, engineText, ruled) => {
+    const speaking = voiceOn || inCallRef.current;
+    const vernacular = langRef.current !== 'en';
+    const facts = financialContext(riskProfile);
+    const id = mid();
+    let opened = false;
+
+    // In a vernacular session the reply has to be translated before it can be
+    // shown or spoken, so streaming buys nothing — generate, then localise.
+    const speaker = speaking && !vernacular
+      ? speakStream({
+          lang: langRef.current,
+          onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
+          onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
+          onEnd: () => { setSpeaking(false); if (inCallRef.current) startCallListen(); },
+        })
+      : null;
+
+    try {
+      const answer = await chatSarvamStream({
+        system: facts + (ruled?.meta ? `\nThe customer asked about: ${ruled.meta}.` : ''),
+        messages: chatMessages(history, engineText),
+        onDelta: (_chunk, full) => {
+          if (vernacular) return; // nothing readable to show until it's translated
+          if (!opened) {
+            opened = true;
+            setTyping(false);
+            setMood(ruled?.mood || 'happy');
+            setMessages((m) => [...m, { id, from: 'mitra', text: full, meta: ruled?.meta, streaming: true }]);
+            return;
+          }
+          setMessages((m) => m.map((x) => (x.id === id ? { ...x, text: full } : x)));
+        },
+        onSentence: (sentence) => speaker?.push(sentence),
+      });
+
+      if (!answer) throw new Error('empty');
+
+      // Reject a reply that quotes a figure the engine never computed.
+      const check = figuresAreGrounded(answer, facts);
+      if (!check.ok && ruled) {
+        stopSpeaking();
+        setSpeaking(false);
+        if (opened) setMessages((m) => m.filter((x) => x.id !== id));
+        return false; // caller falls through to the verified template
+      }
+      speaker?.end();
+
+      // attach the engine's computed extras to the finished message
+      const finished = {
+        text: vernacular ? await translateSarvam(answer, langRef.current) : answer,
+        meta: ruled?.meta,
+        widget: ruled?.widget,
+        why: ruled?.why,
+        cta: ruled?.cta,
+        chips: ruled?.chips || ['Show my portfolio', 'Invest my surplus', "How's my financial health?"],
+      };
+      setTyping(false);
+      if (opened) {
+        setMessages((m) => m.map((x) => (x.id === id ? { ...x, ...finished, streaming: false } : x)));
+      } else {
+        setMood(ruled?.mood || 'happy');
+        setMessages((m) => [...m, { id, from: 'mitra', ...finished }]);
+        if (speaking) {
+          speak(finished.text, {
+            lang: langRef.current,
+            onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
+            onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
+            onEnd: () => { setSpeaking(false); if (inCallRef.current) startCallListen(); },
+          });
+        }
+      }
+      if (inCallRef.current) setCallCaption(finished.text);
+      return true;
+    } catch {
+      // roll back the half-written bubble so the fallback isn't appended to it
+      if (opened) setMessages((m) => m.filter((x) => x.id !== id));
+      return false;
+    }
   };
 
   // ── Reasoning mode: stream R1's chain-of-thought, then the answer ──
@@ -241,11 +426,18 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setStream(null);
       const localised = await localise({ text: answer || 'Let me get back to you on that.', mood: 'happy' });
       setMessages((m) => [...m, { id: mid(), from: 'mitra', ...localised, reasoning: reasoning, chips: ['Show my portfolio', 'Invest my surplus'] }]);
-      if (voiceOn) speak(localised.text, { lang: langRef.current, onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+      if (voiceOn) {
+        speak(localised.text, {
+          lang: langRef.current,
+          onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
+          onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
+          onEnd: () => setSpeaking(false),
+        });
+      }
       awardXP(25, 'reasoning');
     } catch {
       setStream(null);
-      pushMitra(fallbackResponse());
+      pushMitra(await localise(fallbackResponse()));
     }
   };
 
@@ -257,7 +449,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setMood('thinking');
     const finish = async (a) => {
       setTyping(false);
-      if (!a) { pushMitra(fallbackResponse()); return; }
+      if (!a) { pushMitra(await localise(fallbackResponse())); return; }
       const verdictLine = { safe: 'This looks legitimate', caution: 'Be careful with this one', avoid: 'Please do not proceed' }[a.verdict] || '';
       awardXP(20, 'offer-analysis');
       pushMitra(await localise({
@@ -301,7 +493,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       }));
     } catch {
       setTyping(false);
-      pushMitra(fallbackResponse());
+      pushMitra(await localise(fallbackResponse()));
     }
   };
 
@@ -320,7 +512,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setTimeout(() => {
         setTyping(false);
         pushMitra(respond('hello', riskProfile));
-      }, 800);
+      }, 250);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
@@ -347,19 +539,40 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   );
 
   const handleMic = () => {
-    if (listening) return;
+    // tapping again while recording ends the turn early instead of doing nothing
+    if (listening) {
+      recRef.current?.stop?.();
+      return;
+    }
+    if (transcribing) return;
     stopSpeaking();
     setSpeaking(false);
     const rec = listen({
       lang: langRef.current,
-      onResult: (transcript) => handleSend(transcript),
-      onEnd: () => setListening(false),
+      onLevel: setMicLevel,
+      onTranscribing: setTranscribing,
+      onResult: (transcript, detected) => {
+        applyDetectedLang(detected);
+        handleSend(transcript);
+      },
+      onEnd: () => { setListening(false); setMicLevel(0); },
       onError: (e) => {
         setListening(false);
-        showToast(typeof e === 'string' ? e : 'Voice input unavailable — type instead');
+        setMicLevel(0);
+        setTranscribing(false);
+        const msg =
+          e === 'no-speech' ? "I didn't catch that — try again"
+          : e === 'NotAllowedError' || e === 'not-allowed' ? 'Mic permission blocked — allow it in your browser'
+          : typeof e === 'string' && e.startsWith('Sarvam') ? 'Voice service unreachable — type instead'
+          : typeof e === 'string' ? e
+          : 'Voice input unavailable — type instead';
+        showToast(msg);
       },
     });
-    if (rec) setListening(true);
+    if (rec) {
+      recRef.current = rec;
+      setListening(true);
+    }
   };
 
   const handleCta = (cta) => {
@@ -467,7 +680,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         <div style={{ flex: 1 }}>
           <div className="ch-name">MITRA<sup>®</sup></div>
           <div className="ch-status">
-            {typing ? 'Analysing · en-IN' : speaking ? `Speaking · ${lang === 'hi' ? 'hi-IN' : 'en-IN'}` : `Online · ${lang === 'hi' ? 'hi-IN' : 'en-IN'}`}
+            {transcribing
+              ? `Understanding · ${voiceAI ? 'Saaras v3' : 'browser'}`
+              : listening
+              ? 'Listening…'
+              : typing
+              ? `Analysing · ${toSarvamLang(lang)}`
+              : speaking
+              ? `Speaking · ${toSarvamLang(lang)}${voiceAI && !voiceDegraded ? ' · Bulbul v3' : voiceDegraded ? ' · device voice' : ''}`
+              : `Online · ${toSarvamLang(lang)}`}
           </div>
         </div>
         {aiKey && (
@@ -501,7 +722,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                 <button
                   key={l.code}
                   className={`lang-item ${l.code === lang ? 'active' : ''}`}
-                  disabled={l.code !== 'en' && l.code !== 'hi' && !aiKey}
+                  disabled={l.code !== 'en' && l.code !== 'hi' && !canTranslate}
                   onClick={() => {
                     setLangMenu(false);
                     if (l.code === lang) return;
@@ -513,7 +734,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   }}
                 >
                   <span>{l.native}</span>
-                  <small>{l.label}{l.code !== 'en' && l.code !== 'hi' && !aiKey ? ' · needs AI key' : ''}</small>
+                  <small>{l.label}{l.code !== 'en' && l.code !== 'hi' && !canTranslate ? ' · needs AI key' : ''}</small>
                 </button>
               ))}
             </div>
@@ -614,7 +835,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       </div>
 
       <div className="chat-input">
-        <button className={`mic-btn ${listening ? 'listening' : ''}`} onClick={handleMic} title="Speak to MITRA" aria-label={listening ? 'Listening…' : 'Speak to MITRA'}>
+        <button
+          className={`mic-btn ${listening ? 'listening' : ''} ${transcribing ? 'transcribing' : ''}`}
+          onClick={handleMic}
+          disabled={transcribing}
+          style={listening ? { transform: `scale(${1 + micLevel * 0.18})` } : undefined}
+          title={voiceAI ? 'Speak in any Indian language' : 'Speak to MITRA'}
+          aria-label={listening ? 'Listening — tap to finish' : transcribing ? 'Understanding…' : 'Speak to MITRA'}
+        >
           <Icon name="mic" size={16} />
         </button>
         <input
@@ -624,8 +852,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           placeholder={
             offerMode
               ? 'Paste the offer / message to check…'
+              : transcribing
+              ? 'Understanding what you said…'
               : listening
-              ? 'Listening…'
+              ? voiceAI ? 'Listening — speak any Indian language…' : 'Listening…'
               : reasoningMode
               ? 'Ask anything — I\'ll reason it out…'
               : 'Ask about goals, tax, SIPs…'
@@ -648,7 +878,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           </div>
 
           <div className="call-stage">
-            <div className={`call-rings ${speaking ? 'speaking' : callListening ? 'listening' : ''}`}>
+            <div
+              className={`call-rings ${speaking ? 'speaking' : callListening ? 'listening' : ''}`}
+              style={callListening ? { '--mic-level': micLevel.toFixed(2) } : undefined}
+            >
               <span className="call-inner-ring" />
               <span className="call-orbit"><i /></span>
               <Avatar size={160} speaking={speaking} mood={mood} />
@@ -658,7 +891,9 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             </div>
             <div className="call-status">
               {speaking
-                ? 'Speaking · hands-free'
+                ? `Speaking · ${toSarvamLang(lang)}`
+                : transcribing
+                ? 'Understanding…'
                 : callListening
                 ? 'Listening · go ahead'
                 : typing
@@ -666,7 +901,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                 : 'On call · hands-free'}
             </div>
             <div className="call-caption">{callCaption}</div>
-            {!micOk && <div className="call-mic-note">Mic unavailable — tap a question</div>}
+            {!micOk && <div className="call-mic-note">Mic unavailable — tap a question below</div>}
           </div>
 
           <div className="call-chips">

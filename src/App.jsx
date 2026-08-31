@@ -5,6 +5,7 @@ import AvatarChat from './components/AvatarChat.jsx';
 import OnboardingChoice from './components/OnboardingChoice.jsx';
 import Auth from './components/Auth.jsx';
 import Simulator from './components/Simulator.jsx';
+import WebApp from './components/WebApp.jsx';
 import Avatar from './components/Avatar.jsx';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
@@ -350,6 +351,26 @@ const REVEAL_SELECTOR = [
 // these — status bar, nav pill and every card read the same variables.
 const NIGHT_TABS = new Set(['simulate']);
 
+// The desktop shell needs real room: enough width for dashboard + chat rail
+// side by side, and enough height for the rail's own nav to breathe. Below
+// either threshold the phone shell is the better answer, not a squeezed
+// version of the web one.
+const WEB_SHELL_MQ = '(min-width: 1024px) and (min-height: 600px)';
+
+function useRoomForWebShell() {
+  const [roomy, setRoomy] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(WEB_SHELL_MQ).matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(WEB_SHELL_MQ);
+    const onChange = (e) => setRoomy(e.matches);
+    setRoomy(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return roomy;
+}
+
 // Optional deep-link for demos / screenshots:
 //   ?demo=1&screen=home|wealth|mitra|simulate|settings&frame=1
 // jumps straight past onboarding to a given tab (and phone frame). Handy for
@@ -380,8 +401,14 @@ export default function App() {
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [framed, setFramed] = useState(demoParams.get('frame') === '1');
   const screenRef = useRef(null);
+  const roomForWebShell = useRoomForWebShell();
 
   const night = !onboarded || NIGHT_TABS.has(tab);
+
+  // Sign-in and onboarding are full-bleed night-surface flows built for the
+  // phone shell; the desktop workspace takes over once there is an
+  // onboarded customer with data to lay out.
+  const webShell = !!session && onboarded && roomForWebShell && !framed;
 
   // Scroll choreography: elements float up and settle as they enter the
   // viewport (Apple product-page reveals), staggered slightly per element.
@@ -413,6 +440,24 @@ export default function App() {
     setPendingPrompt(prompt);
     setTab('mitra');
   };
+
+  if (webShell) {
+    return (
+      <>
+        {!DEMO && (
+          <button className="frame-toggle on-web" onClick={() => setFramed(true)}>
+            Phone demo
+          </button>
+        )}
+        <WebApp
+          riskProfile={riskProfile}
+          tab={tab}
+          onTab={setTab}
+          settingsPanel={<Settings />}
+        />
+      </>
+    );
+  }
 
   return (
     <>

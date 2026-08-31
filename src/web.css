@@ -1,0 +1,495 @@
+/* ─────────────────────────────────────────────────────────────
+   Web app shell — the desktop three-pane layout (components/WebApp.jsx).
+
+   Loaded after styles.css and additive to it: every colour, font and
+   radius below resolves through the same custom properties the phone app
+   uses, so the two shells cannot drift apart. Only the layout is new.
+   ───────────────────────────────────────────────────────────── */
+
+.app-shell.web {
+  position: fixed;
+  inset: 0;
+  flex-direction: row;
+  min-height: 640px;
+  background: var(--card-2);
+}
+
+/* Chat rail width. The design exposes this as a 320–520px knob; here it is
+   one custom property, clamped so the rail can never crowd out the
+   dashboard on a small laptop. */
+.app-shell.web {
+  --web-chat-w: 400px;
+  --web-pad-x: clamp(18px, 2.2vw, 34px);
+  --web-pad-y: clamp(16px, 1.8vw, 26px);
+}
+
+/* ── Nav rail ─────────────────────────────────── */
+.web-rail {
+  width: 88px;
+  flex-shrink: 0;
+  background: var(--bg);
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 18px;
+  gap: 26px;
+  position: relative;
+  overflow: hidden;
+}
+.web-rail-arc {
+  position: absolute;
+  left: -90px;
+  top: 40%;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
+.web-rail-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  flex-shrink: 0;
+  position: relative;
+}
+.web-rail-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+.web-rail-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+  position: relative;
+}
+.web-rail-item {
+  width: 68px;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 12px 0 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.web-rail-item:hover { background: var(--card); color: var(--ink); }
+.web-rail-item.is-on { background: rgba(242, 118, 29, 0.14); color: var(--orange); }
+
+.web-rail-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+.web-rail-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Main column ──────────────────────────────── */
+.web-main {
+  flex: 1 1 620px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.web-topbar {
+  flex-shrink: 0;
+  min-height: 76px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 12px var(--web-pad-x);
+  border-bottom: 1px solid var(--line);
+  background: var(--card-2);
+}
+.web-topbar-id {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.web-greet { min-width: 0; }
+.web-greet-name {
+  font-family: var(--display);
+  font-size: clamp(20px, 1.7vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.web-persona {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 7px 14px 7px 9px;
+  flex-shrink: 0;
+  background: var(--card);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.web-persona-ring {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--orange);
+  flex-shrink: 0;
+}
+
+.web-search {
+  flex: 1 1 240px;
+  min-width: 240px;
+  max-width: 380px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 10px 16px;
+  overflow: hidden;
+  color: var(--ink-soft);
+  transition: border-color 0.2s var(--ease);
+}
+.web-search:focus-within { border-color: var(--blue); }
+.web-search svg { flex-shrink: 0; }
+.web-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.web-search input::placeholder { color: var(--ink-soft); }
+
+.web-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--web-pad-y) var(--web-pad-x) 34px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  align-content: start;
+  animation: paneIn 0.5s var(--ease) both;
+}
+.web-span { grid-column: 1 / -1; }
+.web-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Phone-native screens (Wealth, Machine, Settings) reused verbatim inside
+   the desktop column — held to a readable measure rather than stretched. */
+.web-embed { max-width: 720px; margin: 0 auto; width: 100%; }
+.web-embed[data-surface='night'] {
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+/* ── Cards ────────────────────────────────────── */
+.web-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  color: var(--ink);
+}
+.web-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.web-eyebrow-accent { color: var(--orange); }
+.web-card-title {
+  display: block;
+  font-family: var(--display);
+  font-size: clamp(20px, 1.7vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.13;
+  margin-top: 8px;
+}
+.web-card-sub { display: block; font-size: 13px; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+.web-card-body { font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); margin: 8px 0 0; text-wrap: pretty; }
+.web-card-figure {
+  font-family: var(--display);
+  font-size: clamp(26px, 2.4vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-top: 6px;
+}
+
+/* ── Buttons ──────────────────────────────────── */
+.web-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.web-btn:active { transform: scale(0.97); }
+.web-btn-primary { background: var(--blue); color: #fff; }
+.web-btn-primary:hover { background: var(--blue-hover); }
+.web-btn-ghost {
+  background: rgba(234, 243, 241, 0.1);
+  border: 1px solid rgba(234, 243, 241, 0.2);
+  color: var(--on-night);
+  font-weight: 500;
+}
+.web-btn-ghost:hover { background: rgba(234, 243, 241, 0.18); }
+.web-btn-dark { background: var(--night); color: var(--on-night); padding: 10px 20px; font-size: 13px; }
+.web-btn-dark:hover { background: var(--night-2); }
+
+/* ── Balance hero ─────────────────────────────── */
+.web-hero {
+  background: var(--night);
+  color: var(--on-night);
+  border-radius: 30px;
+  padding: clamp(22px, 2.2vw, 32px);
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+/* The decorative arcs are clipped here rather than on .web-hero itself:
+   `overflow: hidden` on a grid item zeroes its automatic minimum size, which
+   collapses the card to its first line. */
+.web-hero-rings {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 30px;
+  pointer-events: none;
+}
+.web-hero-rings span {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(234, 243, 241, 0.09);
+}
+.web-hero-rings span:first-child { right: -70px; top: -110px; width: 320px; height: 320px; }
+.web-hero-rings span:last-child { right: 30px; top: -40px; width: 190px; height: 190px; border-color: rgba(15, 140, 126, 0.3); }
+
+.web-hero-main { position: relative; min-width: 240px; }
+.web-hero-value {
+  font-family: var(--display);
+  font-size: clamp(46px, 4.6vw, 74px);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.96;
+  margin-top: 8px;
+}
+.web-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+
+.web-hero-stats {
+  position: relative;
+  flex: 1 1 300px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 18px;
+}
+.web-stat { border-top: 2px solid rgba(234, 243, 241, 0.3); padding-top: 11px; }
+.web-stat-accent { border-top-color: var(--orange); }
+.web-stat-accent .web-stat-value { color: var(--orange); }
+.web-stat-value {
+  font-family: var(--display);
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-top: 4px;
+}
+
+/* ── MITRA + drift pair ───────────────────────── */
+.web-mitra {
+  text-align: left;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: border-color 0.2s var(--ease);
+}
+.web-mitra:hover { border-color: var(--blue); }
+.web-mitra > span { min-width: 0; }
+.web-mitra .web-card-title { margin-top: 5px; }
+
+.web-flag { display: flex; align-items: center; gap: 10px; }
+.web-flag-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--orange);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.web-flag-dot::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+.web-flag + .web-card-title { margin-top: 12px; }
+.web-card .web-btn { margin-top: 14px; }
+
+/* ── Time Machine ─────────────────────────────── */
+.web-machine { display: flex; flex-wrap: wrap; gap: 28px; padding: clamp(20px, 2vw, 28px); }
+.web-machine-side { flex: 0 0 auto; min-width: 210px; }
+.web-machine-label { margin-top: 20px; }
+.web-machine-age {
+  font-family: var(--display);
+  font-size: clamp(56px, 5vw, 82px);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 0.88;
+  color: var(--orange);
+}
+.web-machine-note { margin-top: 10px; max-width: 230px; font-size: 13px; }
+.web-machine-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+.web-stat-rule { border-top: 2px solid var(--ink); padding-top: 10px; }
+.web-stat-rule .web-stat-value { font-size: 24px; margin-top: 3px; }
+
+.web-machine-chart { flex: 1 1 320px; min-width: 260px; display: flex; flex-direction: column; }
+.web-machine-controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; align-items: center; }
+.web-machine-controls .web-btn { margin-top: 0; }
+.web-machine-send { margin-left: auto; }
+.web-chip {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.web-chip:hover { border-color: var(--blue); color: var(--ink); }
+.web-chip.is-on { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── Allocation ───────────────────────────────── */
+.web-alloc { display: flex; gap: 22px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+.web-alloc-legend { flex: 1 1 150px; display: flex; flex-direction: column; gap: 12px; }
+.web-legend-row { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.web-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.web-legend-value { margin-left: auto; font-family: var(--mono); font-weight: 600; }
+
+/* ── Daily brief ──────────────────────────────── */
+.web-brief { display: flex; flex-direction: column; padding: 0; }
+.web-brief-head { padding: 20px 24px 14px; }
+.web-brief-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+}
+.web-brief-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.web-brief-label { flex: 1; font-size: 14px; font-weight: 500; }
+.web-brief-value { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+
+/* ── Ledger ───────────────────────────────────── */
+.web-ledger { display: flex; flex-direction: column; margin-top: 16px; }
+.web-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.3fr) minmax(80px, 2fr) auto 56px;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.web-ledger-sub { grid-template-columns: 1fr auto; }
+.web-ledger-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 500; }
+.web-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.web-ledger-bar { position: relative; height: 8px; border-radius: 999px; background: var(--chart-track); }
+.web-ledger-base {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border-right: 2px dashed var(--ink-soft);
+  opacity: 0.55;
+}
+.web-ledger-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; }
+.web-ledger-amt { font-family: var(--mono); font-weight: 600; text-align: right; white-space: nowrap; }
+.web-ledger-delta { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; }
+
+/* ── Chat rail ────────────────────────────────── */
+.web-chat {
+  width: clamp(320px, var(--web-chat-w), 42vw);
+  flex-shrink: 0;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  border-left: 1px solid var(--line);
+}
+.web-chat .chat-wrap { flex: 1; min-height: 0; height: auto; }
+
+/* The phone/web toggle sits bottom-right by default — which in this shell is
+   exactly where the chat rail puts its send button. Clear it to the far side,
+   just past the nav rail. */
+.frame-toggle.on-web { right: auto; left: 106px; }
+
+/* ── Narrow desktop: fold the chat rail away ──── */
+@media (max-width: 1180px) {
+  .app-shell.web { --web-chat-w: 340px; }
+}

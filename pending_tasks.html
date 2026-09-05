@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="MITRA hackathon prototype completion checklist and production roadmap.">
+  <title>MITRA — Pending Tasks</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #15322f;
+      --muted: #637571;
+      --paper: #fffdf8;
+      --card: rgba(255, 255, 255, 0.92);
+      --teal: #087d70;
+      --teal-dark: #075c54;
+      --orange: #f26f21;
+      --orange-soft: #fff0e5;
+      --green-soft: #e5f6ee;
+      --line: #dfe8e4;
+      --shadow: 0 18px 50px rgba(19, 58, 52, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(8, 125, 112, 0.12), transparent 28rem),
+        radial-gradient(circle at 92% 15%, rgba(242, 111, 33, 0.1), transparent 26rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    .event-banner {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 48px;
+      object-fit: cover;
+      object-position: center;
+      background: linear-gradient(90deg, #006b5d, #ff4d0a);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.45fr 0.75fr;
+      gap: 48px;
+      align-items: end;
+      padding: 72px 0 44px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--teal);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 760px;
+      margin-bottom: 18px;
+      font-size: clamp(2.5rem, 7vw, 5.6rem);
+      line-height: 0.96;
+      letter-spacing: -0.065em;
+    }
+
+    .hero-copy {
+      max-width: 700px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+
+    .score-card {
+      padding: 24px;
+      border: 1px solid rgba(8, 125, 112, 0.15);
+      border-radius: 24px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .score-row:last-child { border-bottom: 0; }
+    .score-label { color: var(--muted); }
+    .score-value { font-weight: 800; }
+    .pass { color: var(--teal); }
+
+    .progress-shell {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 54px;
+      padding: 13px 18px;
+      border: 1px solid rgba(8, 125, 112, 0.18);
+      border-radius: 18px;
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: 0 10px 30px rgba(19, 58, 52, 0.09);
+      backdrop-filter: blur(16px);
+    }
+
+    .progress-label, .progress-count { font-size: 0.88rem; font-weight: 800; }
+
+    .progress-track {
+      height: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7eeeb;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--teal), #21a18e, var(--orange));
+      transition: width 240ms ease;
+    }
+
+    section { margin-bottom: 68px; }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    h2 {
+      margin-bottom: 5px;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+    }
+
+    .section-note { max-width: 530px; margin-bottom: 0; color: var(--muted); }
+
+    .task-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .task {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      min-height: 220px;
+      padding: 24px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: 0 8px 30px rgba(19, 58, 52, 0.055);
+      transition: transform 180ms ease, border-color 180ms ease, opacity 180ms ease;
+    }
+
+    .task:hover { transform: translateY(-2px); border-color: rgba(8, 125, 112, 0.34); }
+
+    .task input {
+      width: 22px;
+      height: 22px;
+      margin: 3px 0 0;
+      accent-color: var(--teal);
+      cursor: pointer;
+    }
+
+    .task.done { opacity: 0.68; }
+    .task.done h3 { text-decoration: line-through; text-decoration-thickness: 2px; }
+
+    .task-number {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--orange);
+      font-size: 0.78rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h3 {
+      margin-bottom: 9px;
+      font-size: 1.2rem;
+      line-height: 1.25;
+    }
+
+    .task p { margin-bottom: 12px; color: var(--muted); }
+
+    .task ul {
+      margin: 0;
+      padding-left: 19px;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .task li + li { margin-top: 4px; }
+
+    .priority {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--orange-soft);
+      color: #b6490b;
+      font-size: 0.69rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .roadmap {
+      padding: clamp(26px, 5vw, 48px);
+      border-radius: 30px;
+      color: #f6fffc;
+      background: linear-gradient(135deg, #064d47, #087d70 58%, #095f57);
+      box-shadow: var(--shadow);
+    }
+
+    .roadmap .eyebrow { color: #8ee5d7; }
+    .roadmap h2 { max-width: 720px; }
+    .roadmap-intro { max-width: 760px; color: rgba(246, 255, 252, 0.74); }
+
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .roadmap-item {
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 17px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .roadmap-item strong { display: block; margin-bottom: 5px; }
+    .roadmap-item span { color: rgba(246, 255, 252, 0.7); font-size: 0.92rem; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 0 0 38px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 48px; }
+      .task-grid, .roadmap-grid { grid-template-columns: 1fr; }
+      .section-heading, footer { align-items: start; flex-direction: column; }
+      .task { min-height: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .event-banner { max-height: 70px; }
+      .progress-shell { position: static; box-shadow: none; }
+      .task, .roadmap, .score-card { break-inside: avoid; box-shadow: none; }
+      .task { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <img class="event-banner" src="Picture%201.png" alt="IDBI Innovate — knowledge partner AWS, powered by H2S, technology partner ACC">
+
+  <main class="wrap">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">MITRA · Completion tracker</p>
+        <h1>What remains before we call it finished.</h1>
+        <p class="hero-copy">A focused close-out list for the hackathon repository, followed by the separate sandbox and production roadmap.</p>
+      </div>
+      <aside class="score-card" aria-label="Current project health">
+        <div class="score-row"><span class="score-label">Automated tests</span><span class="score-value pass">10 / 10 pass</span></div>
+        <div class="score-row"><span class="score-label">Production build</span><span class="score-value pass">Passing</span></div>
+        <div class="score-row"><span class="score-label">TODO / FIXME markers</span><span class="score-value pass">None</span></div>
+        <div class="score-row"><span class="score-label">Updated</span><span class="score-value">06 Sep 2026</span></div>
+      </aside>
+    </header>
+
+    <div class="progress-shell" aria-label="Checklist progress">
+      <span class="progress-label">Close-out progress</span>
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+      <span class="progress-count" id="progress-count">0 / 7</span>
+    </div>
+
+    <section aria-labelledby="finish-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Finish now</p>
+          <h2 id="finish-heading">Hackathon repository close-out</h2>
+        </div>
+        <p class="section-note">Complete these seven items first. They are achievable inside this repository and leave a review-ready prototype.</p>
+      </div>
+
+      <div class="task-grid" id="task-list">
+        <label class="task">
+          <input type="checkbox" data-task="worktree">
+          <span>
+            <span class="task-number">Task 01</span>
+            <span class="priority">High</span>
+            <h3>Finalize the current worktree</h3>
+            <p>Review, package, and commit the completed API, Advice Passport, policy, tests, and interface changes.</p>
+            <ul><li>Confirm every new artifact is intentional</li><li>Leave the branch clean and reproducible</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="tests">
+          <span>
+            <span class="task-number">Task 02</span>
+            <span class="priority">High</span>
+            <h3>Add critical test coverage</h3>
+            <p>Protect the financial calculations and the new authenticated API boundary.</p>
+            <ul><li>Money-math unit tests</li><li>API auth, persistence, and receipt tests</li><li>Golden persona snapshots</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="e2e">
+          <span>
+            <span class="task-number">Task 03</span>
+            <span class="priority">High</span>
+            <h3>Verify the complete browser journey</h3>
+            <p>Exercise signup, onboarding, upload, advice, simulator, receipt, voice fallback, and both app shells.</p>
+            <ul><li>Happy-path smoke test</li><li>API-down and malformed-data states</li><li>Mobile and desktop layouts</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="fixtures">
+          <span>
+            <span class="task-number">Task 04</span>
+            <h3>Make sandbox fixtures deterministic</h3>
+            <p>Replace random frontend connector data with seeded, reproducible customer fixtures.</p>
+            <ul><li>Include zero-holdings and irregular-income users</li><li>Add adversarial statement rows</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="reliability">
+          <span>
+            <span class="task-number">Task 05</span>
+            <h3>Add reliability and automation</h3>
+            <p>Introduce guardrails that keep defects from reaching the demo branch.</p>
+            <ul><li>React error boundary</li><li>Lint, formatting, and CI</li><li>OpenAPI contract validation</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="docs">
+          <span>
+            <span class="task-number">Task 06</span>
+            <h3>Clean documentation and placeholders</h3>
+            <p>Bring the sandbox assessment up to date and remove machine-specific or presentation placeholder text.</p>
+            <ul><li>Refresh current-state claims</li><li>Replace team-name placeholders</li><li>Make local paths portable</li></ul>
+          </span>
+        </label>
+
+        <label class="task">
+          <input type="checkbox" data-task="pdf">
+          <span>
+            <span class="task-number">Task 07</span>
+            <h3>Resolve PDF upload behaviour</h3>
+            <p>Either restrict the prototype to CSV with clear guidance or implement real PDF statement extraction.</p>
+            <ul><li>No silent or surprising fallback</li><li>Keep uploaded financial data handling explicit</li></ul>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section class="roadmap" aria-labelledby="roadmap-heading">
+      <p class="eyebrow">Next horizon</p>
+      <h2 id="roadmap-heading">Sandbox and production roadmap</h2>
+      <p class="roadmap-intro">These are deliberate production workstreams, not blockers for the hackathon demonstration.</p>
+      <div class="roadmap-grid">
+        <div class="roadmap-item"><strong>Server-side AI</strong><span>Proxy Sarvam and model calls so credentials never live in the browser.</span></div>
+        <div class="roadmap-item"><strong>Async data platform</strong><span>Implement the full OpenAPI contract and move analytics to versioned server-side services.</span></div>
+        <div class="roadmap-item"><strong>Identity and consent</strong><span>Production authentication, encrypted persistence, consent history, export, and erasure.</span></div>
+        <div class="roadmap-item"><strong>Account Aggregator</strong><span>Integrate an RBI-licensed AA and remove credential-shaped connector forms.</span></div>
+        <div class="roadmap-item"><strong>Live financial feeds</strong><span>Licensed market and product data, plus mandate-backed execution integrations.</span></div>
+        <div class="roadmap-item"><strong>Operational readiness</strong><span>Infrastructure as code, CI/CD, observability, security testing, DR, and compliance sign-off.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <span>MITRA — My Intelligent Treasury &amp; Robo Advisor</span>
+    <span>Hackathon tasks and production work are intentionally separated.</span>
+  </footer>
+
+  <script>
+    const boxes = [...document.querySelectorAll('[data-task]')];
+    const storageKey = 'mitra_pending_tasks_v1';
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    function renderProgress() {
+      const complete = boxes.filter((box) => box.checked).length;
+      document.getElementById('progress-count').textContent = `${complete} / ${boxes.length}`;
+      document.getElementById('progress-bar').style.width = `${(complete / boxes.length) * 100}%`;
+      boxes.forEach((box) => box.closest('.task').classList.toggle('done', box.checked));
+    }
+
+    boxes.forEach((box) => {
+      box.checked = Boolean(saved[box.dataset.task]);
+      box.addEventListener('change', () => {
+        const state = Object.fromEntries(boxes.map((item) => [item.dataset.task, item.checked]));
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        renderProgress();
+      });
+    });
+
+    renderProgress();
+  </script>
+</body>
+</html>

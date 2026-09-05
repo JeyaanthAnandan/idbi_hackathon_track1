@@ -11,24 +11,29 @@ export default function Auth({ onAuthed }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const switchMode = (m) => {
     setMode(m);
     setError('');
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError('');
     if (mode === 'signup') {
-      if (!name.trim()) return setError('Enter your full name.');
-      if (!email.trim()) return setError('Enter your email.');
-      if (password.length < 4) return setError('Password must be at least 4 characters.');
-      const res = signUp({ name, email, password });
+      if (!name.trim()) { setSubmitting(false); return setError('Enter your full name.'); }
+      if (!email.trim()) { setSubmitting(false); return setError('Enter your email.'); }
+      if (password.length < 8) { setSubmitting(false); return setError('Password must be at least 8 characters.'); }
+      const res = await signUp({ name, email, password });
+      setSubmitting(false);
       if (!res.ok) return setError(res.error);
       onAuthed(res.session);
     } else {
-      if (!email.trim() || !password) return setError('Enter your email and password.');
-      const res = logIn({ email, password });
+      if (!email.trim() || !password) { setSubmitting(false); return setError('Enter your email and password.'); }
+      const res = await logIn({ email, password });
+      setSubmitting(false);
       if (!res.ok) return setError(res.error);
       onAuthed(res.session);
     }
@@ -99,8 +104,8 @@ export default function Auth({ onAuthed }) {
 
         {error && <div className="auth-error">{error}</div>}
 
-        <button className="primary-btn" type="submit" style={{ marginTop: 18 }}>
-          {mode === 'login' ? 'Log in' : 'Create account'}
+        <button className="primary-btn" type="submit" style={{ marginTop: 18 }} disabled={submitting}>
+          {submitting ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
         </button>
       </form>
 
@@ -114,7 +119,7 @@ export default function Auth({ onAuthed }) {
       </button>
 
       <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', lineHeight: 1.6 }}>
-        Prototype login — accounts are stored only in this browser, not on a server.
+        Prototype account — password hashes and sessions are stored by the local MITRA API.
       </div>
     </div>
   );

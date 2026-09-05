@@ -356,11 +356,11 @@ export default function ChatWidget({ widget, onChip }) {
       <div className="widget-card">
         <h4>
           Portfolio X-Ray · {data.fund}
-          {data.switched && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>✓ Direct</span>}
+          {data.switched && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>Scenario · Direct</span>}
         </h4>
         <div style={{ display: 'flex', gap: 0, border: '1px solid var(--line-strong)' }}>
           <div style={{ flex: 1, borderRight: '1px solid var(--line)', padding: '9px 11px' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', ...mono }}>You pay ({data.plan})</div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink-soft)', ...mono }}>{data.switched ? 'Scenario ratio' : 'Current ratio'} ({data.plan})</div>
             <div style={{ fontSize: 17, fontWeight: 800, fontFamily: 'var(--display)', color: 'var(--orange)' }}>{data.er}%</div>
           </div>
           <div style={{ flex: 1, padding: '9px 11px' }}>
@@ -392,7 +392,7 @@ export default function ChatWidget({ widget, onChip }) {
       <div className="widget-card">
         <h4>
           LTCG Harvest · FY 2026–27 window
-          {data.harvested && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>✓ Harvested</span>}
+          {data.harvested && <span style={{ color: 'var(--green)', marginLeft: 8, fontSize: 11 }}>Scenario applied</span>}
         </h4>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <Donut
@@ -403,15 +403,15 @@ export default function ChatWidget({ widget, onChip }) {
           <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.9, color: 'var(--ink-soft)' }}>
             Unrealised gains: <b style={{ color: 'var(--ink)' }}>{fmt(data.gains)}</b>
             <br />
-            Tax-free limit: <b style={{ color: 'var(--ink)' }}>{fmt(data.exemption)}/yr</b>
+            Policy exemption: <b style={{ color: 'var(--ink)' }}>{fmt(data.exemption)}/yr</b>
             <br />
-            Tax saved now: <b style={{ color: 'var(--orange)' }}>{fmt(data.taxSaved)}</b>
+            Estimated tax impact: <b style={{ color: 'var(--orange)' }}>{fmt(data.taxSaved)}</b>
           </div>
         </div>
         <div style={{ marginTop: 10, padding: '9px 11px', border: '1px solid var(--line-strong)', fontSize: 11, color: 'var(--ink-soft)' }}>
           <span style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--ink)', ...mono }}>The 20-year habit</span>
           <div style={{ marginTop: 3 }}>
-            Harvesting every year ≈ <b style={{ color: 'var(--ink)' }}>{fmtCompact(data.habitValue)}</b> of tax kept compounding for you.
+            Repeating this scenario annually models ≈ <b style={{ color: 'var(--ink)' }}>{fmtCompact(data.habitValue)}</b> over 20 years.
           </div>
         </div>
       </div>
@@ -422,7 +422,7 @@ export default function ChatWidget({ widget, onChip }) {
     return (
       <div className="widget-card" style={{ background: 'radial-gradient(130% 150% at 85% -10%, rgba(255,138,60,0.2), transparent 55%), #1d1d1f', color: '#f5f5f7', borderColor: 'transparent' }}>
         <h4 style={{ color: 'rgba(245,245,247,0.55)', borderBottomColor: 'rgba(245,245,247,0.2)' }}>
-          Money Persona · 6-month behavioural read
+          Money Persona · {data.observedMonths}-month behavioural read
         </h4>
         <div style={{ fontFamily: 'var(--display)', fontWeight: 900, fontSize: 24, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.02em' }}>
           {data.title}

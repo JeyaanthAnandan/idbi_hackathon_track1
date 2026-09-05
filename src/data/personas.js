@@ -7,6 +7,7 @@ import { resetXP } from '../engine/xp.js';
 import { resetApplied } from '../engine/portfolioState.js';
 import { clearChatHistory } from '../engine/chatHistory.js';
 import { resetOnboarded, resetRiskProfile, markOnboarded, setStoredRiskProfile } from '../engine/auth.js';
+import { saveServerProfile } from '../engine/api.js';
 
 const priya = {
   customer: {
@@ -73,9 +74,9 @@ const priya = {
     { id: 'retire', name: 'Retirement @ 55', icon: 'sunset', target: 30000000, saved: 76000, horizonYears: 26, priority: 'Medium' },
   ],
 
-  tax: { section80CUsed: 69000, section80CLimit: 150000, regime: 'Old (advisable to compare)' },
+  tax: { section80CUsed: 69000, section80CLimit: 150000, regime: 'Old', regimeConfirmed: true, marginalRate: 0.312, dataAvailable: true },
 
-  insurance: { termCover: 2000000, healthCover: 500000, dependents: 2 },
+  insurance: { termCover: 2000000, healthCover: 500000, dependents: 2, portable: false, dataAvailable: true },
 
   peers: {
     cohort: 'Salaried · 25–32 · Metro · ₹80K–1.2L/mo',
@@ -157,9 +158,9 @@ const arjun = {
     { id: 'retire', name: 'Retirement @ 60', icon: 'sunset', target: 15000000, saved: 195000, horizonYears: 15, priority: 'Medium' },
   ],
 
-  tax: { section80CUsed: 24000, section80CLimit: 150000, regime: 'Old (advisable to compare)' },
+  tax: { section80CUsed: 24000, section80CLimit: 150000, regime: 'Old', regimeConfirmed: true, marginalRate: 0.312, dataAvailable: true },
 
-  insurance: { termCover: 500000, healthCover: 200000, dependents: 3 },
+  insurance: { termCover: 500000, healthCover: 200000, dependents: 3, portable: false, dataAvailable: true },
 
   peers: {
     cohort: 'Self-employed · 40–50 · Tier-2 city · ₹50K–90K/mo',
@@ -227,7 +228,8 @@ export function switchPersona(id) {
 // (see engine/personaBuilder.js), makes it the active persona, and marks
 // onboarding + risk profile as already known — the customer just proved it
 // with real data, so there's no quiz to repeat.
-export function saveCustomPersonaAndActivate(persona, riskProfile) {
+export async function saveCustomPersonaAndActivate(persona, riskProfile, sources = []) {
+  await saveServerProfile({ persona, riskProfile, sources });
   localStorage.setItem(CUSTOM_PERSONA_KEY, JSON.stringify(persona));
   localStorage.setItem(PERSONA_KEY, 'custom');
   resetXP();

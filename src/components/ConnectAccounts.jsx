@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import Avatar from './Avatar.jsx';
-import { PROVIDERS, generateProviderData } from '../engine/mockProviderData.js';
+import { PROVIDERS } from '../engine/mockProviderData.js';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
 import { getSession } from '../engine/auth.js';
+import { connectSandbox } from '../engine/api.js';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
 const BADGE_COLOR = { zerodha: '#387ed1', upstox: '#7e3ff2', groww: '#00d09c', indmoney: '#3643ba', bank: 'var(--teal)' };
@@ -26,7 +27,7 @@ export default function ConnectAccounts({ onBack }) {
   const [connected, setConnected] = useState({}); // providerId -> { holdings?, transactions? }
   const [phase, setPhase] = useState('list'); // list | consent | connecting | details
   const [activeId, setActiveId] = useState(null);
-  const [field, setField] = useState('');
+  const [error, setError] = useState('');
   const [name, setName] = useState(session?.name || '');
   const [age, setAge] = useState('');
   const [city, setCity] = useState('');
@@ -36,29 +37,37 @@ export default function ConnectAccounts({ onBack }) {
 
   const startConnect = (id) => {
     setActiveId(id);
-    setField('');
+    setError('');
     setPhase('consent');
   };
 
-  const submitConsent = () => {
+  const submitConsent = async () => {
     setPhase('connecting');
-    setTimeout(() => {
-      setConnected((c) => ({ ...c, [activeId]: generateProviderData(activeId) }));
+    try {
+      const result = await connectSandbox(activeId);
+      setConnected((c) => ({ ...c, [activeId]: result }));
       setPhase('list');
       setActiveId(null);
-    }, 1400);
+    } catch (err) {
+      setError(err.message);
+      setPhase('list');
+    }
   };
 
-  const finish = () => {
+  const finish = async () => {
     const holdings = Object.values(connected).flatMap((d) => d.holdings || []);
     const transactions = Object.values(connected).flatMap((d) => d.transactions || []);
     const sources = Object.keys(connected).map((id) => PROVIDERS[id].label);
     const { persona, riskProfile } = buildCustomPersona({
       name, age: age ? parseInt(age, 10) : undefined, city, holdings, transactions, sources,
     });
-    saveCustomPersonaAndActivate(persona, riskProfile);
-    sessionStorage.setItem('mitra_land_tab', 'mitra');
-    window.location.reload();
+    try {
+      await saveCustomPersonaAndActivate(persona, riskProfile, sources.map((source) => `sandbox:${source}`));
+      sessionStorage.setItem('mitra_land_tab', 'mitra');
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   if (phase === 'consent' && provider) {
@@ -68,23 +77,14 @@ export default function ConnectAccounts({ onBack }) {
           <ProviderBadge id={provider.id} />
         </div>
         <h2 style={{ fontSize: 24 }}>
-          {provider.kind === 'bank' ? 'Link your bank via Account Aggregator' : `Connect ${provider.label}`}
+          {provider.kind === 'bank' ? 'Try the Account Aggregator sandbox' : `Try the ${provider.label} sandbox`}
         </h2>
         <p className="ob-sub">
-          {provider.kind === 'bank'
-            ? 'MITRA is requesting read-only access to your account balance and transaction history through an RBI-licensed Account Aggregator, to build your financial profile. Valid for 1 year, revoke anytime.'
-            : `MITRA is requesting read-only access to your ${provider.label} holdings and returns, to build your financial profile.`}
+          This creates a recorded sandbox consent and fetches a deterministic test fixture through the MITRA API.
+          It does not contact {provider.label} or request any real credential.
         </p>
-        <div className="settings-row">
-          <input
-            type="text"
-            placeholder={provider.consentField}
-            value={field}
-            onChange={(e) => setField(e.target.value)}
-          />
-        </div>
-        <button className="primary-btn" style={{ marginTop: 18 }} disabled={!field.trim()} onClick={submitConsent}>
-          Approve & connect
+        <button className="primary-btn" style={{ marginTop: 18 }} onClick={submitConsent}>
+          Approve sandbox consent
         </button>
         <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={() => setPhase('list')}>
           Cancel
@@ -100,7 +100,7 @@ export default function ConnectAccounts({ onBack }) {
           <Avatar size={96} mood="thinking" />
         </div>
         <h2 style={{ fontSize: 22 }}>Connecting to {provider?.label}…</h2>
-        <p className="ob-sub">Fetching your account data securely.</p>
+        <p className="ob-sub">Calling the local connector API and recording consent.</p>
       </div>
     );
   }
@@ -140,8 +140,12 @@ export default function ConnectAccounts({ onBack }) {
       </div>
       <h2 style={{ fontSize: 26 }}>Connect your accounts</h2>
       <p className="ob-sub">
-        Pick as many as you like — MITRA reads your real balances and holdings instead of asking you to guess.
+        Exercise the real consent and API flow with deterministic sandbox data. For your own numbers, use statement upload.
       </p>
+
+      <div style={{ fontSize: 11, color: 'var(--orange)', textAlign: 'center', marginBottom: 8, fontWeight: 700 }}>
+        SANDBOX · no live provider connection
+      </div>
 
       {PROVIDER_LIST.map((p) => {
         const isConnected = !!connected[p.id];
@@ -173,12 +177,13 @@ export default function ConnectAccounts({ onBack }) {
       >
         {connectedCount === 0 ? 'Connect at least one account' : `Continue with ${connectedCount} connected`}
       </button>
+      {error && <div className="auth-error">{error}</div>}
       <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={onBack}>
         ← Back
       </button>
 
       <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', lineHeight: 1.6 }}>
-        Prototype — these are simulated connections with generated demo data, not live logins to real accounts.
+        API-backed sandbox fixtures. Live AA/broker access requires provider credentials and certification.
       </div>
     </div>
   );

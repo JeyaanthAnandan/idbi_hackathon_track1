@@ -3,12 +3,14 @@ import { ProjectionChart } from './charts.jsx';
 import { fmt, fmtCompact, projectWealth, cashflow } from '../engine/analytics.js';
 import { customer } from '../data/customer.js';
 import { awardXP } from '../engine/xp.js';
+import { returnScenario } from '../data/policy.js';
 
-const SCENARIOS = [
-  { id: 'bear', label: 'Bear 7%', rate: 7 },
-  { id: 'base', label: 'Base 11%', rate: 11 },
-  { id: 'bull', label: 'Bull 14%', rate: 14 },
-];
+const balancedReturns = returnScenario('Balanced');
+const SCENARIOS = ['bear', 'base', 'bull'].map((id) => ({
+  id,
+  label: `${id[0].toUpperCase()}${id.slice(1)} ${balancedReturns[id]}%`,
+  rate: balancedReturns[id],
+}));
 
 // Life events — each reshapes the whole projection when toggled on.
 const LIFE_EVENTS = [
@@ -35,7 +37,7 @@ export default function Simulator({ onAsk }) {
     () => projectWealth({ extraMonthly: extra, annualRatePct: rate, events }),
     [extra, rate, eventIds] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const baseline = useMemo(() => projectWealth({ extraMonthly: 0, annualRatePct: 11 }), []);
+  const baseline = useMemo(() => projectWealth({ extraMonthly: 0, annualRatePct: balancedReturns.base }), []);
 
   const toggleEvent = (id) =>
     setEventIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));

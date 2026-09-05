@@ -14,6 +14,7 @@ import {
   spendByCategory,
   modelPortfolios,
   totalWealth,
+  dataQuality,
 } from '../data/customer.js';
 import {
   fmt,
@@ -34,6 +35,7 @@ import {
   roundup,
   drift,
   protectionGap,
+  emergencyFundTarget,
   xray,
   ltcgHarvest,
   prepayVsInvest,
@@ -42,8 +44,8 @@ import {
 } from './analytics.js';
 import { peers } from '../data/customer.js';
 import { goals } from '../data/customer.js';
-import { loans } from '../data/customer.js';
 import { sumAction } from './portfolioState.js';
+import { POLICY, returnScenario } from '../data/policy.js';
 
 const INTENTS = [
   { id: 'greeting', kw: ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening'] },
@@ -128,12 +130,13 @@ const HI_TEXT = {
       chips: ['सरप्लस निवेश करो', 'मेरा पोर्टफोलियो दिखाओ', 'खर्च का विश्लेषण करो', 'टैक्स बचाओ'],
     };
   },
-  surplus: () => {
+  surplus: (riskProfile = 'Balanced') => {
     const cf = cashflow();
     const monthly = Math.floor(cf.surplus / 500) * 500;
+    const baseReturn = returnScenario(riskProfile).base;
     return {
-      text: `आपके 6 महीने के लेन-देन देखकर, आप आराम से ${fmt(monthly)}/महीना और निवेश कर सकती हैं — जीवनशैली पर कोई असर नहीं। 10 साल में यह लगभग ${fmtCompact(sipFutureValue(monthly, 11, 10))} बन सकता है, जबकि बचत खाते में सिर्फ ${fmtCompact(sipFutureValue(monthly, 3, 10))}। SIP शुरू करें?`,
-      chips: ['हाँ, SIP शुरू करो', 'मेरे लक्ष्य दिखाओ'],
+      text: `आपके ${monthlySummary.length} महीनों के लेन-देन से ${fmt(monthly)}/महीना सरप्लस दिखता है। ${baseReturn}% बेस सिनेरियो में यह 10 साल में लगभग ${fmtCompact(sipFutureValue(monthly, baseReturn, 10))} हो सकता है, जबकि ${POLICY.returns.savings}% सेविंग्स सिनेरियो में ${fmtCompact(sipFutureValue(monthly, POLICY.returns.savings, 10))}। मार्केट रिटर्न की गारंटी नहीं है।`,
+      chips: ['SIP सिनेरियो दिखाओ', 'मेरे लक्ष्य दिखाओ'],
     };
   },
   portfolio: () => ({
@@ -144,30 +147,30 @@ const HI_TEXT = {
     const cf = cashflow();
     const a = spendingAnomalies()[0];
     return {
-      text: `जून में आपने ${fmt(cf.last.spend)} खर्च किए। सबसे बड़ा उछाल: ${a ? `बाहर खाना — ${fmt(a.amount)}, यानी औसत से ${a.deltaPct.toFixed(0)}% ज़्यादा` : 'कोई नहीं'}। थोड़ी सी कटौती आपके यूरोप ट्रिप को जल्दी पूरा कर देगी!`,
+      text: `${cf.last.month} में आपने ${fmt(cf.last.spend)} खर्च किए। सबसे बड़ा बदलाव: ${a ? `${a.category} — ${fmt(a.amount)}, यानी पिछले औसत से ${a.deltaPct.toFixed(0)}% ज़्यादा` : 'कोई महत्वपूर्ण उछाल नहीं'}।`,
       chips: ['सरप्लस निवेश करो', 'मेरे लक्ष्य दिखाओ'],
     };
   },
   goals: () => ({
-    text: `आपके 4 लक्ष्य ट्रैक पर हैं। यूरोप ट्रिप को थोड़ा ध्यान चाहिए — किसी भी लक्ष्य पर टैप करें, मैं पूरा प्लान बना दूँगी।`,
-    chips: ['यूरोप ट्रिप का प्लान बनाओ', 'सरप्लस निवेश करो'],
+    text: `आपके ${goals.length} लक्ष्य जुड़े हैं। किसी भी लक्ष्य पर टैप करें; मैं नीति-आधारित मासिक जरूरत दिखाऊँगी।`,
+    chips: [`${flavourGoalName()} का प्लान दिखाओ`, 'सरप्लस निवेश करो'],
   }),
   tax: () => {
     const tg = taxGap();
     return {
-      text: `आपने 80C की ₹1.5 लाख सीमा में से सिर्फ ${fmt(tg.section80CUsed)} इस्तेमाल किए हैं — ${fmt(tg.gap)} बाकी है। ELSS SIP से यह भर जाए तो करीब ${fmt(tg.estSaving)} टैक्स बचेगा, और इक्विटी ग्रोथ अलग से। शुरू करें?`,
-      chips: ['हाँ, ELSS SIP शुरू करो', 'मेरा पोर्टफोलियो दिखाओ'],
+      text: `पुष्ट ${tg.regime} regime डेटा के अनुसार, ${fmt(tg.section80CLimit)} की 80C सीमा में ${fmt(tg.section80CUsed)} उपयोग हुआ है और ${fmt(tg.gap)} बाकी है। अनुमानित टैक्स बचत ${fmt(tg.estSaving)} है; निवेश से पहले पात्रता की पुष्टि करें।`,
+      chips: ['ELSS सिनेरियो दिखाओ', 'मेरा पोर्टफोलियो दिखाओ'],
     };
   },
   health: () => {
     const hs = healthScore();
     return {
-      text: `आपका फाइनेंशियल हेल्थ स्कोर ${hs.total}/100 है — ${hs.grade}। बचत की आदत शानदार है; बस बहुत सारा पैसा बेकार पड़ा है। नीचे के दो सुझाव मानिए, स्कोर 80 पार हो जाएगा।`,
+      text: `आपका फाइनेंशियल हेल्थ स्कोर ${hs.total}/100 है — ${hs.grade}। यह जुड़े डेटा पर आधारित संकेतक है, गारंटी नहीं; नीचे हर हिस्से का हिसाब देख सकते हैं।`,
       chips: ['सरप्लस निवेश करो', 'टैक्स बचाओ'],
     };
   },
   risky: () => ({
-    text: `घबराना बिल्कुल स्वाभाविक है, ${firstName} जी। पर याद रखिए — आपके लक्ष्य 2 से 26 साल दूर हैं, और भारतीय बाज़ार में हर 5+ साल की अवधि ने धैर्यवान SIP निवेशकों को इनाम दिया है। गिरावट में आपकी SIP सस्ते में ज़्यादा यूनिट खरीदती है। आपका इमरजेंसी फंड सुरक्षित है, इसलिए कभी घबराकर बेचना नहीं पड़ेगा।`,
+    text: `घबराना स्वाभाविक है, ${firstName} जी। मार्केट-लिंक्ड निवेश कई वर्षों तक भी गिर सकते हैं। लंबी अवधि, विविधीकरण और पर्याप्त इमरजेंसी फंड जोखिम घटा सकते हैं, खत्म नहीं।`,
     chips: ['मेरा पोर्टफोलियो दिखाओ', 'सरप्लस निवेश करो'],
   }),
 };
@@ -175,8 +178,9 @@ const HI_TEXT = {
 export function respond(text, riskProfile = 'Balanced', lang = 'en') {
   const base = respondCore(text, riskProfile);
   if (!base || lang !== 'hi') return base;
+  if (base.widget?.type?.endsWith('-unavailable')) return base;
   const intent = detectIntent(text);
-  const hi = HI_TEXT[intent]?.();
+  const hi = HI_TEXT[intent]?.(riskProfile);
   return hi ? { ...base, text: hi.text, chips: hi.chips } : base;
 }
 
@@ -184,6 +188,15 @@ function respondCore(text, riskProfile = 'Balanced') {
   const intent = detectIntent(text);
   const cf = cashflow();
   const hs = healthScore();
+  const trendIntents = new Set(['greeting', 'spending', 'surplus', 'health', 'persona', 'collision', 'emergency']);
+  if (trendIntents.has(intent) && dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend) {
+    return {
+      mood: 'thinking',
+      text: `I have only ${dataQuality.transactionMonths} complete transaction month${dataQuality.transactionMonths === 1 ? '' : 's'}. Policy ${POLICY.version} requires ${POLICY.confidence.minimumMonthsForTrend} before personalized trend advice, so I will not extrapolate yet.`,
+      widget: { type: 'data-quality-unavailable', data: { observedMonths: dataQuality.transactionMonths, requiredMonths: POLICY.confidence.minimumMonthsForTrend } },
+      chips: ['Show my portfolio', 'Talk to a human advisor'],
+    };
+  }
 
   switch (intent) {
     case 'greeting':
@@ -196,12 +209,14 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'portfolio': {
       const alloc = allocation();
+      const lowGrowthPct = alloc
+        .filter((item) => ['Savings Account', 'Fixed Deposit'].includes(item.type))
+        .reduce((sum, item) => sum + item.pct, 0);
       return {
         mood: 'proud',
-        text: `Your total wealth with us is ${fmtCompact(totalWealth())}. Here's the split — notice that ${(
-          alloc.find((a) => a.type === 'Savings Account').pct +
-          alloc.find((a) => a.type === 'Fixed Deposit').pct
-        ).toFixed(0)}% sits in low-growth savings & FDs while only ${equityExposure().toFixed(0)}% is in growth assets. For a ${customer.age}-year-old with a ${riskProfile} profile, I'd nudge more toward equity.`,
+        text: totalWealth() > 0
+          ? `Your connected wealth is ${fmtCompact(totalWealth())}. ${lowGrowthPct.toFixed(0)}% sits in savings and FDs while ${equityExposure().toFixed(0)}% is in growth assets. I would compare this mix with your ${riskProfile} target before proposing a change.`
+          : 'I do not have a connected holding balance yet, so I will not infer an allocation. Connect holdings or upload a supported CSV to run the review.',
         widget: { type: 'allocation', data: { alloc, holdings, total: totalWealth() } },
         chips: ['What should my ideal portfolio be?', 'Invest my surplus', 'Show my goals'],
       };
@@ -212,11 +227,11 @@ function respondCore(text, riskProfile = 'Balanced') {
       const a = anomalies[0];
       return {
         mood: 'thinking',
-        text: `You spent ${fmt(cf.last.spend)} in June against income of ${fmt(cf.last.income)}. ${
+        text: `You spent ${fmt(cf.last.spend)} in ${cf.last.month} against income of ${fmt(cf.last.income)}. ${
           a
             ? `Biggest jump: ${a.category} at ${fmt(a.amount)} — that's ${a.deltaPct.toFixed(0)}% above your 3-month average. `
             : ''
-        }Trimming just the excess (${fmt(a ? a.amount - a.avg3m : 0)}) redirected to your ${flavourGoalName()} SIP gets you there ~2 months sooner.`,
+        }The observed excess is ${fmt(a ? a.amount - a.avg3m : 0)}; you can model redirecting it to ${flavourGoalName()} without assuming a fixed timeline benefit.`,
         widget: { type: 'spending', data: { categories: spendByCategory, months: monthlySummary } },
         chips: ['Show unused subscriptions', 'Invest my surplus', 'Show my goals'],
       };
@@ -224,25 +239,33 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'surplus': {
       const monthly = Math.floor(cf.surplus / 500) * 500;
-      const fv10 = sipFutureValue(monthly, 11, 10);
-      const fvIdle = sipFutureValue(monthly, 3, 10);
+      const fvIdle = sipFutureValue(monthly, POLICY.returns.savings, 10);
       const p = modelPortfolios[riskProfile];
+      const scenario = returnScenario(riskProfile);
       return {
         mood: 'excited',
-        text: `Based on 6 months of your cashflow, you can comfortably invest ${fmt(monthly)}/month more without touching your lifestyle. In a ${riskProfile.toLowerCase()} portfolio (~${p.expectedReturn}% p.a.), that becomes ${fmtCompact(
+        text: `Based on ${monthlySummary.length} observed months, the modelled surplus is ${fmt(monthly)}/month. In the ${riskProfile.toLowerCase()} base scenario (${p.expectedReturn}% p.a.), it could become ${fmtCompact(
           sipFutureValue(monthly, p.expectedReturn, 10)
-        )} in 10 years — versus ${fmtCompact(fvIdle)} if it stays in savings. Shall I set up the SIP mandate?`,
+        )} in 10 years, versus ${fmtCompact(fvIdle)} in the savings scenario. Market returns are not guaranteed.`,
         widget: {
           type: 'sip',
-          data: { monthly, rate: p.expectedReturn, years: 10, fv: sipFutureValue(monthly, p.expectedReturn, 10), fvIdle },
+          data: {
+            monthly, rate: p.expectedReturn, years: 10,
+            fv: sipFutureValue(monthly, p.expectedReturn, 10), fvIdle,
+            band: {
+              bear: sipFutureValue(monthly, scenario.bear, 10),
+              base: sipFutureValue(monthly, scenario.base, 10),
+              bull: sipFutureValue(monthly, scenario.bull, 10),
+            },
+          },
         },
         why: [
-          `6-month average: income ${fmt(cf.avgIncome)} − spends ${fmt(cf.avgSpend)} − existing SIP ${fmt(cf.avgInvested)} = ${fmt(cf.surplus)} surplus`,
+          `${monthlySummary.length}-month average: income ${fmt(cf.avgIncome)} − spends ${fmt(cf.avgSpend)} − existing SIP ${fmt(cf.avgInvested)} = ${fmt(cf.surplus)} surplus`,
           `Rounded down to ${fmt(monthly)} to keep a buffer for irregular months`,
           `${p.expectedReturn}% assumption comes from your ${riskProfile} model portfolio, not a promise`,
         ],
-        chips: ['Yes, set up this SIP', 'Show ideal portfolio split', 'Make it ₹15,000 instead'],
-        cta: { label: `Start SIP of ${fmt(monthly)}/mo`, type: 'sip-setup', amount: monthly, source: 'surplus' },
+        chips: ['Simulate this SIP', 'Show ideal portfolio split', 'Make it ₹15,000 instead'],
+        cta: { label: `Review simulated SIP · ${fmt(monthly)}/mo`, type: 'sip-setup', amount: monthly, source: 'surplus' },
       };
     }
 
@@ -251,7 +274,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       const behind = plans.filter((g) => g.progress < 40 && g.horizonYears <= 3);
       return {
         mood: 'thinking',
-        text: `Here's where your 4 goals stand. ${
+        text: `Here's where your ${plans.length} goals stand. ${
           behind.length
             ? `Your ${behind[0].name} needs attention — you'd need ${fmt(behind[0].monthly)}/month to stay on track.`
             : 'You are broadly on track!'
@@ -263,19 +286,29 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'tax': {
       const tg = taxGap();
+      if (!tg.available || !tg.regimeConfirmed || !tg.eligibleRegime) {
+        return {
+          mood: 'thinking',
+          text: tg.regimeConfirmed && !tg.eligibleRegime
+            ? `Section 80C is not applied under the confirmed ${tg.regime} regime in policy ${POLICY.version}, so I will not recommend an 80C tax-saving SIP.`
+            : 'Your tax regime and verified 80C usage are not connected, so I will not estimate a tax-saving SIP yet. Confirm those two facts first and I can calculate the eligible gap.',
+          widget: { type: 'tax-unavailable', data: { reason: tg.regimeConfirmed ? 'Confirmed regime is not 80C-eligible' : 'Tax regime or verified utilisation is missing', policyVersion: POLICY.version } },
+          chips: ['Show my portfolio', 'Talk to a human advisor'],
+        };
+      }
       return {
         mood: 'thinking',
-        text: `You've used ${fmt(tg.section80CUsed)} of your ₹1.5L Section 80C limit — ${fmt(tg.gap)} still unused. An ELSS SIP of ${fmt(
+        text: `Based on your confirmed ${tg.regime} regime data, you have used ${fmt(tg.section80CUsed)} of the ${fmt(tg.section80CLimit)} Section 80C limit. A modelled ELSS SIP of ${fmt(
           Math.ceil(tg.monthlyToFill / 100) * 100
-        )}/month for the rest of the FY fills the gap, could save ~${fmt(tg.estSaving)} in tax, AND builds equity wealth. Double win. Want me to set it up?`,
+        )}/month for the rest of the FY fills the eligible gap and could save about ${fmt(tg.estSaving)} at the confirmed marginal rate. Confirm eligibility before investing; equity returns are not guaranteed.`,
         widget: { type: 'tax', data: tg },
         why: [
           `80C tracked from your ELSS SIP + EPF deductions visible in salary credits: ${fmt(tg.section80CUsed)} used`,
-          `Gap ${fmt(tg.gap)} ÷ 9 months left in FY = ${fmt(tg.monthlyToFill)}/month`,
-          `Tax saving estimated at 31.2% marginal rate (old regime); I'll compare regimes before you commit`,
+          `Gap ${fmt(tg.gap)} ÷ ${tg.monthsLeft} months left in FY = ${fmt(tg.monthlyToFill)}/month`,
+          `Tax saving estimated at ${(tg.marginalRate * 100).toFixed(1)}% confirmed marginal rate`,
         ],
-        chips: ['Yes, start the ELSS SIP', 'Old vs new regime?', 'Show my portfolio'],
-        cta: { label: 'Start tax-saver SIP', type: 'sip-setup', amount: Math.ceil(tg.monthlyToFill / 100) * 100, source: 'tax' },
+        chips: ['Simulate the ELSS SIP', 'Old vs new regime?', 'Show my portfolio'],
+        cta: { label: 'Review simulated tax-saver SIP', type: 'sip-setup', amount: Math.ceil(tg.monthlyToFill / 100) * 100, source: 'tax' },
       };
     }
 
@@ -285,7 +318,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       if (!unused.length) {
         return {
           mood: 'proud',
-          text: `Already handled — you cancelled every unused subscription I flagged. That's staying redirected into your goals instead of leaking away quietly.`,
+          text: 'The current planning scenario already removes every unused subscription that was flagged. Check the service providers before cancelling anything.',
           chips: ['Invest my surplus', 'Show my goals'],
         };
       }
@@ -293,17 +326,17 @@ function respondCore(text, riskProfile = 'Balanced') {
         mood: 'thinking',
         text: `I found ${unused.length} subscriptions you haven't used in months, costing ${fmt(waste)}/month (${fmt(
           waste * 12
-        )}/year). Cancelled and redirected into your ${flavourGoalName()} SIP, that alone adds ${fmtCompact(sipFutureValue(waste, 11, 2))} in 2 years.`,
+        )}/year). If cancelled and redirected into your ${flavourGoalName()} SIP, the ${returnScenario(riskProfile).base}% base scenario models ${fmtCompact(sipFutureValue(waste, returnScenario(riskProfile).base, 2))} in 2 years.`,
         widget: { type: 'subs', data: { unused, waste } },
         chips: ['Invest my surplus', 'Analyse my spending'],
-        cta: { label: `Cancel ${unused.length} unused subscriptions`, type: 'subs-cancel', amount: waste },
+        cta: { label: `Simulate cancelling ${unused.length} subscriptions`, type: 'subs-cancel', amount: waste },
       };
     }
 
     case 'emergency': {
-      const need = 400000;
-      const gap = need - customer.savingsBalance;
-      if (hs.emergencyMonths >= 6) {
+      const need = emergencyFundTarget();
+      const gap = Math.max(need - customer.savingsBalance, 0);
+      if (hs.emergencyMonths >= POLICY.emergency.targetMonths) {
         return {
           mood: 'proud',
           text: `Your safety net is fully funded — ${hs.emergencyMonths.toFixed(1)} months of expenses covered. Nothing to fix here; that surplus can now go straight to your goals.`,
@@ -312,41 +345,45 @@ function respondCore(text, riskProfile = 'Balanced') {
       }
       return {
         mood: 'thinking',
-        text: `Your safety net covers ${hs.emergencyMonths.toFixed(1)} months of expenses — the target is 6 months (${fmtCompact(
+        text: `Your safety net covers ${hs.emergencyMonths.toFixed(1)} months of expenses — policy ${POLICY.version} targets ${POLICY.emergency.targetMonths} months (${fmtCompact(
           need
-        )}). You're ${fmt(gap)} short. I suggest a sweep-in FD: your money earns FD rates (~7%) but stays withdrawable instantly. Move ${fmt(
+        )}). The gap is ${fmt(gap)}. A sweep-in FD scenario uses ${POLICY.returns.fixedDeposit}% p.a.; actual rates, liquidity, and penalties depend on the product. Simulate ${fmt(
           Math.min(gap, 100000)
-        )} now and auto-top-up ${fmt(10000)}/month?`,
-        chips: ['Yes, set up sweep-in FD', "What's a sweep-in FD?", 'Show my health score'],
-        cta: { label: `Move ${fmt(Math.min(gap, 100000))} to sweep-in FD`, type: 'emergency-fix', amount: Math.min(gap, 100000) },
+        )} now?`,
+        chips: ['Simulate sweep-in FD', "What's a sweep-in FD?", 'Show my health score'],
+        cta: { label: `Simulate ${fmt(Math.min(gap, 100000))} sweep-in`, type: 'emergency-fix', amount: Math.min(gap, 100000) },
       };
     }
 
-    case 'health':
+    case 'health': {
+      const rankedParts = [...hs.parts].sort((a, b) => (b.score / b.max) - (a.score / a.max));
       return {
         mood: hs.total >= 55 ? 'proud' : 'thinking',
-        text: `Your Financial Health Score is ${hs.total}/100 — ${hs.grade}. Strongest area: savings discipline. Weakest: too much idle cash and FD-heavy allocation for your age. Fix the two nudges below and you'd cross 80.`,
+        text: `Your Financial Health Score is ${hs.total}/100 — ${hs.grade}. The strongest calculated area is ${rankedParts[0]?.label || 'not available'}; the weakest is ${rankedParts.at(-1)?.label || 'not available'}. This is an explainable planning indicator, not a credit score or outcome guarantee.`,
         widget: { type: 'health', data: hs },
         chips: ['Invest my surplus', 'Fix my emergency fund', 'Help me save tax'],
       };
+    }
 
     case 'fdvsmf': {
       const amt = 10000;
+      const fdRate = POLICY.returns.fixedDeposit;
+      const equityRate = returnScenario(riskProfile).base;
       return {
         mood: 'thinking',
-        text: `Honest answer: both have a place. FDs (~7%) are for money you need in 1–3 years — guaranteed, sleep-easy. Equity funds (~11–13% long-term) are for 5+ year goals but swing along the way. ${fmt(
+        text: `Both have a place. This policy models an FD at ${fdRate}% and a ${riskProfile.toLowerCase()} market-linked portfolio at ${equityRate}%. ${fmt(
           amt
-        )}/month for 10 years: FD grows to ${fmtCompact(sipFutureValue(amt, 7, 10))}, an index fund historically to ${fmtCompact(
-          sipFutureValue(amt, 12, 10)
-        )}. Your mix should follow your goals, not either-or.`,
+        )}/month for 10 years models ${fmtCompact(sipFutureValue(amt, fdRate, 10))} in the FD scenario and ${fmtCompact(
+          sipFutureValue(amt, equityRate, 10)
+        )} in the market scenario. Actual FD terms vary and market returns are not guaranteed.`,
         widget: {
           type: 'compare',
           data: {
             rows: [
               { label: 'Safety', fd: 'Capital guaranteed', mf: 'Market-linked' },
               { label: 'Best for', fd: '1–3 yr goals', mf: '5+ yr goals' },
-              { label: '₹10K/mo → 10 yrs', fd: fmtCompact(sipFutureValue(amt, 7, 10)), mf: fmtCompact(sipFutureValue(amt, 12, 10)) },
-              { label: 'Tax', fd: 'Interest taxed at slab', mf: 'LTCG 12.5% above ₹1.25L' },
+              { label: '₹10K/mo → 10 yrs', fd: fmtCompact(sipFutureValue(amt, fdRate, 10)), mf: fmtCompact(sipFutureValue(amt, equityRate, 10)) },
+              { label: 'Tax', fd: 'Interest generally taxed at slab', mf: `LTCG ${(POLICY.tax.ltcgEquityRate * 100).toFixed(1)}% above ${fmt(POLICY.tax.ltcgEquityExemption)}` },
             ],
           },
         },
@@ -357,7 +394,7 @@ function respondCore(text, riskProfile = 'Balanced') {
     case 'risky':
       return {
         mood: 'happy',
-        text: `Totally fair to feel that way, ${firstName}. Here's the perspective: you're ${customer.age} — your goals are 2 to 26 years away. Historically, every 5+ year period in Indian equities has rewarded patient SIP investors, and market dips actually buy you more units. Your plan also keeps ${hs.emergencyMonths.toFixed(0)} months of expenses in safe assets, so you never sell in panic. I'll rebalance you automatically if markets get frothy. Deal?`,
+        text: `Totally fair to feel that way, ${firstName}. Market-linked investments can lose value, including over multi-year periods. A longer horizon, diversified allocation, and ${hs.emergencyMonths.toFixed(0)} months of emergency cover can reduce the chance that you must sell during a fall; they do not remove risk.`,
         chips: ['Show ideal portfolio split', 'How is my money protected?', 'Invest my surplus'],
       };
 
@@ -375,15 +412,16 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'sipcalc': {
       const { amount, years } = parseSipQuery(text);
-      const fv = sipFutureValue(amount, 11, years);
+      const scenarioRate = returnScenario(riskProfile).base;
+      const fv = sipFutureValue(amount, scenarioRate, years);
       const invested = amount * years * 12;
       return {
         mood: 'excited',
-        text: `${fmt(amount)}/month for ${years} years at ~11% p.a. grows to ${fmtCompact(fv)}. You'd invest ${fmtCompact(invested)} and earn ${fmtCompact(
+        text: `${fmt(amount)}/month for ${years} years at the ${scenarioRate}% policy base scenario models ${fmtCompact(fv)}. You would contribute ${fmtCompact(invested)}, with ${fmtCompact(
           fv - invested
-        )} in returns — compounding doing the heavy lifting.`,
-        widget: { type: 'sip', data: { monthly: amount, rate: 11, years, fv, fvIdle: sipFutureValue(amount, 3, years) } },
-        chips: ['Start this SIP', 'Try ₹20,000 for 15 years'],
+        )} from modelled growth. Market returns are not guaranteed.`,
+        widget: { type: 'sip', data: { monthly: amount, rate: scenarioRate, years, fv, fvIdle: sipFutureValue(amount, POLICY.returns.savings, years) } },
+        chips: ['Simulate this SIP', 'Try ₹20,000 for 15 years'],
       };
     }
 
@@ -403,15 +441,15 @@ function respondCore(text, riskProfile = 'Balanced') {
       const g = dr.biggestGap;
       return {
         mood: 'thinking',
-        text: `Against your ${riskProfile} target, the biggest drift is ${g.name}: ${Math.abs(g.gap).toFixed(0)}% ${g.gap > 0 ? 'below' : 'above'} where it should be. Rather than selling anything (and triggering tax), I'll redirect your new SIPs toward ${g.gap > 0 ? g.name.toLowerCase() : 'the underweight assets'} until you're back on target. Approve the glide path?`,
+        text: `Against your ${riskProfile} target, the biggest drift is ${g.name}: ${Math.abs(g.gap).toFixed(0)}% ${g.gap > 0 ? 'below' : 'above'} target. The simulation directs new SIPs toward ${g.gap > 0 ? g.name.toLowerCase() : 'underweight assets'}; it does not place orders.`,
         widget: { type: 'drift', data: dr },
         why: [
           `Current mix computed from live holdings: ${dr.current.map((c) => `${c.name} ${c.pct.toFixed(0)}%`).join(', ')}`,
           `Target mix for ${riskProfile} profile: ${dr.target.map((c) => `${c.name} ${c.pct}%`).join(', ')}`,
           'SIP-based rebalancing avoids capital-gains tax and exit loads vs. sell-and-buy',
         ],
-        chips: ['Yes, set the glide path', 'Show ideal portfolio split', 'Show my portfolio'],
-        cta: { label: 'Approve SIP glide path', type: 'sip-setup', amount: 10000, source: 'rebalance' },
+        chips: ['Simulate the glide path', 'Show ideal portfolio split', 'Show my portfolio'],
+        cta: { label: 'Simulate SIP glide path', type: 'sip-setup', amount: 10000, source: 'rebalance' },
       };
     }
 
@@ -419,18 +457,21 @@ function respondCore(text, riskProfile = 'Balanced') {
       const ru = roundup();
       return {
         mood: 'excited',
-        text: `Fun one! You make ~${ru.upiTxnsPerMonth} UPI payments a month. If I round each up to the nearest ₹50 and sweep the change into a liquid fund, that's ${fmt(ru.monthly)}/month invested without you ever feeling it — ${fmtCompact(ru.in5y)} in 5 years, ${fmtCompact(ru.in10y)} in 10. Investing that literally happens while you pay for chai. Switch it on?`,
+        text: `You make about ${ru.upiTxnsPerMonth} UPI payments a month. A round-up simulation estimates ${fmt(ru.monthly)}/month, modelling ${fmtCompact(ru.in5y)} in 5 years and ${fmtCompact(ru.in10y)} in 10 years at the policy base return. Market returns are not guaranteed.`,
         why: [
           `${ru.upiTxnsPerMonth} UPI debits/month detected in your account (6-month average)`,
           `Average round-up to nearest ₹50: ${fmt(ru.avgRoundup)} per transaction`,
-          `Projection at 11% p.a. equity index returns, compounded monthly`,
+          `Projection at ${returnScenario('Balanced').base}% p.a. policy base return, compounded monthly`,
         ],
-        chips: ['Turn on Round-Up investing', 'Invest my surplus', 'Show my goals'],
-        cta: { label: `Enable Round-Up (${fmt(ru.monthly)}/mo)`, type: 'roundup', amount: ru.monthly },
+        chips: ['Simulate Round-Up investing', 'Invest my surplus', 'Show my goals'],
+        cta: { label: `Simulate Round-Up (${fmt(ru.monthly)}/mo)`, type: 'roundup', amount: ru.monthly },
       };
     }
 
     case 'benchmark': {
+      if (peers.percentile == null || !peers.metrics?.length) {
+        return { mood: 'thinking', text: 'I do not have an approved anonymised peer cohort for this profile, so I will not invent a percentile.', chips: ['Show my portfolio', "How's my financial health?"] };
+      }
       return {
         mood: 'proud',
         text: `You're doing better than ${peers.percentile}% of people like you (${peers.cohort}). Your savings rate and SIP discipline are well above the median — the one place the cohort beats you is tax-limit utilisation. Fix that 80C gap and you'd be in the top 10%.`,
@@ -442,12 +483,12 @@ function respondCore(text, riskProfile = 'Balanced') {
     case 'fraud':
       return {
         mood: 'thinking',
-        text: `I'm glad you asked me before acting — that instinct just protected your wealth. Any "guaranteed" return above ~8% is a red flag: SEBI-regulated products cannot guarantee market returns. Run every offer through my 30-second check below. And remember — if it can't wait 24 hours, it's not an investment, it's a trap.`,
+        text: `A claimed guaranteed return above ${POLICY.offerChecks.highReturnClaimPct}% triggers this policy's high-risk flag; market-linked products should not promise assured returns. Verify the entity and product independently before paying or sharing credentials.`,
         widget: {
           type: 'shield',
           data: {
             checks: [
-              { flag: '"Guaranteed" 15–30% returns', why: 'Legitimate products can\'t guarantee above FD rates (~7%)' },
+              { flag: `"Guaranteed" returns above ${POLICY.offerChecks.highReturnClaimPct}%`, why: `Above policy threshold; FD base assumption is ${POLICY.returns.fixedDeposit}%` },
               { flag: 'Urgency — "offer closes tonight"', why: 'Real investments never expire in hours' },
               { flag: 'WhatsApp / Telegram tips', why: 'SEBI-registered advisors don\'t cold-message' },
               { flag: 'Pay to a personal UPI / account', why: 'Regulated firms collect only in their own name' },
@@ -464,55 +505,79 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'insurance': {
       const pg = protectionGap();
+      if (!pg.available) {
+        return {
+          mood: 'thinking',
+          text: 'Insurance policy data is not connected, so I cannot calculate a protection gap reliably. Add policy details or ask an IDBI advisor to review them with you.',
+          widget: { type: 'protection-unavailable', data: { reason: 'Insurance cover and portability are missing' } },
+          chips: ['Talk to a human advisor', 'Show my health score'],
+        };
+      }
       return {
         mood: 'thinking',
-        text: `Honest check, ${firstName}: growth is on track, but protection isn't. Your ${fmtCompact(pg.termCover)} life cover is employer-provided — it vanishes the day you switch jobs — and ${pg.dependents} people depend on your income. You need ${fmtCompact(pg.termNeeded)} (15× income). Health cover has a ${fmtCompact(pg.healthGap)} gap too. Total fix: about ${fmt(pg.totalMonthly)}/month — less than your unused subscriptions.`,
+        text: `The connected policy data shows ${fmtCompact(pg.termCover)} life cover${pg.portable === false ? ', marked non-portable,' : ''} and ${pg.dependents} dependants. Policy ${POLICY.version} uses ${POLICY.insurance.termIncomeMultiple}× annual income, giving a ${fmtCompact(pg.termNeeded)} term target; the health-cover gap is ${fmtCompact(pg.healthGap)}. The indicative additional premium is ${fmt(pg.totalMonthly)}/month, subject to underwriting and insurer quotes.`,
         widget: { type: 'protection', data: pg },
         why: [
-          `Term need = 15 × annual income (${fmt(customer.monthlyIncome * 12)}) = ${fmtCompact(pg.termNeeded)}`,
-          `Employer cover excluded from adequacy since it isn't portable`,
+          `Term need = ${POLICY.insurance.termIncomeMultiple} × annual income (${fmt(customer.monthlyIncome * 12)}) = ${fmtCompact(pg.termNeeded)}`,
+          pg.portable === false ? 'Connected cover is marked non-portable' : 'Portability status included from the connected policy record',
           `Premiums indicative for age ${customer.age}, non-smoker; exact quote at issuance`,
         ],
         chips: ['Fix my protection gap', 'Show my health score', 'Talk to a human advisor'],
-        cta: { label: `Fix protection · ${fmt(pg.totalMonthly)}/mo`, type: 'protection-fix', amount: pg.totalMonthly },
+        cta: { label: `Simulate protection plan · ${fmt(pg.totalMonthly)}/mo`, type: 'protection-fix', amount: pg.totalMonthly },
       };
     }
 
     case 'human': {
       const hsNow = healthScore();
+      const taxNow = taxGap();
+      const protectionNow = protectionGap();
+      const openItems = [
+        taxNow.available && taxNow.eligibleRegime && taxNow.gap > 0 ? `80C gap ${fmt(taxNow.gap)}` : null,
+        protectionNow.available && (protectionNow.termGap > 0 || protectionNow.healthGap > 0) ? 'protection gap' : null,
+        totalWealth() > 0 ? 'allocation review' : 'holdings data required',
+      ].filter(Boolean).join(', ');
       return {
         mood: 'happy',
-        text: `Of course — some decisions deserve a human across the table, and IDBI has 2,000+ branches of them. I've booked a callback from an IDBI wealth RM and prepared a briefing so you won't have to repeat yourself. I'll sit in on the call too, if you want the numbers handy.`,
+        text: `Of course. I have prepared a reviewable briefing from the facts used in this conversation. Submit the sandbox request below to demonstrate how an IDBI wealth RM handoff would work; no real callback is booked by this prototype.`,
         widget: {
           type: 'handoff',
           data: {
-            rm: 'Rohit Menon · Wealth RM, Nariman Point',
-            slot: 'Tomorrow, 11:00 AM',
+            rm: 'IDBI Wealth RM queue · sandbox',
+            slot: 'Not submitted',
             brief: [
               `${customer.name}, ${customer.age} · ${riskProfile} profile · Health score ${hsNow.total}/100`,
               `Wealth ${fmtCompact(totalWealth())} · surplus ${fmt(cashflow().surplus)}/mo idle`,
-              `Open items: 80C gap ${fmt(taxGap().gap)}, protection gap, equity under-allocation`,
-              'Interested in: home purchase planning (6-yr horizon)',
+              `Open items: ${openItems || 'general plan review'}`,
+              `Goals: ${goals.map((goal) => `${goal.name} (${goal.horizonYears}y)`).join(', ') || 'none connected'}`,
             ],
           },
         },
         chips: ['Continue with MITRA for now', 'Show my goals'],
+        cta: { label: 'Submit simulated RM handoff', type: 'rm-handoff', amount: 0 },
       };
     }
 
     case 'xray': {
       const xr = xray();
+      if (!xr.available) {
+        return {
+          mood: 'thinking',
+          text: `I cannot run a trustworthy fund X-ray yet: ${xr.reason} Upload fund plan, expense-ratio, and underlying-holdings data first.`,
+          widget: { type: 'xray-unavailable', data: xr },
+          chips: ['Show my portfolio', 'Talk to a human advisor'],
+        };
+      }
       if (xr.switched) {
         return {
           mood: 'proud',
-          text: `Already done — you're on the Direct plan for ${xr.fund}, paying ${xr.er}% instead of the old ${xr.regularEr}%. That commission drag is gone for good: staying Regular would have cost you ${fmtCompact(xr.feeLossAvoided)} over ${xr.years} years, and now it doesn't.`,
+          text: `The active planning scenario models ${xr.fund} as a Direct plan at ${xr.er}% instead of ${xr.regularEr}%. It estimates ${fmtCompact(xr.feeLossAvoided)} less fee drag over ${xr.years} years; no switch order has been placed.`,
           widget: { type: 'xray', data: xr },
           chips: ['Show my portfolio', 'Harvest my capital gains'],
         };
       }
       return {
         mood: 'thinking',
-        text: `I ran an X-ray on your funds and found two things worth your attention. One: your ${xr.fund} is a ${xr.plan} plan charging ${xr.er}% — the identical Direct plan costs ${xr.directEr}%. That invisible ${xr.dragPct.toFixed(1)}% commission compounds to ${fmtCompact(xr.feeLoss)} lost over ${xr.years} years. Two: it overlaps ${xr.overlapPct}% with your ${xr.overlapWith} — you're paying active fees for stocks you already own passively. Want me to switch you to Direct?`,
+        text: `The fund facts show ${xr.fund} as a ${xr.plan} plan charging ${xr.er}%, versus ${xr.directEr}% for its Direct plan. At the ${xr.grossReturn}% gross-return assumption, the fee difference models ${fmtCompact(xr.feeLoss)} over ${xr.years} years. It also reports ${xr.overlapPct}% overlap with ${xr.overlapWith}; review taxes and exit load before any switch.`,
         widget: { type: 'xray', data: xr },
         why: [
           `Expense ratios from AMC fact sheets: Regular ${xr.er}% vs Direct ${xr.directEr}%`,
@@ -520,7 +585,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Overlap computed on top-25 holdings of both funds`,
         ],
         chips: ['Switch me to Direct plans', 'Show my portfolio', 'Harvest my capital gains'],
-        cta: { label: 'Switch to Direct plan', type: 'direct-switch', amount: 0 },
+        cta: { label: 'Simulate Direct-plan switch', type: 'direct-switch', amount: 0 },
       };
     }
 
@@ -529,43 +594,47 @@ function respondCore(text, riskProfile = 'Balanced') {
       if (lh.harvested) {
         return {
           mood: 'proud',
-          text: `Already harvested for this FY — you've locked in ${fmt(sumAction('harvest'))} of tax-free gains and reset your cost basis. I'll remind you again next April when the exemption resets.`,
+          text: `The current planning scenario already includes ${fmt(sumAction('harvest'))} of estimated tax saving for this FY. No sale or repurchase order has been placed.`,
           widget: { type: 'harvest', data: lh },
           chips: ['X-ray my portfolio', 'Help me save tax', 'Show my portfolio'],
         };
       }
       return {
         mood: 'excited',
-        text: `Here's a completely legal trick most people never use: long-term equity gains up to ₹1.25 lakh a year are tax-free. You're sitting on ${fmt(lh.gains)} of unrealised gains. Sell and instantly re-buy before March 31st — your cost basis resets, and ${fmt(lh.taxSaved)} of future tax quietly disappears. Do this every year and the habit alone compounds to ${fmtCompact(lh.habitValue)} over 20 years. Ten minutes of work, I'll handle the orders.`,
+        text: `Under policy ${POLICY.version}, eligible long-term equity gains have a ${fmt(lh.exemption)} annual exemption. Connected holdings show ${fmt(lh.gains)} of unrealised gains, so the model estimates up to ${fmt(lh.taxSaved)} of tax impact from harvesting. Eligibility, holding period, exit load, and transaction timing must be confirmed by a tax professional before any orders.`,
         widget: { type: 'harvest', data: lh },
         why: [
           `Unrealised LTCG across your equity funds: ${fmt(lh.gains)} (current value minus purchase cost)`,
           `Section 112A exempts ₹1,25,000 of LTCG per FY; harvesting uses it before it lapses`,
           `Tax saved = harvested gains × 12.5% LTCG rate; exit-load-free units only`,
         ],
-        chips: ['Yes, harvest my gains', 'X-ray my portfolio', 'Help me save tax'],
-        cta: { label: `Harvest ${fmt(lh.harvestable)} tax-free`, type: 'harvest', amount: lh.taxSaved },
+        chips: ['Simulate harvesting', 'X-ray my portfolio', 'Help me save tax'],
+        cta: { label: `Simulate ${fmt(lh.harvestable)} harvest`, type: 'harvest', amount: lh.taxSaved, harvestable: lh.harvestable },
       };
     }
 
     case 'prepay': {
-      const pv = prepayVsInvest(50000);
+      const pv = prepayVsInvest(50000, riskProfile);
+      if (!pv.available) {
+        return { mood: 'thinking', text: 'No verified active-loan data is connected, so I cannot compare prepayment with investing.', chips: ['Show my portfolio', 'Talk to a human advisor'] };
+      }
       if (pv.loan.balance <= 0) {
         return {
           mood: 'proud',
-          text: `Nothing left to prepay — your ${pv.loan.name} is fully closed${pv.prepaidSoFar ? ` (${fmt(pv.prepaidSoFar)} of it prepaid early with your help)` : ''}. That EMI amount is free capacity now; want it redirected into a SIP?`,
+          text: `The current scenario models your ${pv.loan.name} as fully repaid${pv.prepaidSoFar ? ` after ${fmt(pv.prepaidSoFar)} of simulated prepayments` : ''}. No payment has been submitted; the freed EMI can be tested as a SIP scenario.`,
           chips: ['Invest my surplus', 'Show my goals'],
         };
       }
       const better = pv.interestSaved > pv.investGain * 0.7; // risk-adjust the equity path
+      const investRate = pv.investRate;
       return {
         mood: 'thinking',
-        text: `The eternal question! Your ${pv.loan.name.toLowerCase()}: ${fmt(pv.loan.balance)} left at ${pv.loan.rate}%. Prepaying ${fmt(pv.prepayAmount)} saves ${fmt(pv.interestSaved)} in interest and finishes it ${pv.monthsSaved} months early — a guaranteed ${pv.loan.rate}% return. Investing the same could make ${fmt(Math.round(pv.investGain))} at 11%, but that's not guaranteed. At ${pv.loan.rate}%, the maths says ${better ? `prepay — a risk-free ${pv.loan.rate}% beats a risky 11%` : 'invest'}. And the peace of being debt-free? That compounds too.`,
+        text: `The connected ${pv.loan.name.toLowerCase()} has ${fmt(pv.loan.balance)} outstanding at ${pv.loan.rate}%. A ${fmt(pv.prepayAmount)} prepayment models ${fmt(pv.interestSaved)} lower interest and ${pv.monthsSaved} fewer months. Investing the same amount models ${fmt(Math.round(pv.investGain))} of growth at the ${investRate}% base scenario, which is not guaranteed. On this risk-adjusted comparison, ${better ? 'prepayment ranks higher' : 'investing ranks higher'}.`,
         widget: {
           type: 'compare',
           data: {
             rows: [
-              { label: 'Certainty', fd: '100% guaranteed', mf: 'Market-linked' },
+              { label: 'Certainty', fd: 'Contractual loan saving', mf: 'Market-linked' },
               { label: `₹50K outcome (${Math.round(pv.loanMonths / 12)} yrs)`, fd: `saves ${fmt(pv.interestSaved)}`, mf: `may earn ${fmt(Math.round(pv.investGain))}` },
               { label: 'Loan ends', fd: `${pv.monthsSaved} months earlier`, mf: 'on schedule' },
               { label: 'MITRA says', fd: 'Prepay this one', mf: 'Invest after loan closes' },
@@ -574,10 +643,10 @@ function respondCore(text, riskProfile = 'Balanced') {
         },
         why: [
           `Amortization on actual loan: ${fmt(pv.loan.balance)} @ ${pv.loan.rate}%, EMI ${fmt(pv.loan.emi)}, ${pv.loan.monthsLeft} months left`,
-          'Prepayment return is guaranteed; equity return is expected, so it is risk-adjusted before comparing',
+          `Loan interest saving is contractual; the ${investRate}% market return is only a policy scenario`,
         ],
-        chips: ['Prepay ₹50,000 now', 'Invest my surplus instead', 'Show my goals'],
-        cta: { label: `Prepay ${fmt(pv.prepayAmount)} · save ${fmt(pv.interestSaved)}`, type: 'prepay', amount: pv.prepayAmount },
+        chips: ['Simulate ₹50,000 prepayment', 'Invest my surplus instead', 'Show my goals'],
+        cta: { label: `Simulate ${fmt(pv.prepayAmount)} prepayment`, type: 'prepay', amount: pv.prepayAmount },
       };
     }
 
@@ -585,7 +654,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       const mp = moneyPersona();
       return {
         mood: 'proud',
-        text: `I've watched six months of your money moves, ${firstName}, and here's your Money Persona: **${mp.title}** — ${mp.tagline}. It's a strong profile; the two things holding you back are idle cash and thin insurance. Want the full card?`,
+        text: `Across ${mp.observedMonths} observed months, your Money Persona is **${mp.title}** — ${mp.tagline}. The card below shows the calculated traits and any missing protection evidence.`,
         widget: { type: 'persona', data: mp },
         chips: ['Am I protected?', 'Invest my surplus', 'Compare me with my peers'],
       };
@@ -602,8 +671,8 @@ function respondCore(text, riskProfile = 'Balanced') {
           `Capacity = investable surplus ${fmt(cashflow().surplus)} + current SIP ${fmt(cashflow().avgInvested)}`,
           'Priority order: safety → committed goals → compounding → lifestyle',
         ],
-        chips: ['Apply this plan', 'Open the Time Machine', 'Show my goals'],
-        cta: { label: `Apply the triage plan · +${fmt(cf.surplus)}/mo`, type: 'sip-setup', amount: Math.max(cf.surplus, 0), source: 'collision' },
+        chips: ['Simulate this plan', 'Open the Time Machine', 'Show my goals'],
+        cta: { label: `Simulate triage plan · +${fmt(cf.surplus)}/mo`, type: 'sip-setup', amount: Math.max(cf.surplus, 0), source: 'collision' },
       };
     }
 
@@ -625,8 +694,8 @@ const OFFER_SIGNALS = [
     id: 'highpct',
     weight: 25,
     re: /(\d{2,3})\s?%/,
-    test: (t, m) => m && parseInt(m[1], 10) > 8,
-    flag: 'Promises returns well above what regulated products can offer (~7–8% FD, ~11–13% long-term equity)',
+    test: (t, m) => m && parseInt(m[1], 10) > POLICY.offerChecks.highReturnClaimPct,
+    flag: `Claims returns above the ${POLICY.offerChecks.highReturnClaimPct}% offer-review threshold`,
   },
   {
     id: 'urgency',
@@ -713,46 +782,4 @@ export function fallbackResponse(hasAI = false) {
       : `I want to give you a precise, data-backed answer for that. Meanwhile, here's what I can dig into right now — or connect an AI key in settings for open-ended questions.`,
     chips: ['Show my portfolio', 'Analyse my spending', 'Invest my surplus', 'Help me save tax'],
   };
-}
-
-// Guard for generated prose. MITRA's copy is now written by a model, and a
-// model asked for "your holdings" will happily add the numbers up itself — in
-// testing it produced ₹3,96,900 for a portfolio the engine computes as
-// ₹6,26,900. So every ₹ figure in a generated reply is checked back against the
-// facts it was given, and a reply quoting a number nobody computed is rejected
-// in favour of the deterministic template. Better plain and right than fluent
-// and wrong, in a bank.
-export function figuresAreGrounded(reply, facts) {
-  const digitsOf = (t) => (t.match(/[\d,]*\d/g) || []).map((d) => d.replace(/,/g, ''));
-  const known = digitsOf(facts).join(' ');
-  // 4+ digits only: short numbers are ages, years, percents and compact forms
-  // like "6.27 L", none of which are the misquote risk this is guarding.
-  const claimed = digitsOf(reply).filter((d) => d.length >= 4);
-  const unknown = claimed.filter((d) => !known.includes(d));
-  return { ok: unknown.length === 0, unknown };
-}
-
-// Grounding context sent to the LLM. Since MITRA's prose is now generated
-// rather than templated, this block is the ONLY place her numbers come from —
-// so it carries every figure the deterministic engine has computed, and the
-// instruction to quote them verbatim. A model that rounds ₹25,125 to "about
-// ₹25,000" in a compliance demo is the failure mode this guards against.
-export function financialContext(riskProfile) {
-  const cf = cashflow();
-  const hs = healthScore();
-  const tg = taxGap();
-  const pg = protectionGap();
-  const sw = subscriptionWaste();
-  return `You are MITRA, IDBI Bank's warm, trustworthy AI wealth advisor avatar. Reply in 2-4 short sentences, always grounded in this customer's real data. Use ₹ and Indian number formats. Never give guaranteed-return promises; add brief risk framing for market products.
-CRITICAL: every figure below is computed from the customer's actual accounts. Quote them EXACTLY as written — never round, re-derive, average or invent a number. If a figure you need is not listed, say you'll pull it up rather than estimating.
-Open with a SHORT first sentence — under 12 words, no figures in it. Her reply is spoken aloud as it is written, and speech can only start once that first sentence is complete, so a long opener makes her sound slow.
-Customer: ${customer.name}, ${customer.age}, ${customer.segment}, ${customer.city}. Risk profile: ${riskProfile}.
-Total wealth: ${fmt(totalWealth())}. Savings balance: ${fmt(customer.savingsBalance)}. Monthly income ${fmt(cf.avgIncome)}, avg spend ${fmt(cf.avgSpend)}, monthly SIP CONTRIBUTION ${fmt(cf.avgInvested)}/mo (this is a per-month payment, not a balance), investable surplus ${fmt(cf.surplus)}/mo. Savings rate ${cf.savingsRate.toFixed(0)}%.
-Financial health score: ${hs.total}/100 (${hs.grade}). Emergency cover: ${hs.emergencyMonths.toFixed(1)}/6 months.
-Holdings, as CURRENT VALUE held (not monthly payments): ${holdings.map((h) => `${h.label} = ${fmt(h.value)} held`).join('; ')}.
-Goals: ${goals.map((g) => `${g.name} target ${fmt(g.target)} in ${g.horizonYears}y, saved ${fmt(g.saved)}`).join('; ')}.
-80C used ${fmt(tg.section80CUsed)} of ${fmt(tg.section80CLimit)}; gap ${fmt(tg.gap)}, est tax saving ${fmt(Math.round(tg.estSaving))}.
-Protection: term cover ${fmt(pg.termCover)} against ${fmt(pg.termNeeded)} needed; health cover ${fmt(pg.healthCover)} against ${fmt(pg.healthNeeded)} needed.
-Unused subscriptions: ${fmt(sw)}/month across ${unusedSubscriptions().length} services.
-Loans: ${loans.length ? loans.map((l) => `${l.name} ${fmt(l.balance)} at ${l.rate}%, EMI ${fmt(l.emi)}/mo`).join('; ') : 'none'}.`;
 }

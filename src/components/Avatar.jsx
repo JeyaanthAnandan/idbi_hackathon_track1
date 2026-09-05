@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 
-// MITRA — friendly advisor avatar. Soft flat-illustration style:
-// warm rounded features, gentle smile, blazer + gold studs.
-// Blinks on a timer, mouth animates while `speaking`, brows follow `mood`.
-export default function Avatar({ speaking = false, mood = 'happy', size = 108 }) {
+// MITRA — an expressive advisor avatar with gaze and pointing gestures.
+// She blinks naturally, lip-syncs while speaking, breathes at rest and uses
+// subtle expression changes without relying on a heavyweight video avatar.
+export default function Avatar({ speaking = false, mood = 'happy', size = 108, gesture = 'idle', gaze = 'center' }) {
   const [blink, setBlink] = useState(false);
   const [frame, setFrame] = useState(0);
+  const rawId = useId();
+  const svgId = rawId.replace(/:/g, '');
 
   useEffect(() => {
     let t;
@@ -23,6 +25,7 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
   }, [speaking]);
 
   const browLift = mood === 'excited' ? -2 : mood === 'thinking' ? 1.5 : 0;
+  const eyeShift = gaze === 'right' ? 1.15 : gaze === 'left' ? -1.15 : 0;
 
   // mouth frames: rest smile → small open → mid open → soft open
   const mouths = [
@@ -34,49 +37,58 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
   const m = speaking ? mouths[frame] : mouths[0];
 
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width={size} height={size} aria-label="MITRA avatar">
-      <defs>
-        <radialGradient id="mitraBg" cx="50%" cy="38%" r="70%">
+    <span
+      className={`mitra-avatar mitra-avatar-${mood} mitra-gesture-${gesture} ${speaking ? 'is-speaking' : ''}`}
+      role="img"
+      aria-label="MITRA, your digital wealth guide"
+      style={{ width: size, height: size }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%" aria-hidden="true" focusable="false">
+        <defs>
+        <radialGradient id={`${svgId}-bg`} cx="50%" cy="38%" r="70%">
           <stop offset="0%" stopColor="#f4f2ec" />
           <stop offset="100%" stopColor="#ddd8cb" />
         </radialGradient>
-        <linearGradient id="mitraSkin" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${svgId}-skin`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#fbd6b0" />
           <stop offset="100%" stopColor="#f3bd92" />
         </linearGradient>
-        <linearGradient id="mitraHair" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${svgId}-hair`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#4a372c" />
           <stop offset="100%" stopColor="#33251d" />
         </linearGradient>
-        <linearGradient id="mitraCoat" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${svgId}-coat`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#2b2a2e" />
           <stop offset="100%" stopColor="#111013" />
         </linearGradient>
-      </defs>
+        <filter id={`${svgId}-soft-shadow`} x="-20%" y="-20%" width="140%" height="150%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.2" floodColor="#2b1810" floodOpacity="0.18" />
+        </filter>
+        </defs>
 
-      {/* backdrop + speaking ring */}
-      <circle cx="60" cy="60" r="57" fill="url(#mitraBg)" />
-      <circle
-        cx="60" cy="60" r="57" fill="none"
-        stroke={speaking ? '#ff8a3c' : 'rgba(255,255,255,0.22)'}
-        strokeWidth={speaking ? 2.5 : 1.2}
-        strokeDasharray={speaking ? '10 7' : '0'}
-      >
-        {speaking && (
-          <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="7s" repeatCount="indefinite" />
-        )}
-      </circle>
+        {/* backdrop + speaking ring */}
+        <circle cx="60" cy="60" r="57" fill={`url(#${svgId}-bg)`} />
+        <circle
+          cx="60" cy="60" r="57" fill="none"
+          stroke={speaking ? '#ff8a3c' : 'rgba(255,255,255,0.22)'}
+          strokeWidth={speaking ? 2.5 : 1.2}
+          strokeDasharray={speaking ? '10 7' : '0'}
+        >
+          {speaking && (
+            <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="7s" repeatCount="indefinite" />
+          )}
+        </circle>
 
-      <g>
+        <g className="mitra-character" filter={`url(#${svgId}-soft-shadow)`}>
         {/* hair bun */}
-        <ellipse cx="60" cy="17" rx="12" ry="9" fill="url(#mitraHair)" />
+        <ellipse cx="60" cy="17" rx="12" ry="9" fill={`url(#${svgId}-hair)`} />
         <path d="M52 14 Q60 9 68 14" stroke="#6b5343" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.7" />
 
         {/* hair behind face (falls to shoulders) */}
-        <path d="M32 52 Q30 22 60 20 Q90 22 88 52 L88 76 Q88 84 82 86 L80 60 L40 60 L38 86 Q32 84 32 76 Z" fill="url(#mitraHair)" />
+        <path d="M32 52 Q30 22 60 20 Q90 22 88 52 L88 76 Q88 84 82 86 L80 60 L40 60 L38 86 Q32 84 32 76 Z" fill={`url(#${svgId}-hair)`} />
 
         {/* shoulders / teal blazer */}
-        <path d="M16 120 Q20 96 42 90 L60 86 L78 90 Q100 96 104 120 Z" fill="url(#mitraCoat)" />
+        <path className="mitra-torso" d="M16 120 Q20 96 42 90 L60 86 L78 90 Q100 96 104 120 Z" fill={`url(#${svgId}-coat)`} />
         {/* blouse v-neck */}
         <path d="M50 91 L60 104 L70 91 L60 87 Z" fill="#f0eee6" />
         {/* lapels */}
@@ -84,6 +96,30 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
         <path d="M70 91 L60 104 L68 110 L76 92 Z" fill="#000000" opacity="0.55" />
         {/* pocket square */}
         <rect x="82" y="106" width="8" height="7" rx="1.5" fill="#ff8a3c" transform="rotate(-6 86 109)" />
+
+        {gesture !== 'idle' && (
+          <g className={`mitra-pointing-arm ${gesture}`} aria-hidden="true">
+            {gesture === 'point-left' ? (
+              <>
+                <path d="M42 96 Q31 90 25 82" stroke={`url(#${svgId}-coat)`} strokeWidth="13" fill="none" strokeLinecap="round" />
+                <path d="M26 82 Q17 78 11 76" stroke={`url(#${svgId}-skin)`} strokeWidth="8" fill="none" strokeLinecap="round" />
+                <path d="M12 76 L2.5 73.8" stroke="#f3bd92" strokeWidth="4.2" fill="none" strokeLinecap="round" />
+              </>
+            ) : gesture === 'point-down' ? (
+              <>
+                <path d="M78 96 Q89 99 93 106" stroke={`url(#${svgId}-coat)`} strokeWidth="13" fill="none" strokeLinecap="round" />
+                <path d="M93 106 Q96 112 96 116" stroke={`url(#${svgId}-skin)`} strokeWidth="8" fill="none" strokeLinecap="round" />
+                <path d="M96 114 L96 119" stroke="#f3bd92" strokeWidth="4.2" fill="none" strokeLinecap="round" />
+              </>
+            ) : (
+              <>
+                <path d="M78 96 Q89 91 95 83" stroke={`url(#${svgId}-coat)`} strokeWidth="13" fill="none" strokeLinecap="round" />
+                <path d="M94 83 Q103 78 109 76" stroke={`url(#${svgId}-skin)`} strokeWidth="8" fill="none" strokeLinecap="round" />
+                <path d="M108 76 L117.5 73.8" stroke="#f3bd92" strokeWidth="4.2" fill="none" strokeLinecap="round" />
+              </>
+            )}
+          </g>
+        )}
 
         {/* neck */}
         <path d="M53 76 L53 90 Q60 95 67 90 L67 76 Z" fill="#eeb287" />
@@ -95,10 +131,11 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
         <circle cx="85.5" cy="61.5" r="1.8" fill="#d9a441" />
 
         {/* face */}
-        <path d="M36 50 Q36 26 60 26 Q84 26 84 50 Q84 66 76 74 Q68 81 60 81 Q52 81 44 74 Q36 66 36 50 Z" fill="url(#mitraSkin)" />
+        <path d="M36 50 Q36 26 60 26 Q84 26 84 50 Q84 66 76 74 Q68 81 60 81 Q52 81 44 74 Q36 66 36 50 Z" fill={`url(#${svgId}-skin)`} />
+        <ellipse cx="51" cy="47" rx="9" ry="15" fill="#fff" opacity="0.08" transform="rotate(12 51 47)" />
 
         {/* front hair — side-swept with middle part */}
-        <path d="M36 52 Q34 24 60 23 Q86 24 84 52 Q84 40 76 34 Q70 41 60 40 Q50 41 44 34 Q36 40 36 52 Z" fill="url(#mitraHair)" />
+        <path d="M36 52 Q34 24 60 23 Q86 24 84 52 Q84 40 76 34 Q70 41 60 40 Q50 41 44 34 Q36 40 36 52 Z" fill={`url(#${svgId}-hair)`} />
         <path d="M46 30 Q54 25 60 26" stroke="#6b5343" strokeWidth="1.4" fill="none" strokeLinecap="round" opacity="0.6" />
 
         {/* bindi */}
@@ -120,12 +157,12 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
             <path d="M43.5 56 Q48.5 51 53.5 56 Q48.5 60 43.5 56 Z" fill="#fff" />
             <path d="M66.5 56 Q71.5 51 76.5 56 Q71.5 60 66.5 56 Z" fill="#fff" />
             {/* warm brown iris + pupil + sparkle */}
-            <circle cx="48.7" cy="55.8" r="2.7" fill="#6d4c33" />
-            <circle cx="71.7" cy="55.8" r="2.7" fill="#6d4c33" />
-            <circle cx="48.7" cy="55.8" r="1.25" fill="#2a1a10" />
-            <circle cx="71.7" cy="55.8" r="1.25" fill="#2a1a10" />
-            <circle cx="49.6" cy="54.8" r="0.85" fill="#fff" />
-            <circle cx="72.6" cy="54.8" r="0.85" fill="#fff" />
+            <circle cx={48.7 + eyeShift} cy="55.8" r="2.7" fill="#6d4c33" />
+            <circle cx={71.7 + eyeShift} cy="55.8" r="2.7" fill="#6d4c33" />
+            <circle cx={48.7 + eyeShift} cy="55.8" r="1.25" fill="#2a1a10" />
+            <circle cx={71.7 + eyeShift} cy="55.8" r="1.25" fill="#2a1a10" />
+            <circle cx={49.6 + eyeShift} cy="54.8" r="0.85" fill="#fff" />
+            <circle cx={72.6 + eyeShift} cy="54.8" r="0.85" fill="#fff" />
             {/* soft upper lash line */}
             <path d="M44 54.6 Q48.5 50.6 53 54.6" stroke="#3f2e22" strokeWidth="1.7" fill="none" strokeLinecap="round" />
             <path d="M67 54.6 Q71.5 50.6 76 54.6" stroke="#3f2e22" strokeWidth="1.7" fill="none" strokeLinecap="round" />
@@ -134,6 +171,7 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
 
         {/* nose — barely there */}
         <path d="M59.2 62 Q58.4 65.5 60.8 66.3" stroke="#dfa578" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        <path d="M57.8 67 Q60 68 62.2 67" stroke="#cc916d" strokeWidth="0.65" fill="none" strokeLinecap="round" opacity="0.55" />
 
         {/* blush */}
         <ellipse cx="43" cy="66" rx="4.6" ry="2.6" fill="#f2a58d" opacity="0.35" />
@@ -151,7 +189,8 @@ export default function Avatar({ speaking = false, mood = 'happy', size = 108 })
             <path d={m.lower} stroke="#d98a80" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.4" />
           </>
         )}
-      </g>
-    </svg>
+        </g>
+      </svg>
+    </span>
   );
 }

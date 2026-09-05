@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 
 // For production (GitHub Pages project site) assets must be served from the
 // repo subpath; dev stays at root. Override with BASE env if hosting elsewhere.
@@ -8,5 +12,16 @@ export default defineConfig(({ command }) => ({
   // (root), or opened as a file. Override with BASE env if a host needs otherwise.
   base: process.env.BASE ?? (command === 'build' ? './' : '/'),
   plugins: [react()],
-  server: { port: 5173 },
+  build: {
+    rollupOptions: {
+      input: {
+        app: resolve(projectRoot, 'index.html'),
+        tasks: resolve(projectRoot, 'pending_tasks.html'),
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: { '/api': 'http://127.0.0.1:8787' },
+  },
 }));

@@ -83,19 +83,48 @@ export function parseHoldingsCSV(text) {
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const EXCLUDED_CREDIT = /refund|reversal|cashback|interest credit|self transfer|own account|fd maturity|redemption/i;
+const LIKELY_INCOME = /salary|payroll|pension|wages|professional fee|business receipt|invoice|client payment/i;
+
+function selectIncomeCredits(transactions) {
+  const allCredits = transactions.filter((t) => t.type === 'credit' && !EXCLUDED_CREDIT.test(t.description || ''));
+  const byMonth = allCredits.reduce((groups, t) => {
+    const d = parseDate(t.date);
+    if (!d) return groups;
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+    return groups;
+  }, new Map());
+  return Array.from(byMonth.values()).flatMap((credits) => {
+    const labelled = credits.filter((t) => LIKELY_INCOME.test(t.description || ''));
+    return labelled.length ? labelled : [credits.reduce((largest, item) => item.amount > largest.amount ? item : largest)];
+  });
+}
+
+export function latestTransactionDate(transactions) {
+  const timestamps = transactions.map((item) => parseDate(item.date)?.getTime()).filter(Number.isFinite);
+  return timestamps.length ? new Date(Math.max(...timestamps)).toISOString().slice(0, 10) : null;
+}
 
 export function buildMonthlySummary(transactions) {
   const byMonth = new Map();
+  const incomeCredits = new Set(selectIncomeCredits(transactions));
   transactions.forEach((t) => {
     const d = parseDate(t.date);
     if (!d) return;
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (!byMonth.has(key)) byMonth.set(key, { income: 0, spend: 0, invested: 0 });
     const bucket = byMonth.get(key);
-    if (t.type === 'credit') bucket.income += t.amount;
+    if (t.type === 'credit') {
+      if (incomeCredits.has(t)) bucket.income += t.amount;
+    }
     else {
-      bucket.spend += t.amount;
-      if (categorize(t.description).category === 'Investments') bucket.invested += t.amount;
+      const category = categorize(t.description).category;
+      // Investments are a use of surplus, not consumption. Counting them in
+      // both spend and invested understates uploaded customers' free cashflow.
+      if (category === 'Investments') bucket.invested += t.amount;
+      else bucket.spend += t.amount;
     }
   });
   return Array.from(byMonth.entries())
@@ -116,16 +145,23 @@ export function buildSpendByCategory(transactions) {
     const rule = categorize(t.description);
     if (rule.category === 'Investments') return;
     const d = parseDate(t.date);
-    if (d) monthsSeen.add(`${d.getFullYear()}-${d.getMonth()}`);
-    if (!byCat.has(rule.category)) byCat.set(rule.category, { total: 0, essential: rule.essential });
-    byCat.get(rule.category).total += t.amount;
+    if (!d) return;
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthsSeen.add(month);
+    if (!byCat.has(rule.category)) byCat.set(rule.category, { months: new Map(), essential: rule.essential });
+    const entry = byCat.get(rule.category);
+    entry.months.set(month, (entry.months.get(month) || 0) + t.amount);
   });
-  const numMonths = Math.max(monthsSeen.size, 1);
+  const orderedMonths = Array.from(monthsSeen).sort();
+  const currentMonth = orderedMonths.at(-1);
+  const baselineMonths = orderedMonths.slice(-4, -1);
   return Array.from(byCat.entries())
     .map(([category, v]) => ({
       category,
-      amount: Math.round(v.total / numMonths),
-      avg3m: Math.round(v.total / numMonths),
+      amount: Math.round(v.months.get(currentMonth) || 0),
+      avg3m: baselineMonths.length
+        ? Math.round(baselineMonths.reduce((sum, month) => sum + (v.months.get(month) || 0), 0) / baselineMonths.length)
+        : Math.round(v.months.get(currentMonth) || 0),
       essential: v.essential,
     }))
     .sort((a, b) => b.amount - a.amount);
@@ -156,10 +192,13 @@ export function detectSubscriptions(transactions) {
 }
 
 export function totalIncome(transactions) {
-  const credits = transactions.filter((t) => t.type === 'credit');
+  // Prefer explicitly income-like credits. For exports without useful
+  // narration, fall back to the largest credit in each month rather than
+  // treating every transfer and refund as salary.
+  const credits = selectIncomeCredits(transactions);
   if (!credits.length) return 0;
   return Math.round(credits.reduce((s, t) => s + t.amount, 0) / new Set(credits.map((t) => {
     const d = parseDate(t.date);
-    return d ? `${d.getFullYear()}-${d.getMonth()}` : Math.random();
+    return d ? `${d.getFullYear()}-${d.getMonth()}` : 'unknown';
   })).size);
 }

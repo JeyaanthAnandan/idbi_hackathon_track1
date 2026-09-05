@@ -90,21 +90,32 @@ function stopAudio() {
 // Long answers arrive batch by batch, so playback starts on the first batch
 // while the rest are still being synthesized. `done()` says no more are
 // coming, which is what lets the player know when the reply has truly ended.
-function createPlayer({ onEnd, myToken }) {
+function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken }) {
   const urls = [];
   let i = 0;
   let playing = false;
   let complete = false;
+  let playbackStarted = false;
+  let playbackFailed = false;
+
+  const finish = () => {
+    urls.forEach(URL.revokeObjectURL);
+    audioEl = null;
+    if (!playbackStarted && urls.length) {
+      if (!playbackFailed) {
+        playbackFailed = true;
+        onPlaybackFailure?.();
+      }
+      return;
+    }
+    onEnd?.();
+  };
 
   const step = () => {
     if (myToken !== token) return; // interrupted by the next utterance
     if (i >= urls.length) {
       playing = false;
-      if (complete) {
-        urls.forEach(URL.revokeObjectURL);
-        audioEl = null;
-        onEnd?.();
-      }
+      if (complete) finish();
       return; // more batches still landing — the next push resumes us
     }
     playing = true;
@@ -112,7 +123,14 @@ function createPlayer({ onEnd, myToken }) {
     audioEl = el;
     el.onended = step;
     el.onerror = step; // a bad clip shouldn't strand the rest of the reply
-    el.play().catch(() => step());
+    el.play()
+      .then(() => {
+        if (!playbackStarted) {
+          playbackStarted = true;
+          onPlaybackStart?.();
+        }
+      })
+      .catch(() => step());
   };
 
   return {
@@ -174,8 +192,20 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
   }
 
   if (hasSarvam()) {
-    const player = createPlayer({ onEnd, myToken });
+    const fallbackToDevice = () => {
+      onFallback?.();
+      speakWebSpeech(text, { onStart, onEnd, lang });
+    };
     let started = false;
+    const player = createPlayer({
+      onEnd,
+      myToken,
+      onPlaybackStart: () => {
+        started = true;
+        onStart?.('sarvam');
+      },
+      onPlaybackFailure: fallbackToDevice,
+    });
 
     synthesize(text, {
       lang,
@@ -184,10 +214,6 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
         if (myToken !== token) {
           urls.forEach(URL.revokeObjectURL);
           return;
-        }
-        if (!started) {
-          started = true;
-          onStart?.('sarvam');
         }
         player.push(urls);
       },
@@ -208,8 +234,8 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
           player.done();
           return;
         }
-        onFallback?.();
-        speakWebSpeech(text, { onStart, onEnd, lang });
+        player.discard();
+        fallbackToDevice();
       });
     return true;
   }

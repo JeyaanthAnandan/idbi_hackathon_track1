@@ -2,6 +2,7 @@
 // levels give customers a reason to come back (engagement = distribution).
 const XP_KEY = 'mitra_xp';
 const AWARDED_KEY = 'mitra_xp_awarded';
+import { getBootstrap, saveServerState } from './api.js';
 
 const LEVELS = [
   { at: 0, title: 'Beginner' },
@@ -11,7 +12,9 @@ const LEVELS = [
   { at: 450, title: 'Wealth Pro' },
 ];
 
-export const getXP = () => parseInt(localStorage.getItem(XP_KEY) || '0', 10);
+export const getXP = () => localStorage.getItem(XP_KEY) !== null
+  ? parseInt(localStorage.getItem(XP_KEY) || '0', 10)
+  : (getBootstrap().xp?.total ?? 0);
 
 export function levelInfo(xp = getXP()) {
   let lvl = 1;
@@ -25,16 +28,18 @@ export function levelInfo(xp = getXP()) {
 export function resetXP() {
   localStorage.removeItem(XP_KEY);
   localStorage.removeItem(AWARDED_KEY);
+  void saveServerState({ kind: 'xp', xp: { total: 0, awarded: [] } }).catch(() => {});
 }
 
 // Awards each `reason` only once, so demo actions don't farm XP.
 export function awardXP(points, reason) {
-  const awarded = JSON.parse(localStorage.getItem(AWARDED_KEY) || '[]');
+  const awarded = JSON.parse(localStorage.getItem(AWARDED_KEY) || JSON.stringify(getBootstrap().xp?.awarded || []));
   if (awarded.includes(reason)) return null;
   awarded.push(reason);
   localStorage.setItem(AWARDED_KEY, JSON.stringify(awarded));
   const total = getXP() + points;
   localStorage.setItem(XP_KEY, String(total));
+  void saveServerState({ kind: 'xp', xp: { total, awarded } }).catch(() => {});
   window.dispatchEvent(new CustomEvent('mitra-xp', { detail: { points, total } }));
   return total;
 }

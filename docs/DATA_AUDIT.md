@@ -1,5 +1,7 @@
 # MITRA — Mock Data Audit
 
+> Historical baseline from commit `b7fbddb`. The current working implementation resolves the listed phantom-data crashes, dated policy constants, persona leakage, local auth/API scaffold, receipt audit trail, runtime advisor schemas, and zero-test gap. Remaining production limitations are still useful context below.
+
 **Scope:** Assess whether the current data layer can carry real customer data, and identify
 exactly what must change before a sandbox deployment.
 **Commit audited:** `b7fbddb` (main)

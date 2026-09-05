@@ -3,24 +3,33 @@ import { createPortal } from 'react-dom';
 import Avatar from './Avatar.jsx';
 import Ring from './Ring.jsx';
 import ChatWidget from './ChatWidgets.jsx';
+import AdvicePassport from './AdvicePassport.jsx';
+import AvatarGuide from './AvatarGuide.jsx';
 import {
-  respond, fallbackResponse, financialContext, analyzeOfferOffline, figuresAreGrounded,
+  respond, fallbackResponse, analyzeOfferOffline,
 } from '../engine/advisor.js';
-import { speak, speakStream, stopSpeaking, listen } from '../engine/speech.js';
+import { speak, stopSpeaking, listen } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
 import { customer } from '../data/customer.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
 import {
-  hasDeepSeek, reasonStream, complete, translate, analyzeOffer, extractGoal,
+  hasDeepSeek, translate, analyzeOffer, extractGoal, selectDeepSeekAdvisorTool,
   chatMessages, LANGUAGES, langLabel,
 } from '../engine/deepseek.js';
 import { sipRequired } from '../engine/analytics.js';
 import { applyAction } from '../engine/portfolioState.js';
 import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
 import {
-  hasSarvam, translateSarvam, translateToEnglish, chatSarvam, chatSarvamStream, toSarvamLang,
+  hasSarvam, translateSarvam, translateToEnglish, selectSarvamAdvisorTool, toSarvamLang,
 } from '../engine/sarvam.js';
+import {
+  ADVISOR_TOOL_DEFINITIONS, executeAdvisorTool, validateAdvisorResponse,
+  validateAdvisorToolCall, validateGoalDraft, validateOfferAnalysis, figuresPreserved,
+} from '../engine/advisorTools.js';
+import { buildAdvicePassport } from '../engine/advicePassport.js';
+import { createAdviceReceipt } from '../engine/api.js';
+import { returnScenario } from '../data/policy.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
 // ids already sitting in restored (persisted) history.
@@ -40,22 +49,24 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const langRef = useRef('en');
   langRef.current = lang;
   const [langMenu, setLangMenu] = useState(false);
-  const [reasoningMode, setReasoningMode] = useState(false);
-  const reasoningRef = useRef(false);
-  reasoningRef.current = reasoningMode;
   const [offerMode, setOfferMode] = useState(false);
   const offerRef = useRef(false);
   offerRef.current = offerMode;
-  // live streaming trace for reasoner mode { reasoning, answer }
-  const [stream, setStream] = useState(null);
   // Sarvam turns the mic into a real Indian-language ear: it transcribes after
   // recording (so there's a short "understanding" beat) and reports which
   // language was actually spoken.
   const [transcribing, setTranscribing] = useState(false);
+  const transcribingRef = useRef(false);
+  const updateTranscribing = (value) => {
+    transcribingRef.current = value;
+    setTranscribing(value);
+  };
   const [micLevel, setMicLevel] = useState(0);
   // true only while a reply had to be spoken by the browser instead of Sarvam,
   // so a degraded voice is visible rather than just sounding broken
   const [voiceDegraded, setVoiceDegraded] = useState(false);
+  const voiceOnRef = useRef(voiceOn);
+  voiceOnRef.current = voiceOn;
   const aiKey = hasDeepSeek();
   const voiceAI = hasSarvam();
   // vernacular needs *either* engine — Sarvam translates, DeepSeek translates
@@ -66,15 +77,22 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   // the call is a full-bleed takeover: it has to escape the scrolling
   // screen so it covers the status bar and the nav pill too
   const [shell, setShell] = useState(null);
+  const [guideFocus, setGuideFocus] = useState(null);
 
   // ── Live call state ──
   const [inCall, setInCall] = useState(false);
   const [callCaption, setCallCaption] = useState('');
+  const [callHeard, setCallHeard] = useState('');
+  const [callError, setCallError] = useState('');
+  const [preparingVoice, setPreparingVoice] = useState(false);
   const [callListening, setCallListening] = useState(false);
   const [callSecs, setCallSecs] = useState(0);
   const [micOk, setMicOk] = useState(true);
   const inCallRef = useRef(false);
+  const callSessionRef = useRef(0);
+  const callListeningRef = useRef(false);
   const recRef = useRef(null);
+  const lastQuestionRef = useRef('');
 
   const showToast = (t) => {
     setToast(t);
@@ -93,49 +111,109 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   // Hands-free loop: after MITRA finishes speaking on a call, she listens again.
   const startCallListen = () => {
-    if (!inCallRef.current) return;
-    const rec = listen({
-      lang: langRef.current,
-      onLevel: setMicLevel,
-      onTranscribing: setTranscribing,
-      onResult: (t, detected) => {
-        setCallListening(false);
-        applyDetectedLang(detected);
-        handleSend(t);
-      },
-      onEnd: () => { setCallListening(false); setMicLevel(0); },
-      onError: (e) => {
-        setCallListening(false);
-        setMicLevel(0);
-        setTranscribing(false);
-        // "no speech" just means the customer stayed quiet — keep the line open
-        if (e === 'no-speech') { startCallListen(); return; }
+    if (!inCallRef.current || callListeningRef.current || transcribingRef.current) return;
+    const callSession = callSessionRef.current;
+    setCallError('');
+    setMicOk(true);
+    try {
+      const rec = listen({
+        lang: langRef.current,
+        onLevel: setMicLevel,
+        onTranscribing: (value) => {
+          if (inCallRef.current && callSession === callSessionRef.current) updateTranscribing(value);
+        },
+        onResult: (t, detected) => {
+          if (!inCallRef.current || callSession !== callSessionRef.current) return;
+          callListeningRef.current = false;
+          recRef.current = null;
+          setCallListening(false);
+          setCallHeard(t);
+          setCallCaption('Checking that against your financial plan…');
+          applyDetectedLang(detected);
+          handleSend(t);
+        },
+        onEnd: () => {
+          if (callSession !== callSessionRef.current) return;
+          callListeningRef.current = false;
+          setCallListening(false);
+          setMicLevel(0);
+        },
+        onError: (e) => {
+          if (!inCallRef.current || callSession !== callSessionRef.current) return;
+          callListeningRef.current = false;
+          recRef.current = null;
+          setCallListening(false);
+          setMicLevel(0);
+          updateTranscribing(false);
+          const message =
+            e === 'no-speech' ? "I didn't hear anything. Tap the microphone and try again."
+            : e === 'NotAllowedError' || e === 'not-allowed' ? 'Microphone access is blocked. Allow it in your browser, then retry.'
+            : typeof e === 'string' && e.startsWith('Sarvam') ? 'Voice transcription is temporarily unavailable. Retry or use a prompt below.'
+            : typeof e === 'string' ? e
+            : 'The microphone is unavailable. Retry or use a prompt below.';
+          console.warn('[MITRA call] listening failed', { error: String(e) });
+          setCallError(message);
+          setMicOk(false);
+        },
+      });
+      if (rec) {
+        recRef.current = rec;
+        callListeningRef.current = true;
+        setCallListening(true);
+      } else {
+        setCallError('Voice input needs Chrome or Edge. You can still use the prompts below.');
         setMicOk(false);
-      },
-    });
-    if (rec) {
-      recRef.current = rec;
-      setCallListening(true);
-    } else {
+      }
+    } catch (error) {
+      console.warn('[MITRA call] could not start microphone', { error: error?.message || String(error) });
+      setCallError('The microphone could not start. Check browser permission and retry.');
       setMicOk(false);
     }
   };
 
   const pushMitra = (resp) => {
-    setMood(resp.mood || 'happy');
-    setMessages((m) => [...m, { id: mid(), from: 'mitra', ...resp }]);
-    const onFallback = () => showToast("Sarvam voice unreachable — using this device's voice");
+    const checked = validateAdvisorResponse(resp);
+    const safeResp = checked.ok ? checked.value : { ...fallbackResponse(true), engineMode: 'POLICY_FALLBACK' };
+    const id = mid();
+    const passport = buildAdvicePassport({
+      question: lastQuestionRef.current,
+      response: safeResp,
+      riskProfile,
+      engineMode: safeResp.engineMode || 'DETERMINISTIC',
+    });
+    const firstGuideTarget = safeResp.widget ? 'result' : passport ? 'evidence' : safeResp.cta ? 'action' : null;
+    setGuideFocus(firstGuideTarget ? { messageId: id, target: firstGuideTarget } : null);
+    setMood(safeResp.mood || 'happy');
+    setMessages((m) => [...m, { id, from: 'mitra', ...safeResp, passport }]);
+    if (passport) {
+      void createAdviceReceipt(passport)
+        .then(({ receipt }) => setMessages((items) => items.map((item) => (item.id === id ? { ...item, passport: receipt } : item))))
+        .catch(() => {});
+    }
+    const onFallback = () => {
+      setPreparingVoice(false);
+      if (inCallRef.current) setCallError("MITRA's neural voice is unavailable, so the device voice is being used.");
+      showToast("Sarvam voice unreachable — using this device's voice");
+    };
     const onStart = (engine) => {
+      setPreparingVoice(false);
       setVoiceDegraded(engine === 'device');
       setSpeaking(true);
     };
     if (inCallRef.current) {
-      setCallCaption(resp.text);
-      speak(resp.text, {
+      setCallCaption(safeResp.text);
+      setPreparingVoice(voiceOnRef.current);
+      if (!voiceOnRef.current) {
+        setPreparingVoice(false);
+        setTimeout(startCallListen, 80);
+        return;
+      }
+      speak(safeResp.text, {
         lang: langRef.current,
         onFallback,
         onStart,
         onEnd: () => {
+          setPreparingVoice(false);
           setSpeaking(false);
           startCallListen();
         },
@@ -143,7 +221,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       return;
     }
     if (voiceOn) {
-      speak(resp.text, {
+      speak(safeResp.text, {
         lang: langRef.current,
         onFallback,
         onStart,
@@ -153,13 +231,18 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   };
 
   const startCall = () => {
+    callSessionRef.current += 1;
     inCallRef.current = true;
     setInCall(true);
     setCallSecs(0);
     setMicOk(true);
-    setCallCaption('');
+    setCallError('');
+    setCallHeard('');
+    setCallCaption('Connecting to MITRA’s neural voice…');
+    setPreparingVoice(true);
     stopSpeaking();
     setTimeout(async () => {
+      if (!inCallRef.current) return;
       const first = customer.name.split(' ')[0];
       // hand-written Hindi stays; every other language is localised live
       const greeting =
@@ -169,17 +252,23 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               mood: 'happy',
               text: `Hi ${first}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
             });
+      if (!inCallRef.current) return;
       pushMitra(greeting);
     }, 700);
   };
 
   const endCall = () => {
+    callSessionRef.current += 1;
     inCallRef.current = false;
     setInCall(false);
+    callListeningRef.current = false;
     setCallListening(false);
+    updateTranscribing(false);
+    setPreparingVoice(false);
     stopSpeaking();
     setSpeaking(false);
     try { recRef.current?.abort?.(); } catch { /* recognition may already be closed */ }
+    recRef.current = null;
   };
 
   useEffect(() => {
@@ -198,7 +287,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       const text = hasSarvam()
         ? await translateSarvam(resp.text, langRef.current)
         : await translate(resp.text, langRef.current);
-      return { ...resp, text };
+      return figuresPreserved(resp.text, text) ? { ...resp, text } : resp;
     } catch {
       return resp;
     }
@@ -209,6 +298,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const handleSend = async (raw) => {
     const text = (raw ?? input).trim();
     if (!text) return;
+    if (inCallRef.current && callListeningRef.current) {
+      callListeningRef.current = false;
+      try { recRef.current?.abort?.(); } catch { /* the recorder may already be closed */ }
+      recRef.current = null;
+      setCallListening(false);
+      setMicLevel(0);
+    }
+    if (inCallRef.current) setCallError('');
+    setGuideFocus(null);
+    lastQuestionRef.current = text;
     setInput('');
     stopSpeaking();
     setSpeaking(false);
@@ -261,61 +360,33 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // added back when the rule engine answered instantly; stacked on top of real
     // translation and synthesis latency it just made MITRA feel slow.
 
-    // ── The engine still computes; the LLM now does the talking ──
-    // respond() gives us the intent's real numbers plus the widget, CTA and
-    // "why" trace — the parts that carry auditable data into the UI. What we no
-    // longer use is its hand-written sentence: that gets generated, grounded in
-    // financialContext(), so MITRA never says the same thing twice.
+    // Deterministic intents own both the numbers and the narration. An LLM is
+    // used only to select a validated tool when keyword routing has no answer.
     const ruled = respond(engineText, riskProfile, canTranslate ? 'en' : langRef.current);
     const history = messages.filter((m) => m.text);
-    const FREE_CHIPS = ['Show my portfolio', 'Invest my surplus', "How's my financial health?"];
-
-    if (voiceAI) {
-      const generated = await runGenerated(history, engineText, ruled);
-      if (generated) return;
-    }
-
-    // Generation unavailable (no key, or Sarvam unreachable) — the templates
-    // are kept precisely for this: MITRA still answers, from the same numbers.
     if (ruled) {
       setTyping(false);
-      pushMitra(await localise(ruled));
+      pushMitra(await localise({ ...ruled, engineMode: 'DETERMINISTIC' }));
       return;
     }
 
-    if (aiKey) {
-      if (reasoningRef.current) {
-        await runReasoner(history, engineText);
-        return;
-      }
+    if (voiceAI || aiKey) {
       try {
-        const { content } = await complete({
-          system: financialContext(riskProfile),
-          messages: chatMessages(history, engineText),
-        });
-        if (content) {
+        const messagesForRouter = chatMessages(history, engineText);
+        const candidate = voiceAI
+          ? await selectSarvamAdvisorTool({ messages: messagesForRouter, tools: ADVISOR_TOOL_DEFINITIONS })
+          : await selectDeepSeekAdvisorTool({ messages: messagesForRouter, tools: ADVISOR_TOOL_DEFINITIONS });
+        const toolCall = validateAdvisorToolCall(candidate);
+        const response = toolCall.ok ? executeAdvisorTool(toolCall.value, riskProfile) : null;
+        const safe = validateAdvisorResponse(response);
+        if (safe.ok) {
           setTyping(false);
-          pushMitra(await localise({ text: content, mood: 'happy', chips: FREE_CHIPS }));
+          pushMitra(await localise({ ...safe.value, toolRouted: true, engineMode: 'STRUCTURED_TOOL' }));
           return;
         }
-      } catch {
-        /* fall through to Sarvam */
-      }
-    }
-
-    if (voiceAI) {
-      try {
-        const content = await chatSarvam({
-          system: financialContext(riskProfile),
-          messages: chatMessages(history, engineText),
-        });
-        if (content) {
-          setTyping(false);
-          pushMitra(await localise({ text: content, mood: 'happy', chips: FREE_CHIPS }));
-          return;
-        }
-      } catch {
-        /* both engines unreachable — fall through to the honest fallback */
+      } catch (error) {
+        console.warn('[MITRA advisor] tool routing failed; using policy fallback', { error: error?.message || String(error) });
+        /* fall through to the honest deterministic fallback */
       }
     }
 
@@ -323,131 +394,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     pushMitra(await localise(fallbackResponse(aiKey || voiceAI)));
   };
 
-  // ── Generated reply: streams text into the bubble AND speech into the ear ──
-  // Two streams run off one LLM response. Tokens land in the message as they
-  // arrive (first token ~1.2s), and each completed sentence is handed straight
-  // to TTS, so MITRA starts speaking while she is still composing. `ruled`
-  // carries the engine's computed widget/CTA/why, which get attached to the
-  // finished message — the generated prose never has to produce a number the
-  // UI depends on.
-  const runGenerated = async (history, engineText, ruled) => {
-    const speaking = voiceOn || inCallRef.current;
-    const vernacular = langRef.current !== 'en';
-    const facts = financialContext(riskProfile);
-    const id = mid();
-    let opened = false;
-
-    // In a vernacular session the reply has to be translated before it can be
-    // shown or spoken, so streaming buys nothing — generate, then localise.
-    const speaker = speaking && !vernacular
-      ? speakStream({
-          lang: langRef.current,
-          onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
-          onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
-          onEnd: () => { setSpeaking(false); if (inCallRef.current) startCallListen(); },
-        })
-      : null;
-
-    try {
-      const answer = await chatSarvamStream({
-        system: facts + (ruled?.meta ? `\nThe customer asked about: ${ruled.meta}.` : ''),
-        messages: chatMessages(history, engineText),
-        onDelta: (_chunk, full) => {
-          if (vernacular) return; // nothing readable to show until it's translated
-          if (!opened) {
-            opened = true;
-            setTyping(false);
-            setMood(ruled?.mood || 'happy');
-            setMessages((m) => [...m, { id, from: 'mitra', text: full, meta: ruled?.meta, streaming: true }]);
-            return;
-          }
-          setMessages((m) => m.map((x) => (x.id === id ? { ...x, text: full } : x)));
-        },
-        onSentence: (sentence) => speaker?.push(sentence),
-      });
-
-      if (!answer) throw new Error('empty');
-
-      // Reject a reply that quotes a figure the engine never computed.
-      const check = figuresAreGrounded(answer, facts);
-      if (!check.ok && ruled) {
-        stopSpeaking();
-        setSpeaking(false);
-        if (opened) setMessages((m) => m.filter((x) => x.id !== id));
-        return false; // caller falls through to the verified template
-      }
-      speaker?.end();
-
-      // attach the engine's computed extras to the finished message
-      const finished = {
-        text: vernacular ? await translateSarvam(answer, langRef.current) : answer,
-        meta: ruled?.meta,
-        widget: ruled?.widget,
-        why: ruled?.why,
-        cta: ruled?.cta,
-        chips: ruled?.chips || ['Show my portfolio', 'Invest my surplus', "How's my financial health?"],
-      };
-      setTyping(false);
-      if (opened) {
-        setMessages((m) => m.map((x) => (x.id === id ? { ...x, ...finished, streaming: false } : x)));
-      } else {
-        setMood(ruled?.mood || 'happy');
-        setMessages((m) => [...m, { id, from: 'mitra', ...finished }]);
-        if (speaking) {
-          speak(finished.text, {
-            lang: langRef.current,
-            onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
-            onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
-            onEnd: () => { setSpeaking(false); if (inCallRef.current) startCallListen(); },
-          });
-        }
-      }
-      if (inCallRef.current) setCallCaption(finished.text);
-      return true;
-    } catch {
-      // roll back the half-written bubble so the fallback isn't appended to it
-      if (opened) setMessages((m) => m.filter((x) => x.id !== id));
-      return false;
-    }
-  };
-
-  // ── Reasoning mode: stream R1's chain-of-thought, then the answer ──
-  const runReasoner = async (history, text) => {
-    setTyping(false);
-    setMood('thinking');
-    setStream({ reasoning: '', answer: '' });
-    try {
-      const { answer, reasoning } = await reasonStream({
-        system: financialContext(riskProfile) + ' Think step by step about the customer\'s numbers before answering.',
-        messages: chatMessages(history, text),
-        onReasoning: (c) => setStream((s) => ({ ...s, reasoning: (s?.reasoning || '') + c })),
-        onAnswer: (c) => setStream((s) => ({ ...s, answer: (s?.answer || '') + c })),
-      });
-      setStream(null);
-      const localised = await localise({ text: answer || 'Let me get back to you on that.', mood: 'happy' });
-      setMessages((m) => [...m, { id: mid(), from: 'mitra', ...localised, reasoning: reasoning, chips: ['Show my portfolio', 'Invest my surplus'] }]);
-      if (voiceOn) {
-        speak(localised.text, {
-          lang: langRef.current,
-          onFallback: () => showToast("Sarvam voice unreachable — using this device's voice"),
-          onStart: (engine) => { setVoiceDegraded(engine === 'device'); setSpeaking(true); },
-          onEnd: () => setSpeaking(false),
-        });
-      }
-      awardXP(25, 'reasoning');
-    } catch {
-      setStream(null);
-      pushMitra(await localise(fallbackResponse()));
-    }
-  };
-
   // ── Offer Analyzer: scam / mis-selling verdict on pasted text ──
-  // Uses DeepSeek when a key is set (richer, free-form reasoning); otherwise
-  // falls back to the deterministic rule-based scorer — works fully offline.
+  // Uses schema-validated DeepSeek classification when configured; otherwise
+  // falls back to the deterministic rule-based scorer.
   const runOfferAnalysis = async (text) => {
     setTyping(true);
     setMood('thinking');
-    const finish = async (a) => {
+    const finish = async (rawAnalysis) => {
+      const a = validateOfferAnalysis(rawAnalysis);
       setTyping(false);
       if (!a) { pushMitra(await localise(fallbackResponse())); return; }
       const verdictLine = { safe: 'This looks legitimate', caution: 'Be careful with this one', avoid: 'Please do not proceed' }[a.verdict] || '';
@@ -476,20 +430,21 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const runGoalCreate = async (text) => {
     setTyping(true);
     try {
-      const g = await extractGoal(text);
+      const g = validateGoalDraft(await extractGoal(text));
       setTyping(false);
       if (!g || !g.ok) {
         pushMitra(await localise({ text: "I couldn't quite catch that goal — tell me what you want and roughly when, like \"a car in 3 years\".", mood: 'thinking', chips: ['Invest my surplus'] }));
         return;
       }
-      const monthly = sipRequired(g.target, 11, g.years || 3, 0);
+      const assumedReturn = returnScenario(riskProfile).base;
+      const monthly = sipRequired(g.target, assumedReturn, g.years || 3, 0);
       awardXP(20, 'nl-goal');
       pushMitra(await localise({
         mood: 'excited',
-        text: `Love it — ${g.name}. To reach ${fmt(g.target)} in ${g.years} year${g.years > 1 ? 's' : ''}, invest about ${fmt(monthly)}/month in an equity SIP (~11% p.a.). ${g.note || ''} Shall I start it?`,
-        widget: { type: 'sip', data: { monthly, rate: 11, years: g.years, fv: g.target, fvIdle: g.target * 0.6 } },
-        chips: [`Start ${fmt(Math.round(monthly / 500) * 500)}/mo SIP`, 'Show my goals'],
-        cta: { label: `Start SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500, source: 'nlgoal' },
+        text: `For the ${g.name} goal, the current ${riskProfile.toLowerCase()} policy scenario estimates about ${fmt(monthly)}/month at ${assumedReturn}% p.a. Returns are not guaranteed.${g.estimated ? ' The target is an estimate—confirm it before acting.' : ''}`,
+        widget: { type: 'sip', data: { monthly, rate: assumedReturn, years: g.years, fv: g.target, fvIdle: g.target * 0.6 } },
+        chips: [`Simulate ${fmt(Math.round(monthly / 500) * 500)}/mo SIP`, 'Show my goals'],
+        cta: { label: `Simulate SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500, source: 'nlgoal' },
       }));
     } catch {
       setTyping(false);
@@ -527,7 +482,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, typing, stream]);
+  }, [messages, typing]);
+
+  useEffect(() => {
+    if (!guideFocus) return undefined;
+    const timer = setTimeout(() => {
+      document.getElementById(`advice-${guideFocus.target}-${guideFocus.messageId}`)?.scrollIntoView({
+        behavior: 'smooth', block: 'center', inline: 'nearest',
+      });
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [guideFocus]);
 
   useEffect(
     () => () => {
@@ -550,7 +515,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     const rec = listen({
       lang: langRef.current,
       onLevel: setMicLevel,
-      onTranscribing: setTranscribing,
+      onTranscribing: updateTranscribing,
       onResult: (transcript, detected) => {
         applyDetectedLang(detected);
         handleSend(transcript);
@@ -559,7 +524,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       onError: (e) => {
         setListening(false);
         setMicLevel(0);
-        setTranscribing(false);
+        updateTranscribing(false);
         const msg =
           e === 'no-speech' ? "I didn't catch that — try again"
           : e === 'NotAllowedError' || e === 'not-allowed' ? 'Mic permission blocked — allow it in your browser'
@@ -577,99 +542,89 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   const handleCta = (cta) => {
     const follow = (resp) => setTimeout(() => pushMitra(resp), 900);
+    const simulated = (message, chips) => follow({
+      mood: 'happy',
+      text: `${message} This is a planning simulation only—no money, mandate, policy, or order was changed.`,
+      chips,
+    });
 
     switch (cta.type) {
       case 'roundup':
         applyAction('roundup', cta.amount);
         awardXP(30, 'roundup');
-        showToast(`Round-Up investing enabled · +30 XP`);
-        follow({
-          mood: 'excited',
-          text: `Round-Up is live. From your next UPI payment, I'll quietly sweep the spare change into a liquid fund — roughly ${fmt(cta.amount)}/month of invisible investing. Small drops, big ocean.`,
-          chips: ['Invest my surplus', 'Show my goals'],
-        });
+        showToast(`Round-Up scenario added · +30 XP`);
+        simulated(`The plan now models roughly ${fmt(cta.amount)}/month from round-ups.`, ['Invest my surplus', 'Show my goals']);
         return;
 
       case 'protection-fix':
         applyAction('protection-fix', cta.amount);
         awardXP(35, 'protection-fix');
-        showToast(`Protection gap fixed · +35 XP`);
-        follow({
-          mood: 'excited',
-          text: `Done — your life and health cover now meet the adequacy rule, for ${fmt(cta.amount)}/month. Your family's downside is covered no matter what happens to your income.`,
-          chips: ['Show my health score', 'Show my portfolio', "Am I on track for my goals?"],
-        });
+        showToast(`Protection scenario updated · +35 XP`);
+        simulated(`The scenario now includes estimated cover at ${fmt(cta.amount)}/month; underwriting and actual premiums still need insurer confirmation.`, ['Show my health score', 'Show my portfolio']);
         return;
 
       case 'direct-switch':
         applyAction('direct-switch', 0);
         awardXP(25, 'xray-switch');
-        showToast(`Switched to Direct plan · +25 XP`);
-        follow({
-          mood: 'excited',
-          text: `Switched. Same fund, same manager, same holdings — just without the distributor's cut. That saved percentage compounds silently for you from today.`,
-          chips: ['Harvest my capital gains', 'Show my portfolio'],
-        });
+        showToast(`Direct-plan scenario updated · +25 XP`);
+        simulated('The projection now models the lower expense ratio of a direct-plan switch. Review exit load and tax impact before placing any order.', ['Harvest my capital gains', 'Show my portfolio']);
         return;
 
       case 'harvest':
         applyAction('harvest', cta.amount);
         awardXP(20, 'harvest');
-        showToast(`${fmt(cta.amount)} tax-free gains locked in · +20 XP`);
-        follow({
-          mood: 'excited',
-          text: `Orders placed — sold and re-bought instantly, cost basis reset, ${fmt(cta.amount)} of tax quietly avoided. I'll remind you to do this again next FY.`,
-          chips: ['X-ray my portfolio', 'Show my portfolio'],
-        });
+        showToast(`Tax-harvest scenario added · +20 XP`);
+        simulated(`The scenario models harvesting up to ${fmt(cta.harvestable || 0)}, with estimated tax impact of ${fmt(cta.amount)}; a tax professional should confirm eligibility and transaction effects.`, ['X-ray my portfolio', 'Show my portfolio']);
         return;
 
       case 'prepay':
         applyAction('prepay', cta.amount);
         awardXP(30, 'prepay');
-        showToast(`Loan prepaid by ${fmt(cta.amount)} · +30 XP`);
-        follow({
-          mood: 'excited',
-          text: `${fmt(cta.amount)} applied to your loan principal — the interest and tenure both just shrank. One step closer to debt-free.`,
-          chips: ['Invest my surplus', 'Show my goals'],
-        });
+        showToast(`Prepayment scenario updated · +30 XP`);
+        simulated(`The comparison now models a ${fmt(cta.amount)} principal prepayment.`, ['Invest my surplus', 'Show my goals']);
         return;
 
       case 'subs-cancel':
         applyAction('subs-cancel', cta.amount);
         awardXP(15, 'subs-cancel');
-        showToast(`Unused subscriptions cancelled · +15 XP`);
-        follow({
-          mood: 'excited',
-          text: `Cancelled. ${fmt(cta.amount)}/month stops leaking out — that's now free capacity for your goals instead.`,
-          chips: ['Invest my surplus', 'Show my goals'],
-        });
+        showToast(`Subscription scenario updated · +15 XP`);
+        simulated(`The cash-flow plan now excludes ${fmt(cta.amount)}/month of selected subscriptions.`, ['Invest my surplus', 'Show my goals']);
         return;
 
       case 'emergency-fix':
         applyAction('emergency-fix', cta.amount);
         awardXP(25, 'emergency-fix');
-        showToast(`Sweep-in FD funded · +25 XP`);
-        follow({
-          mood: 'excited',
-          text: `Moved. Your safety net is now at the full 6-month target, still earning FD rates and withdrawable instantly if you ever need it.`,
-          chips: ["How's my financial health?", 'Invest my surplus'],
-        });
+        showToast(`Emergency-fund scenario updated · +25 XP`);
+        simulated(`The plan now models ${fmt(cta.amount)} moving to the emergency reserve.`, ["How's my financial health?", 'Invest my surplus']);
+        return;
+
+      case 'rm-handoff':
+        awardXP(10, 'rm-handoff');
+        showToast('Handoff brief prepared · +10 XP');
+        simulated('A review brief is ready to share with a relationship manager after you confirm contact consent.', ['Show my portfolio']);
         return;
 
       case 'sip-setup':
-      default:
         applyAction('sip', cta.amount, { source: cta.source });
         awardXP(40, 'sip-setup');
-        showToast(`SIP mandate of ${fmt(cta.amount)}/mo created · +40 XP`);
-        follow({
-          mood: 'excited',
-          text: `Done. Your SIP of ${fmt(cta.amount)}/month is set up, debiting on the 5th — right after salary credit. I'll review it every quarter and nudge you to step it up when your income grows. You just future-proofed yourself, that felt good didn't it?`,
-          chips: ['Show my goals', "How's my financial health?", 'Compare me with my peers'],
-        });
+        showToast(`SIP scenario of ${fmt(cta.amount)}/mo added · +40 XP`);
+        simulated(`The plan now models a ${fmt(cta.amount)}/month SIP.`, ['Show my goals', "How's my financial health?", 'Compare me with my peers']);
+        return;
+
+      default:
+        showToast('Unsupported action — nothing changed');
     }
   };
 
   const last = messages[messages.length - 1];
+  const guideTargetsFor = (message) => [
+    ...(message.widget ? ['result'] : []),
+    ...(message.passport ? ['evidence'] : []),
+    ...(message.cta ? ['action'] : []),
+  ];
+  const activeGuideTargetFor = (message) => (
+    guideFocus?.messageId === message.id ? guideFocus.target : guideTargetsFor(message)[0]
+  );
 
   return (
     <div className="chat-wrap" ref={wrapRef}>
@@ -691,17 +646,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               : `Online · ${toSarvamLang(lang)}`}
           </div>
         </div>
-        {aiKey && (
-          <button
-            className={`icon-btn ${reasoningMode ? 'active' : ''}`}
-            title={reasoningMode ? 'Reasoning mode on — shows MITRA thinking' : 'Turn on reasoning mode'}
-            aria-label={reasoningMode ? 'Reasoning mode on — shows MITRA thinking' : 'Turn on reasoning mode'}
-            aria-pressed={reasoningMode}
-            onClick={() => setReasoningMode((v) => !v)}
-          >
-            <Icon name="bulb" size={15} />
-          </button>
-        )}
         <button className="icon-btn" title="Call MITRA" aria-label="Call MITRA" onClick={startCall}>
           <Icon name="phone" size={15} />
         </button>
@@ -768,15 +712,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   {m.text}
                 </div>
               </div>
-              {m.reasoning && (
-                <div className="why-box">
-                  <details>
-                    <summary>See how MITRA reasoned</summary>
-                    <div className="reasoning-text">{m.reasoning}</div>
-                  </details>
+              {m.widget && (
+                <div
+                  id={`advice-result-${m.id}`}
+                  className={`advice-focus-target ${m.id === last?.id && activeGuideTargetFor(m) === 'result' ? 'is-guided' : ''}`}
+                >
+                  <ChatWidget widget={m.widget} onChip={handleSend} />
                 </div>
               )}
-              {m.widget && <ChatWidget widget={m.widget} onChip={handleSend} />}
               {m.why && (
                 <div className="why-box">
                   <details>
@@ -789,10 +732,32 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   </details>
                 </div>
               )}
+              {m.passport && (
+                <div
+                  id={`advice-evidence-${m.id}`}
+                  className={`advice-focus-target ${m.id === last?.id && activeGuideTargetFor(m) === 'evidence' ? 'is-guided' : ''}`}
+                >
+                  <AdvicePassport passport={m.passport} />
+                </div>
+              )}
               {m.cta && (
-                <button className="cta-btn" onClick={() => handleCta(m.cta)}>
-                  {m.cta.label}
-                </button>
+                <div
+                  id={`advice-action-${m.id}`}
+                  className={`advice-focus-target advice-action-target ${m.id === last?.id && activeGuideTargetFor(m) === 'action' ? 'is-guided' : ''}`}
+                >
+                  <button className="cta-btn" onClick={() => handleCta(m.cta)}>
+                    {m.cta.label}
+                  </button>
+                </div>
+              )}
+              {m.id === last?.id && (m.widget || m.passport || m.cta) && (
+                <AvatarGuide
+                  targets={guideTargetsFor(m)}
+                  active={activeGuideTargetFor(m)}
+                  speaking={speaking}
+                  mood={mood}
+                  onSelect={(target) => setGuideFocus({ messageId: m.id, target })}
+                />
               )}
             </React.Fragment>
           )
@@ -803,25 +768,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               <span className="typing"><i /><i /><i /></span>
             </div>
           </div>
-        )}
-        {stream && (
-          <>
-            <div className="reason-trace">
-              <div className="reason-trace-head">
-                <span className="reason-pulse" />
-                {stream.answer ? 'Answering…' : 'MITRA is reasoning through your numbers…'}
-              </div>
-              {stream.reasoning && <div className="reason-trace-body">{stream.reasoning}</div>}
-            </div>
-            {stream.answer && (
-              <div className="msg-row">
-                <div className="mini-avatar">
-                  <Avatar size={30} mood="happy" />
-                </div>
-                <div className="bubble mitra">{stream.answer}</div>
-              </div>
-            )}
-          </>
         )}
         {!typing && last?.from === 'mitra' && last.chips && (
           <div className="chips">
@@ -856,8 +802,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               ? 'Understanding what you said…'
               : listening
               ? voiceAI ? 'Listening — speak any Indian language…' : 'Listening…'
-              : reasoningMode
-              ? 'Ask anything — I\'ll reason it out…'
               : 'Ask about goals, tax, SIPs…'
           }
         />
@@ -898,15 +842,44 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                 ? 'Listening · go ahead'
                 : typing
                 ? 'Thinking…'
+                : preparingVoice
+                ? 'Preparing voice…'
                 : 'On call · hands-free'}
             </div>
+            <div className="call-model-path" aria-label="AI model pipeline">
+              <span className={callListening || transcribing ? 'active' : ''}>Saaras · hearing</span>
+              <span className={typing ? 'active' : ''}>Policy + Sarvam · reasoning</span>
+              <span className={speaking || preparingVoice ? 'active' : ''}>Bulbul · voice</span>
+            </div>
+            {callHeard && (
+              <div className="call-heard">
+                <span>You asked</span>
+                “{callHeard}”
+              </div>
+            )}
             <div className="call-caption">{callCaption}</div>
-            {!micOk && <div className="call-mic-note">Mic unavailable — tap a question below</div>}
+            {callError && (
+              <div className="call-error" role="alert">
+                <span>{callError}</span>
+                {!micOk && (
+                  <button type="button" onClick={startCallListen}>Retry mic</button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="call-chips">
             {['Invest my surplus', 'Am I protected?', 'Harvest my gains'].map((c) => (
-              <button key={c} className="call-chip" onClick={() => handleSend(c)}>
+              <button
+                key={c}
+                className="call-chip"
+                disabled={typing || transcribing}
+                onClick={() => {
+                  setCallHeard(c);
+                  setCallCaption('Checking that against your financial plan…');
+                  handleSend(c);
+                }}
+              >
                 {c}
               </button>
             ))}
@@ -915,9 +888,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           <div className="call-actions">
             <button
               className={`call-mic ${callListening ? 'on' : ''}`}
-              title="Push to talk"
-              aria-label="Push to talk"
+              title={callListening ? 'Finish speaking' : 'Speak to MITRA'}
+              aria-label={callListening ? 'Finish speaking' : 'Speak to MITRA'}
+              disabled={transcribing || typing}
               onClick={() => {
+                if (callListening) {
+                  recRef.current?.stop?.();
+                  return;
+                }
                 stopSpeaking();
                 setSpeaking(false);
                 startCallListen();
@@ -934,7 +912,13 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               aria-label={voiceOn ? "Mute MITRA's voice" : "Unmute MITRA's voice"}
               onClick={() => {
                 if (voiceOn) { stopSpeaking(); setSpeaking(false); }
-                setVoiceOn(!voiceOn);
+                const next = !voiceOn;
+                voiceOnRef.current = next;
+                setVoiceOn(next);
+                if (!next && inCallRef.current && !callListeningRef.current && !transcribingRef.current) {
+                  setPreparingVoice(false);
+                  startCallListen();
+                }
               }}
             >
               <Icon name={voiceOn ? 'speaker' : 'speakerOff'} size={18} />

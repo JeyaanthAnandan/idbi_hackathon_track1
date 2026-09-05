@@ -6,8 +6,10 @@
 // in the app without touching another file.
 // ─────────────────────────────────────────────────────────────
 import { PERSONAS, PERSONA_LIST, getActivePersonaId, switchPersona } from './personas.js';
+import { getBootstrap } from '../engine/api.js';
+import { returnScenario } from './policy.js';
 
-const persona = PERSONAS[getActivePersonaId()];
+const persona = getBootstrap().profile?.persona || PERSONAS[getActivePersonaId()];
 
 export const customer = persona.customer;
 export const holdings = persona.holdings;
@@ -21,6 +23,14 @@ export const tax = persona.tax;
 export const insurance = persona.insurance;
 export const peers = persona.peers;
 export const roundupStats = persona.roundupStats;
+export const dataQuality = persona.dataQuality || {
+  transactionMonths: monthlySummary.length,
+  hasHoldings: holdings.length > 0,
+  hasTax: tax?.dataAvailable !== false,
+  hasInsurance: insurance?.dataAvailable !== false,
+  confidence: 0.92,
+  sources: ['synthetic:customer-360'],
+};
 
 export { PERSONA_LIST, getActivePersonaId, switchPersona };
 
@@ -31,7 +41,7 @@ export const totalWealth = () => holdings.reduce((s, h) => s + h.value, 0);
 // the onboarding quiz assigns.
 export const modelPortfolios = {
   Conservative: {
-    expectedReturn: 8,
+    expectedReturn: returnScenario('Conservative').base,
     mix: [
       { name: 'IDBI Fixed Deposits / Debt Funds', pct: 50, color: 'var(--teal)' },
       { name: 'Large-cap Index Funds', pct: 20, color: 'var(--teal-2)' },
@@ -40,7 +50,7 @@ export const modelPortfolios = {
     ],
   },
   Balanced: {
-    expectedReturn: 11,
+    expectedReturn: returnScenario('Balanced').base,
     mix: [
       { name: 'Equity Index & Flexi-cap Funds', pct: 45, color: 'var(--teal)' },
       { name: 'Debt Funds / FDs', pct: 30, color: 'var(--teal-2)' },
@@ -50,7 +60,7 @@ export const modelPortfolios = {
     ],
   },
   Aggressive: {
-    expectedReturn: 13.5,
+    expectedReturn: returnScenario('Aggressive').base,
     mix: [
       { name: 'Equity Flexi & Mid-cap Funds', pct: 60, color: 'var(--teal)' },
       { name: 'Large-cap Index Funds', pct: 20, color: 'var(--teal-2)' },

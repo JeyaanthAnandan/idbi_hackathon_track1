@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────
-// Applied-advice state — makes the "advice → action" loop real.
-// Every CTA MITRA offers (Start SIP, Enable Round-Up, Switch to Direct…)
-// pushes an action here. The analytics engine reads it back, so accepting
-// advice actually moves the surplus, health score, nudges and widgets —
-// not just a toast. Money Rules toggles live here too.
+// Planning-scenario state. Recommendation CTAs update projections and scores
+// locally but never claim to execute a bank, investment, insurance, or merchant
+// transaction. An integrated order service would require separate consent and
+// authentication. Money Rules toggles live here too.
 // ─────────────────────────────────────────────────────────────
 const KEY = 'mitra_applied_state';
+import { getBootstrap, saveServerState } from './api.js';
 
 const DEFAULT_RULES = { salary: true, sweep: false, dining: false, stepup: false };
 
@@ -13,6 +13,8 @@ const DEFAULT_RULES = { salary: true, sweep: false, dining: false, stepup: false
 const ONE_SHOT = ['direct-switch', 'subs-cancel', 'emergency-fix'];
 
 function read() {
+  const serverState = getBootstrap().appState;
+  if (serverState) return { actions: serverState.actions || [], rules: { ...DEFAULT_RULES, ...(serverState.rules || {}) } };
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (!raw) return { actions: [], rules: { ...DEFAULT_RULES } };
@@ -26,6 +28,7 @@ let state = read();
 
 function persist() {
   localStorage.setItem(KEY, JSON.stringify(state));
+  void saveServerState({ kind: 'app-state', appState: state }).catch(() => {});
   window.dispatchEvent(new CustomEvent('mitra-applied-state', { detail: state }));
 }
 

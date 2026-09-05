@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import Avatar from './Avatar.jsx';
-import { parseBankStatementCSV, parseHoldingsCSV } from '../engine/statementImport.js';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
 import { getSession } from '../engine/auth.js';
+import { analyseStatements } from '../engine/api.js';
 
 const SAMPLE_BANK = '/samples/sample-bank-statement.csv';
 const SAMPLE_HOLDINGS = '/samples/sample-holdings.csv';
@@ -31,6 +31,7 @@ export default function UploadStatements({ onBack }) {
   const [name, setName] = useState(session?.name || '');
   const [age, setAge] = useState('');
   const [city, setCity] = useState('');
+  const [error, setError] = useState('');
   const bankInputRef = useRef(null);
   const holdingsInputRef = useRef(null);
 
@@ -38,35 +39,37 @@ export default function UploadStatements({ onBack }) {
 
   const runAnalysis = async () => {
     setPhase('analysing');
-    let holdings = [];
-    let transactions = [];
-
-    for (let i = 0; i < ANALYSE_STEPS.length; i++) {
-      setStepIdx(i);
-      await new Promise((r) => setTimeout(r, 550));
-      if (i === 1 && bankFile) {
-        if (isCSV(bankFile)) transactions = parseBankStatementCSV(await bankFile.text());
-        // PDF statements: real table extraction needs server-side OCR, which
-        // this static prototype doesn't have — no data is fabricated here.
-      }
-      if (i === 3 && holdingsFile) {
-        if (isCSV(holdingsFile)) holdings = parseHoldingsCSV(await holdingsFile.text());
-      }
+    setError('');
+    try {
+      setStepIdx(0);
+      const result = await analyseStatements({
+        bankName: bankFile?.name,
+        bankText: bankFile && isCSV(bankFile) ? await bankFile.text() : undefined,
+        holdingsName: holdingsFile?.name,
+        holdingsText: holdingsFile && isCSV(holdingsFile) ? await holdingsFile.text() : undefined,
+      });
+      setStepIdx(4);
+      setParsed({ holdings: result.holdings, transactions: result.transactions, rejected: result.rejected });
+      setPhase('details');
+    } catch (err) {
+      setError(err.message);
+      setPhase('pick');
     }
-
-    setParsed({ holdings, transactions });
-    setPhase('details');
   };
 
-  const finish = () => {
+  const finish = async () => {
     const { persona, riskProfile } = buildCustomPersona({
       name, age: age ? parseInt(age, 10) : undefined, city,
       holdings: parsed.holdings, transactions: parsed.transactions,
       sources: [bankFile?.name, holdingsFile?.name].filter(Boolean),
     });
-    saveCustomPersonaAndActivate(persona, riskProfile);
-    sessionStorage.setItem('mitra_land_tab', 'mitra');
-    window.location.reload();
+    try {
+      await saveCustomPersonaAndActivate(persona, riskProfile, [bankFile?.name, holdingsFile?.name].filter(Boolean));
+      sessionStorage.setItem('mitra_land_tab', 'mitra');
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   if (phase === 'analysing') {
@@ -111,6 +114,7 @@ export default function UploadStatements({ onBack }) {
         <button className="primary-btn" style={{ marginTop: 18 }} onClick={finish}>
           Build my profile →
         </button>
+        {error && <div className="auth-error">{error}</div>}
       </div>
     );
   }
@@ -179,12 +183,13 @@ export default function UploadStatements({ onBack }) {
       <button className="primary-btn" style={{ marginTop: 18 }} disabled={!canAnalyse} onClick={runAnalysis}>
         {canAnalyse ? 'Analyse my statements' : 'Add a file to continue'}
       </button>
+      {error && <div className="auth-error">{error}</div>}
       <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={onBack}>
         ← Back
       </button>
 
       <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', lineHeight: 1.6 }}>
-        Files are parsed locally in your browser and never uploaded to a server in this prototype.
+        CSV content is sent to the local MITRA API, parsed there, and only the derived profile is retained.
       </div>
     </div>
   );

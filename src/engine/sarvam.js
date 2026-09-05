@@ -29,9 +29,7 @@ const SPEAKER_STORAGE = 'mitra_sarvam_speaker';
 export const TTS_MODEL = 'bulbul:v3';
 export const STT_MODEL = 'saaras:v3';
 export const TRANSLATE_MODEL = 'mayura:v1';
-// sarvam-105b is a reasoning model — it spends its whole budget thinking and
-// takes ~14s, so chat uses the conversations variant, which answers in ~5s.
-export const LLM_MODEL = 'sarvam-105b-conversations';
+export const ADVISOR_ROUTER_MODEL = 'sarvam-105b';
 
 // Bulbul v3 request limits, confirmed against the live API.
 const MAX_CHARS_PER_INPUT = 500;
@@ -106,8 +104,17 @@ export const setSarvamSpeaker = (s) => localStorage.setItem(SPEAKER_STORAGE, s |
 // the customer as the product breaking. Transient faults — network errors,
 // 429s and 5xxs — are retried; 4xxs are real bugs and fail fast.
 const RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 15000;
 const isTransient = (status) => status === 429 || status >= 500;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function requestSignal(signal) {
+  if (typeof AbortSignal === 'undefined') return signal;
+  const timeout = AbortSignal.timeout?.(REQUEST_TIMEOUT_MS);
+  if (!signal) return timeout;
+  if (!timeout) return signal;
+  return AbortSignal.any?.([signal, timeout]) || signal;
+}
 
 async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
   const key = getSarvamKey();
@@ -115,6 +122,7 @@ async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
   const headers = { 'api-subscription-key': key };
   if (body) headers['content-type'] = 'application/json';
 
+  const effectiveSignal = requestSignal(signal);
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt) await wait(250 * 2 ** (attempt - 1)); // 250ms, 500ms
@@ -122,7 +130,7 @@ async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
       const res = await fetch(BASE + path, {
         method: 'POST',
         headers,
-        signal,
+        signal: effectiveSignal,
         // FormData is single-use, so a retried multipart body must be rebuilt
         body: form ? (typeof form === 'function' ? form() : form) : JSON.stringify(body),
       });
@@ -132,11 +140,16 @@ async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
       if (!isTransient(res.status)) throw lastError; // bad key / bad request
     } catch (err) {
       // an aborted request is the customer interrupting — never retry that
-      if (err?.name === 'AbortError') throw err;
+      if ((err?.name === 'AbortError' || err?.name === 'TimeoutError') && effectiveSignal?.aborted) {
+        if (signal?.aborted) throw err;
+        lastError = new Error(`Sarvam ${path} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        break;
+      }
       lastError = err;
       if (err.message?.startsWith('Sarvam ') && !/ (429|5\d\d) /.test(err.message)) throw err;
     }
   }
+  console.warn('[MITRA voice] Sarvam request failed', { path, error: lastError?.message || String(lastError) });
   throw lastError;
 }
 
@@ -333,94 +346,31 @@ export async function translateToEnglish(text, { signal } = {}) {
   return (data.translated_text || '').trim() || text;
 }
 
-// ── 4. Open-ended answers (sarvam-105b-conversations) ───────
-// The rule engine covers the advice MITRA is *certain* about. Everything else
-// used to dead-end in "connect an AI key". This closes that: the same Sarvam
-// key that gives her a voice also gives her open-ended understanding, grounded
-// in the customer's computed numbers via the system prompt.
-export async function chatSarvam({ system, messages, temperature = 0.4, maxTokens = 400, signal }) {
+// The model selects a narrowly-scoped financial tool; it never writes the
+// recommendation itself. The deterministic engine executes the validated call.
+export async function selectSarvamAdvisorTool({ messages, tools, signal }) {
   const data = await sarvamFetch('/v1/chat/completions', {
     signal,
     body: {
-      model: LLM_MODEL,
-      messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
-      temperature,
-      max_tokens: maxTokens,
+      model: ADVISOR_ROUTER_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'Route the latest request to exactly one supplied tool. Never answer in prose. Use decline_high_risk for stock tips, guaranteed returns, tax evasion, credential requests, or transaction execution.',
+        },
+        ...messages,
+      ],
+      tools,
+      tool_choice: 'required',
+      temperature: 0.1,
+      max_tokens: 220,
     },
   });
-  return (data.choices?.[0]?.message?.content || '').trim();
-}
-
-// Streaming variant. Time-to-first-token is ~1.2s against ~5s for the blocking
-// call, so the customer watches MITRA compose instead of watching a spinner.
-// onDelta receives text as it generates; onSentence fires each time a complete
-// sentence lands, which is what lets speech start before the answer is done.
-export async function chatSarvamStream({
-  system, messages, temperature = 0.4, maxTokens = 400, signal, onDelta, onSentence,
-}) {
-  const key = getSarvamKey();
-  if (!key) throw new Error('no-sarvam-key');
-  const res = await fetch(BASE + '/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'api-subscription-key': key, 'content-type': 'application/json' },
-    signal,
-    body: JSON.stringify({
-      model: LLM_MODEL,
-      messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
-      temperature,
-      max_tokens: maxTokens,
-      stream: true,
-    }),
-  });
-  if (!res.ok) throw new Error(`Sarvam chat ${res.status}`);
-  if (!res.body) throw new Error('no-stream');
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let full = '';
-  let spoken = 0; // how much has already been handed to onSentence
-
-  const flushSentences = (final) => {
-    // a '.' between digits is a decimal, not a sentence end
-    const re = /[^.!?।]*?(?:\d\.\d[^.!?।]*?)*[.!?।]+[\s"')\]]*/g;
-    const pending = full.slice(spoken);
-    let match;
-    let consumed = 0;
-    while ((match = re.exec(pending)) !== null) {
-      if (match[0].trim()) onSentence?.(match[0].trim());
-      consumed = re.lastIndex;
-    }
-    spoken += consumed;
-    if (final && full.slice(spoken).trim()) {
-      onSentence?.(full.slice(spoken).trim());
-      spoken = full.length;
-    }
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t.startsWith('data:')) continue;
-      const payload = t.slice(5).trim();
-      if (payload === '[DONE]') continue;
-      let json;
-      try { json = JSON.parse(payload); } catch { continue; }
-      const delta = (json.choices?.[0]?.delta) || {};
-      if (delta.content) {
-        full += delta.content;
-        onDelta?.(delta.content, full);
-        flushSentences(false);
-      }
-    }
-  }
-  flushSentences(true);
-  return full.trim();
+  const call = data.choices?.[0]?.message?.tool_calls?.[0]?.function;
+  if (!call?.name) throw new Error('Sarvam returned no advisor tool');
+  let args = {};
+  try { args = JSON.parse(call.arguments || '{}'); } catch { throw new Error('Sarvam returned invalid tool arguments'); }
+  return { name: call.name, arguments: args };
 }
 
 // Cheap connectivity check for the Settings panel.

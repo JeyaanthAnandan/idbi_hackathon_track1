@@ -27,15 +27,15 @@ export default function OnboardingChoice({ onDone }) {
 
       <h2>How should I get to know you, {firstName}?</h2>
       <p className="ob-sub">
-        Connect your accounts or upload a statement and I'll read your real numbers —
-        no guessing games. Or answer a quick quiz if you'd rather not share data yet.
+        Upload a CSV and I'll compute from your numbers, or exercise the account-consent flow with
+        clearly labeled sandbox data. You can also answer the risk quiz without sharing data.
       </p>
 
       <button className="ob-option" onClick={() => setMode('connect')}>
         <div>
           <div style={{ fontWeight: 700 }}>Connect my accounts</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 3 }}>
-            Bank · Zerodha · Upstox · Groww · INDmoney
+            API-backed sandbox · no live credentials
           </div>
         </div>
       </button>
@@ -43,7 +43,7 @@ export default function OnboardingChoice({ onDone }) {
         <div>
           <div style={{ fontWeight: 700 }}>Upload a statement</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 3 }}>
-            Bank statement or portfolio holdings CSV
+            Real CSV parsing by the local MITRA API
           </div>
         </div>
       </button>

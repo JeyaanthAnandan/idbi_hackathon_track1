@@ -102,9 +102,9 @@ function AccountSection() {
       </p>
       <button
         className="ghost-btn"
-        onClick={() => {
+        onClick={async () => {
           if (window.confirm('Log out of MITRA?')) {
-            logOut();
+            await logOut();
             window.location.reload();
           }
         }}
@@ -302,10 +302,9 @@ function Settings() {
         MITRA AI · DeepSeek {key ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span> : ''}
       </label>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock the reasoning
-        layer — visible chain-of-thought answers, the Offer X-Ray scam checker, and natural-language
-        goal creation. Languages and voice are handled by Sarvam above. All grounded in the same
-        computed customer data.
+        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock schema-validated
+        intent routing, Offer X-Ray classification, and natural-language goal extraction. The model
+        selects tools; dated policy rules calculate and narrate personalized advice.
       </p>
       <div className="settings-row">
         <input

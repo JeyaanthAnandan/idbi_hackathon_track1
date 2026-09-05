@@ -1,22 +1,17 @@
 // ─────────────────────────────────────────────────────────────
-// DeepSeek engine — MITRA's LLM brain.
-// DeepSeek's API is OpenAI-compatible, so one thin client powers four
-// standout capabilities, each grounded in the customer's computed data:
-//   1. Reasoning mode   (deepseek-reasoner / R1) — visible chain-of-thought
-//   2. Vernacular AI     — translate any reply into 8 Indian languages
-//   3. Offer Analyzer    — scam / mis-selling detection with a verdict
-//   4. NL goal creation  — turn plain English into a structured goal
+// DeepSeek engine — constrained AI utilities for MITRA.
+// Personalized narration is deterministic. The model is limited to advisor
+// tool selection, translation, and schema-validated extraction/classification.
 //
 // The whole app works WITHOUT a key (rule engine + hardcoded Hindi). Paste
 // a key in Settings and these light up. Prototype note: for a real bank the
 // key must live server-side — here it's client-side for a zero-backend demo.
 // ─────────────────────────────────────────────────────────────
-import { financialContext } from './advisor.js';
+import { POLICY } from '../data/policy.js';
 
 const KEY_STORAGE = 'mitra_deepseek_key';
 const BASE = 'https://api.deepseek.com/chat/completions';
 export const MODEL_CHAT = 'deepseek-chat';       // DeepSeek-V3
-export const MODEL_REASONER = 'deepseek-reasoner'; // DeepSeek-R1
 
 export const getDeepSeekKey = () => localStorage.getItem(KEY_STORAGE) || '';
 export const setDeepSeekKey = (k) => localStorage.setItem(KEY_STORAGE, (k || '').trim());
@@ -64,6 +59,37 @@ export async function complete({ system, messages, model = MODEL_CHAT, json = fa
   return { content: msg.content || '', reasoning: msg.reasoning_content || '' };
 }
 
+export async function selectDeepSeekAdvisorTool({ messages, tools, signal }) {
+  const key = getDeepSeekKey();
+  if (!key) throw new Error('no-key');
+  const res = await fetch(BASE, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+    signal,
+    body: JSON.stringify({
+      model: MODEL_CHAT,
+      messages: [
+        {
+          role: 'system',
+          content: 'Route the latest request to exactly one supplied tool. Never answer in prose. Use decline_high_risk for stock tips, guaranteed returns, tax evasion, credential requests, or transaction execution.',
+        },
+        ...messages,
+      ],
+      tools,
+      tool_choice: 'required',
+      temperature: 0.1,
+      max_tokens: 220,
+    }),
+  });
+  if (!res.ok) throw new Error(`DeepSeek ${res.status}`);
+  const data = await res.json();
+  const call = data.choices?.[0]?.message?.tool_calls?.[0]?.function;
+  if (!call?.name) throw new Error('DeepSeek returned no advisor tool');
+  let args = {};
+  try { args = JSON.parse(call.arguments || '{}'); } catch { throw new Error('DeepSeek returned invalid tool arguments'); }
+  return { name: call.name, arguments: args };
+}
+
 // robust JSON extraction (models sometimes wrap in prose / code fences)
 export function parseJSON(text) {
   if (!text) return null;
@@ -77,58 +103,6 @@ export function parseJSON(text) {
   return null;
 }
 
-// ── streaming reasoner: emits chain-of-thought, then the answer ──
-// onReasoning(chunk) fires with R1's thinking tokens (the demo "wow");
-// onAnswer(chunk) fires with the final answer tokens.
-export async function reasonStream({ system, messages, onReasoning, onAnswer, signal }) {
-  const key = getDeepSeekKey();
-  if (!key) throw new Error('no-key');
-  const res = await fetch(BASE, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    signal,
-    body: JSON.stringify({
-      model: MODEL_REASONER,
-      messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
-      stream: true,
-      max_tokens: 900,
-    }),
-  });
-  if (!res.ok) throw new Error('DeepSeek ' + res.status);
-  if (!res.body) {
-    // environment without streaming — fall back to a single completion
-    const { content, reasoning } = await complete({ system, messages, model: MODEL_REASONER });
-    if (reasoning) onReasoning?.(reasoning);
-    onAnswer?.(content);
-    return { reasoning, answer: content };
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let reasoning = '';
-  let answer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t.startsWith('data:')) continue;
-      const payload = t.slice(5).trim();
-      if (payload === '[DONE]') continue;
-      let json;
-      try { json = JSON.parse(payload); } catch { continue; }
-      const delta = json.choices?.[0]?.delta || {};
-      if (delta.reasoning_content) { reasoning += delta.reasoning_content; onReasoning?.(delta.reasoning_content); }
-      if (delta.content) { answer += delta.content; onAnswer?.(delta.content); }
-    }
-  }
-  return { reasoning, answer };
-}
-
-// ── Feature 1: grounded free-form answer with visible reasoning ──
 export function chatMessages(history, userText) {
   return [
     ...history.slice(-6).map((m) => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text })),
@@ -154,7 +128,7 @@ export async function analyzeOffer(offerText) {
   const { content } = await complete({
     system: `You are MITRA, a fraud-aware financial guardian for IDBI Bank customers in India. Analyze the investment/insurance/loan offer the user pastes. Respond ONLY with JSON of this exact shape:
 {"verdict":"safe|caution|avoid","score":0-100,"headline":"one short sentence","redFlags":["..."],"hiddenCosts":["..."],"realityCheck":"one line on whether the returns/claims are realistic vs SEBI/RBI norms","action":"one clear next step"}
-Judge against Indian norms: guaranteed returns above ~8% are a red flag; SEBI-registered products can't promise fixed market returns; urgency, personal-UPI collection, unregistered entities, and Telegram/WhatsApp tips are classic scams. score = safety (100 safe, 0 dangerous).`,
+Judge against Indian norms: guaranteed returns above ${POLICY.offerChecks.highReturnClaimPct}% trigger this policy's high-return flag; market-linked products should not promise assured returns; urgency, personal-UPI collection, unregistered entities, and Telegram/WhatsApp tips are classic scams. score = safety (100 safe, 0 dangerous).`,
     messages: [{ role: 'user', content: offerText }],
     json: true,
     temperature: 0.2,
@@ -176,5 +150,3 @@ If they gave no clear amount, estimate a sensible ₹ cost in India and set "est
   });
   return parseJSON(content);
 }
-
-export { financialContext };

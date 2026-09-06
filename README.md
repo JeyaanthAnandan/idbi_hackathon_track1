@@ -8,6 +8,8 @@
 
 **Project tracker:** [open the interactive pending-task checklist](./pending_tasks.html).
 
+**Verified current status (7 September 2026):** [coverage, fixes, prompt behavior and remaining limits](./docs/VERIFICATION.md). The local prototype is configured for DeepSeek Flash (`deepseek-v4-flash`) for bounded routing and extraction. The inventory below includes simulations and synthetic data; it is not a claim that every feature is connected to live bank data. Account creation/persistence needs the Node API, and explicit natural-language goals currently produce simulations rather than saved goals.
+
 ---
 
 ## 1. The Problem (as stated)

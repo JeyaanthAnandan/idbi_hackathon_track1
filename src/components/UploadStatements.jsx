@@ -99,9 +99,10 @@ export default function UploadStatements({ onBack }) {
         <h2 style={{ fontSize: 24 }}>Here's what I found</h2>
         <p className="ob-sub">
           {noRealData
-            ? "PDF statements can't be read for real in this prototype — I'll set up a starter profile instead, which you can refine from Settings."
+            ? 'No valid rows were found. Check the CSV format and try again.'
             : `${parsed.transactions.length ? `${parsed.transactions.length} transactions` : ''}${parsed.transactions.length && parsed.holdings.length ? ' and ' : ''}${parsed.holdings.length ? `${parsed.holdings.length} holdings` : ''} — a couple of details and I'll finish building your profile.`}
         </p>
+        {!!(parsed.rejected?.bank || parsed.rejected?.holdings) && <p className="ob-sub">Skipped {parsed.rejected.bank} transaction rows and {parsed.rejected.holdings} holding rows with missing or invalid data. Review your file before continuing.</p>}
         <div className="settings-row">
           <input type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>

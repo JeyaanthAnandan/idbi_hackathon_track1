@@ -8,12 +8,7 @@ const SESSION_KEY = 'mitra_session';
 const ONBOARDED_KEY = 'mitra_onboarded';
 
 export function getSession() {
-  if (getBootstrap().session) return getBootstrap().session;
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-  } catch {
-    return null;
-  }
+  return getBootstrap().session;
 }
 
 export async function signUp({ name, email, password }) {
@@ -35,11 +30,11 @@ export async function logIn({ email, password }) {
 }
 
 export async function logOut() {
-  try { await apiLogOut(); } catch { /* API may already be offline */ }
+  await apiLogOut();
   localStorage.removeItem(SESSION_KEY);
 }
 
-export const isOnboarded = () => getBootstrap().onboarded || localStorage.getItem(ONBOARDED_KEY) === '1';
+export const isOnboarded = () => getBootstrap().session ? getBootstrap().onboarded : localStorage.getItem(ONBOARDED_KEY) === '1';
 export const markOnboarded = () => {
   localStorage.setItem(ONBOARDED_KEY, '1');
   void saveOnboarding(getStoredRiskProfile(), true).catch(() => {});
@@ -47,7 +42,7 @@ export const markOnboarded = () => {
 export const resetOnboarded = () => localStorage.removeItem(ONBOARDED_KEY);
 
 const RISK_KEY = 'mitra_risk_profile';
-export const getStoredRiskProfile = () => getBootstrap().riskProfile || localStorage.getItem(RISK_KEY) || null;
+export const getStoredRiskProfile = () => localStorage.getItem(RISK_KEY) || getBootstrap().riskProfile || null;
 export const setStoredRiskProfile = (profile) => {
   localStorage.setItem(RISK_KEY, profile);
   void saveOnboarding(profile, isOnboarded()).catch(() => {});

@@ -10,7 +10,8 @@
     "dev:api": "node server/index.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:providers": "node --env-file=.env scripts/verify-providers.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

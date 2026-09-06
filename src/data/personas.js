@@ -232,9 +232,6 @@ export async function saveCustomPersonaAndActivate(persona, riskProfile, sources
   await saveServerProfile({ persona, riskProfile, sources });
   localStorage.setItem(CUSTOM_PERSONA_KEY, JSON.stringify(persona));
   localStorage.setItem(PERSONA_KEY, 'custom');
-  resetXP();
-  resetApplied();
-  clearChatHistory();
-  markOnboarded();
-  setStoredRiskProfile(riskProfile);
+  // The profile endpoint resets dependent state atomically. Callers reload
+  // only after this save succeeds, so old customer context cannot race it.
 }

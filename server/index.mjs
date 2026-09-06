@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { parseBankStatementCSV, parseHoldingsCSV } from '../src/engine/statementImport.js';
 import { buildCustomPersona } from '../src/engine/personaBuilder.js';
+import { validPersona, validRisk, validState } from './validation.mjs';
 import { issueAdviceReceipt, normalizeAdvicePassport, verifyAdviceReceiptChain } from './adviceReceipts.mjs';
 import {
   audit, hashPassword, newId, newToken, passwordMatches, publicSession,
@@ -28,12 +29,17 @@ async function body(req) {
     if (raw.length > 6_000_000) throw Object.assign(new Error('Request is too large'), { status: 413 });
   }
   if (!raw) return {};
-  try { return JSON.parse(raw); }
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid body');
+    return value;
+  }
   catch { throw Object.assign(new Error('Request body must be valid JSON'), { status: 400 }); }
 }
 
 function cookies(req) {
-  return Object.fromEntries((req.headers.cookie || '').split(';').map((part) => part.trim().split('=').map(decodeURIComponent)).filter(([key]) => key));
+  try { return Object.fromEntries((req.headers.cookie || '').split(';').map((part) => part.trim().split('=').map(decodeURIComponent)).filter(([key]) => key)); }
+  catch { return {}; }
 }
 
 async function currentUser(req) {
@@ -105,7 +111,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/signup') {
       const input = await body(req);
       const email = normalizeEmail(input.email);
-      if (!String(input.name || '').trim() || !/^\S+@\S+\.\S+$/.test(email) || String(input.password || '').length < 8) {
+      if (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 120 || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email) || typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 256) {
         return problem(res, 422, 'Invalid account details', 'Use a name, valid email, and a password of at least 8 characters.');
       }
       const result = await updateStore(async (db) => {
@@ -124,6 +130,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') {
       const input = await body(req);
       const email = normalizeEmail(input.email);
+      if (typeof input.password !== 'string' || input.password.length > 256) return problem(res, 422, 'Invalid login details');
       const result = await updateStore(async (db) => {
         const user = Object.values(db.users).find((u) => u.email === email);
         if (!user || !passwordMatches(String(input.password || ''), user)) return null;
@@ -149,8 +156,10 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req);
       if (input.bankName && !/\.csv$/i.test(input.bankName)) return problem(res, 415, 'PDF extraction is not configured', 'Upload a CSV statement for this local prototype.');
       if (input.holdingsName && !/\.csv$/i.test(input.holdingsName)) return problem(res, 415, 'Only holdings CSV is supported');
+      if ([input.bankText, input.holdingsText].some((v) => v !== undefined && typeof v !== 'string')) return problem(res, 422, 'Statement content must be text');
       const transactions = input.bankText ? parseBankStatementCSV(input.bankText) : [];
       const holdings = input.holdingsText ? parseHoldingsCSV(input.holdingsText) : [];
+      if (!transactions.length && !holdings.length) return problem(res, 422, 'No valid rows found', 'Check the CSV columns, dates and amounts. No customer profile has been created.');
       await updateStore((db) => audit(db, user.id, 'statement.analysed', { transactions: transactions.length, holdings: holdings.length, files: [input.bankName, input.holdingsName].filter(Boolean) }));
       return json(res, 200, { transactions, holdings, rejected: { bank: input.bankText ? Math.max(input.bankText.trim().split(/\r?\n/).length - 1 - transactions.length, 0) : 0, holdings: input.holdingsText ? Math.max(input.holdingsText.trim().split(/\r?\n/).length - 1 - holdings.length, 0) : 0 } });
     }
@@ -166,19 +175,30 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'PUT' && url.pathname === '/api/profile') {
       const input = await body(req);
-      if (!input.persona?.customer || !Array.isArray(input.persona?.holdings)) return problem(res, 422, 'Invalid profile');
-      await updateStore((db) => { const target = db.users[user.id]; target.profile = { persona: input.persona, sources: input.sources || [], savedAt: new Date().toISOString() }; target.riskProfile = input.riskProfile || target.riskProfile; target.onboarded = true; audit(db, user.id, 'profile.saved', { sources: input.sources || [] }); });
+      if (!validPersona(input.persona) || !validRisk(input.riskProfile)) return problem(res, 422, 'Invalid profile');
+      await updateStore((db) => {
+        const target = db.users[user.id];
+        target.profile = { persona: input.persona, sources: input.sources || [], savedAt: new Date().toISOString() };
+        target.riskProfile = input.riskProfile;
+        target.onboarded = true;
+        target.chat = [];
+        target.appState = structuredClone(DEFAULT_APP_STATE);
+        target.xp = { total: 0, awarded: [] };
+        audit(db, user.id, 'profile.saved', { sources: input.sources || [] });
+      });
       return json(res, 200, { ok: true });
     }
 
     if (req.method === 'PUT' && url.pathname === '/api/onboarding') {
       const input = await body(req);
+      if (!validRisk(input.riskProfile) || typeof input.onboarded !== 'boolean') return problem(res, 422, 'Invalid onboarding details');
       await updateStore((db) => { const target = db.users[user.id]; target.onboarded = Boolean(input.onboarded); target.riskProfile = input.riskProfile || target.riskProfile; audit(db, user.id, 'onboarding.updated', { onboarded: target.onboarded, riskProfile: target.riskProfile }); });
       return json(res, 200, { ok: true });
     }
 
     if (req.method === 'PUT' && url.pathname === '/api/state') {
       const input = await body(req);
+      if (!validState(input)) return problem(res, 422, 'Invalid application state');
       await updateStore((db) => {
         const target = db.users[user.id];
         if (input.appState) target.appState = input.appState;
@@ -223,4 +243,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`MITRA API listening on http://127.0.0.1:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`MITRA API listening on http://127.0.0.1:${server.address().port}`));

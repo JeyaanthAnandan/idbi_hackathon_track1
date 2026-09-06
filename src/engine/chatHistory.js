@@ -7,7 +7,7 @@ const MAX_HISTORY = 40;
 import { getBootstrap, saveServerState } from './api.js';
 
 export function loadChatHistory() {
-  if (Array.isArray(getBootstrap().chat) && getBootstrap().chat.length) return getBootstrap().chat;
+  if (getBootstrap().session) return getBootstrap().chat || [];
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
     return Array.isArray(raw) ? raw : [];

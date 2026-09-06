@@ -5,6 +5,8 @@ const TOOL_NAMES = new Set([
   'show_portfolio', 'analyze_spending', 'plan_surplus', 'review_goals',
   'tax_guidance', 'protection_review', 'loan_comparison', 'check_offer',
   'escalate_to_human', 'explain_concept', 'decline_high_risk',
+  'review_fees', 'review_harvesting', 'review_allocation', 'review_emergency',
+  'review_subscriptions', 'review_goal_conflicts', 'review_health', 'review_peers', 'review_market', 'clarify_request',
 ]);
 
 const CONCEPTS = new Set(['sip', 'mutual_fund', 'fixed_deposit', 'diversification', 'risk', 'emergency_fund', 'general']);
@@ -25,6 +27,16 @@ export const ADVISOR_TOOL_DEFINITIONS = [
   ['escalate_to_human', 'Prepare a human relationship-manager handoff.'],
   ['explain_concept', 'Explain a general financial concept without personalized product advice.'],
   ['decline_high_risk', 'Decline stock tips, guaranteed returns, tax evasion, credential requests, or unsupported transactions.'],
+  ['review_fees', 'Review fund fees and portfolio overlap.'],
+  ['review_harvesting', 'Simulate capital-gains harvesting.'],
+  ['review_allocation', 'Review allocation drift and rebalancing.'],
+  ['review_emergency', 'Review emergency savings cover.'],
+  ['review_subscriptions', 'Review recurring subscription spending.'],
+  ['review_goal_conflicts', 'Prioritize competing goals within available cashflow.'],
+  ['review_health', 'Review financial health score.'],
+  ['review_peers', 'Compare with available synthetic peer benchmarks.'],
+  ['review_market', 'Show the synthetic market scenario, not live prices.'],
+  ['clarify_request', 'Ask for clarification when a request is ambiguous or unsupported.'],
 ].map(([name, description]) => ({
   type: 'function',
   function: {
@@ -40,7 +52,10 @@ export const ADVISOR_TOOL_DEFINITIONS = [
 
 export function validateAdvisorToolCall(value) {
   if (!value || typeof value !== 'object' || !TOOL_NAMES.has(value.name)) return { ok: false, error: 'Unknown advisor tool' };
-  const args = value.arguments && typeof value.arguments === 'object' && !Array.isArray(value.arguments) ? value.arguments : {};
+  if (!value.arguments || typeof value.arguments !== 'object' || Array.isArray(value.arguments)) return { ok: false, error: 'Arguments must be an object' };
+  const args = value.arguments;
+  const allowed = value.name === 'explain_concept' ? ['concept'] : value.name === 'check_offer' ? ['offerText'] : [];
+  if (Object.keys(args).some((key) => !allowed.includes(key))) return { ok: false, error: 'Unexpected tool arguments' };
   if (value.name === 'explain_concept' && !CONCEPTS.has(args.concept)) return { ok: false, error: 'Invalid concept' };
   if (value.name === 'check_offer' && (typeof args.offerText !== 'string' || !args.offerText.trim() || args.offerText.length > 4000)) {
     return { ok: false, error: 'Invalid offer text' };
@@ -58,6 +73,10 @@ const PROMPTS = {
   protection_review: 'am i protected',
   loan_comparison: 'prepay my loan or invest',
   escalate_to_human: 'talk to a human advisor',
+  review_fees: 'xray my portfolio', review_harvesting: 'harvest capital gains',
+  review_allocation: 'rebalance my portfolio', review_emergency: 'emergency fund',
+  review_subscriptions: 'unused subscriptions', review_goal_conflicts: 'afford all my goals',
+  review_health: 'financial health score', review_peers: 'compare me with peers', review_market: 'market pulse',
 };
 
 const EDUCATION = {
@@ -75,6 +94,7 @@ export function executeAdvisorTool(call, riskProfile = 'Balanced') {
   if (!checked.ok) return null;
   const { name, arguments: args } = checked.value;
   if (PROMPTS[name]) return respond(PROMPTS[name], riskProfile, 'en');
+  if (name === 'clarify_request') return { mood: 'thinking', text: 'Could you specify what you want to review: spending, holdings, goals, protection, or a SIP calculation? I need a clearer request to use the right data.', chips: ['Show my portfolio', 'Analyse my spending', 'Show my goals'] };
   if (name === 'check_offer') {
     const result = analyzeOfferOffline(args.offerText);
     return {
@@ -102,10 +122,10 @@ export function validateAdvisorResponse(response) {
   if (!response || typeof response !== 'object' || typeof response.text !== 'string' || !response.text.trim()) {
     return { ok: false, error: 'Advisor response must contain text' };
   }
-  if (response.widget && (typeof response.widget.type !== 'string' || typeof response.widget.data !== 'object')) {
+  if (response.widget && (typeof response.widget.type !== 'string' || !response.widget.data || typeof response.widget.data !== 'object')) {
     return { ok: false, error: 'Invalid widget payload' };
   }
-  if (response.cta && (!Number.isFinite(Number(response.cta.amount || 0)) || !ACTION_TYPES.has(response.cta.type))) {
+  if (response.cta && (!Number.isFinite(response.cta.amount) || response.cta.amount < 0 || !ACTION_TYPES.has(response.cta.type))) {
     return { ok: false, error: 'Invalid action payload' };
   }
   const claimsOnly = response.text.replace(/\bno\b[^.!?]{0,80}\b(?:orders?|mandate|callback|coverage|switch)[^.!?]*/gi, '');
@@ -116,9 +136,11 @@ export function validateAdvisorResponse(response) {
 
 export function figuresPreserved(source, translated) {
   const figures = (value) => (String(value || '').match(/\d+(?:[.,]\d+)*/g) || []).map((item) => item.replace(/,/g, ''));
-  const expected = figures(source);
-  const actual = figures(translated);
-  return expected.length === actual.length && expected.every((item, index) => item === actual[index]);
+  const same = (a, b) => { a.sort(); b.sort(); return a.length === b.length && a.every((item, index) => item === b[index]); };
+  const percentages = (value) => Array.from(String(value || '').matchAll(/(\d+(?:[.,]\d+)*)\s*%/g), (m) => m[1].replace(/,/g, ''));
+  // Word order changes between languages. Compare quantities as a multiset,
+  // but keep percentage bindings so an amount cannot become a return rate.
+  return same(figures(source), figures(translated)) && same(percentages(source), percentages(translated));
 }
 
 export function validateOfferAnalysis(value) {
@@ -136,7 +158,7 @@ export function validateOfferAnalysis(value) {
 }
 
 export function validateGoalDraft(value) {
-  if (!value || value.ok !== true || typeof value.name !== 'string') return null;
+  if (!value || value.ok !== true || typeof value.name !== 'string' || !value.name.trim()) return null;
   const target = Number(value.target);
   const years = Number(value.years);
   if (!Number.isFinite(target) || target < 1000 || target > 1000000000 || !Number.isFinite(years) || years <= 0 || years > 60) return null;

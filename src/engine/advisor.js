@@ -88,10 +88,14 @@ const HI_KW = {
 
 export function detectIntent(text) {
   const t = text.toLowerCase();
+  if (/\b(?:calculate|simulate|try|if i invest|sip of)\b.*\d|\b\d[\d,.]*\s*(?:k|lakh|crore)?\s*(?:per month|monthly|\/mo|for \d)/i.test(t)) return 'sipcalc';
   let best = { id: null, score: 0 };
   for (const intent of INTENTS) {
     let score = 0;
-    for (const kw of intent.kw) if (t.includes(kw)) score += kw.split(' ').length;
+    for (const kw of intent.kw) {
+      const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`(?:^|\\W)${escaped}(?=$|\\W)`, 'i').test(t)) score = Math.max(score, kw.length);
+    }
     if (score > best.score) best = { id: intent.id, score };
   }
   if (!best.id) {
@@ -103,13 +107,14 @@ export function detectIntent(text) {
 }
 
 // Extract "₹X for Y years" style numbers for the SIP calculator intent
-function parseSipQuery(text) {
+export function parseSipQuery(text) {
   const t = text.toLowerCase().replace(/,/g, '');
-  const amtMatch = t.match(/(?:₹|rs\.?\s*)?(\d{3,7})(?:\s*(?:per month|\/month|monthly|pm))?/);
-  const yrMatch = t.match(/(\d{1,2})\s*(?:years|year|yrs|yr)/);
+  const amtMatch = t.match(/(?:₹|rs\.?\s*)(\d+(?:\.\d+)?)\s*(k|lakh|lac|crore)?\b|\b(\d+(?:\.\d+)?)\s*(k|lakh|lac|crore)\b|\b(\d{3,9})(?:\s*(?:per month|\/month|monthly|pm))?/);
+  const yrMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:years|year|yrs|yr)\b/);
+  const unit = amtMatch?.[2] || amtMatch?.[4];
   return {
-    amount: amtMatch ? parseInt(amtMatch[1]) : 10000,
-    years: yrMatch ? parseInt(yrMatch[1]) : 10,
+    amount: amtMatch ? Number(amtMatch[1] || amtMatch[3] || amtMatch[5]) * ({ k: 1000, lakh: 100000, lac: 100000, crore: 10000000 }[unit] || 1) : null,
+    years: yrMatch ? Number(yrMatch[1]) : null,
   };
 }
 
@@ -176,6 +181,7 @@ const HI_TEXT = {
 };
 
 export function respond(text, riskProfile = 'Balanced', lang = 'en') {
+  if (!modelPortfolios[riskProfile]) riskProfile = 'Balanced';
   const base = respondCore(text, riskProfile);
   if (!base || lang !== 'hi') return base;
   if (base.widget?.type?.endsWith('-unavailable')) return base;
@@ -238,6 +244,10 @@ function respondCore(text, riskProfile = 'Balanced') {
     }
 
     case 'surplus': {
+      if (cf.surplus <= 0) return {
+        mood: 'thinking', text: `Your observed monthly cashflow has a ${fmt(Math.abs(cf.surplus))} shortfall. There is no additional surplus to invest in this scenario. Review spending and existing commitments first.`,
+        chips: ['Analyse my spending', 'Show my goals', 'Talk to a human advisor'],
+      };
       const monthly = Math.floor(cf.surplus / 500) * 500;
       const fvIdle = sipFutureValue(monthly, POLICY.returns.savings, 10);
       const p = modelPortfolios[riskProfile];
@@ -271,10 +281,11 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'goals': {
       const plans = allGoalPlans(modelPortfolios[riskProfile].expectedReturn);
+      if (!plans.length) return { mood: 'thinking', text: 'No goals have been recorded yet. Tell me a target amount and timeframe to start a simulation.', chips: ['Calculate ₹5,000 for 10 years'] };
       const behind = plans.filter((g) => g.progress < 40 && g.horizonYears <= 3);
       return {
         mood: 'thinking',
-        text: `Here's where your ${plans.length} goals stand. ${
+        text: `${plans.some((g) => g.estimated) ? 'These are suggested starter goals, not goals you have confirmed. ' : ''}Here's where your ${plans.length} goals stand. ${
           behind.length
             ? `Your ${behind[0].name} needs attention — you'd need ${fmt(behind[0].monthly)}/month to stay on track.`
             : 'You are broadly on track!'
@@ -318,7 +329,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       if (!unused.length) {
         return {
           mood: 'proud',
-          text: 'The current planning scenario already removes every unused subscription that was flagged. Check the service providers before cancelling anything.',
+          text: 'There are no verified unused subscriptions to remove. A statement can show recurring payments, but it cannot tell me whether you use a service. Confirm usage with the provider before cancelling.',
           chips: ['Invest my surplus', 'Show my goals'],
         };
       }
@@ -412,6 +423,10 @@ function respondCore(text, riskProfile = 'Balanced') {
 
     case 'sipcalc': {
       const { amount, years } = parseSipQuery(text);
+      if (!(amount > 0 && amount <= 10000000 && years > 0 && years <= 60)) return {
+        mood: 'thinking', text: 'What monthly amount and investment period should I simulate? For example: ₹5,000 per month for 10 years. Use a positive amount up to ₹1 crore and a period up to 60 years.',
+        chips: ['Calculate ₹5,000 for 10 years'],
+      };
       const scenarioRate = returnScenario(riskProfile).base;
       const fv = sipFutureValue(amount, scenarioRate, years);
       const invested = amount * years * 12;
@@ -430,13 +445,14 @@ function respondCore(text, riskProfile = 'Balanced') {
       const up = mp.delta >= 0;
       return {
         mood: up ? 'happy' : 'thinking',
-        text: `${mp.index} is ${up ? 'up' : 'down'} ${Math.abs(mp.weekChangePct)}% this week — your equity holdings ${up ? 'gained' : 'lost'} about ${fmt(Math.abs(mp.delta))}. ${mp.headline} My advice stays the same: your SIPs buy through every cycle, so short-term moves are noise for your 5+ year goals.`,
+        text: `This is a synthetic market scenario, not a live quote. A ${Math.abs(mp.weekChangePct)}% ${up ? 'rise' : 'fall'} in ${mp.index} models an approximate ${fmt(Math.abs(mp.delta))} ${up ? 'gain' : 'loss'} on your equity exposure. Actual fund and stock performance will differ.`,
         widget: { type: 'pulse', data: mp },
         chips: ['Rebalance my portfolio', 'Is it safe if markets crash?', 'Show my portfolio'],
       };
     }
 
     case 'rebalance': {
+      if (!holdings.length) return { mood: 'thinking', text: 'No holding balances are connected, so I cannot measure allocation drift. Upload holdings first.', chips: ['Show my portfolio'] };
       const dr = drift(riskProfile);
       const g = dr.biggestGap;
       return {
@@ -454,6 +470,7 @@ function respondCore(text, riskProfile = 'Balanced') {
     }
 
     case 'roundup': {
+      if (!roundup().upiTxnsPerMonth) return { mood: 'thinking', text: 'UPI transaction counts and round-up amounts are not available in this data. I cannot estimate round-up investing yet.', chips: ['Analyse my spending'] };
       const ru = roundup();
       return {
         mood: 'excited',
@@ -474,7 +491,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       }
       return {
         mood: 'proud',
-        text: `You're doing better than ${peers.percentile}% of people like you (${peers.cohort}). Your savings rate and SIP discipline are well above the median — the one place the cohort beats you is tax-limit utilisation. Fix that 80C gap and you'd be in the top 10%.`,
+        text: `In this synthetic comparison, your profile is at percentile ${peers.percentile} within ${peers.cohort}. ${peers.metrics.map((m) => `${m.label}: ${m.you}${m.unit} versus cohort median ${m.median}${m.unit}`).join('; ')}. These are demo benchmarks, not observed customer rankings.`,
         widget: { type: 'peers', data: peers },
         chips: ['Help me save tax', "How's my financial health?", 'Invest my surplus'],
       };
@@ -498,7 +515,7 @@ function respondCore(text, riskProfile = 'Balanced') {
         },
         why: [
           'Framework based on SEBI investor-protection advisories and RBI Sachet guidelines',
-          'MITRA also watches your outgoing transfers for first-time high-value payees and known mule-account patterns',
+          'This prototype checks the text you provide; it does not monitor transfers or consult a mule-account database',
         ],
         chips: ['Check an offer I received', 'Where should I invest instead?', 'Talk to a human advisor'],
       };
@@ -580,9 +597,9 @@ function respondCore(text, riskProfile = 'Balanced') {
         text: `The fund facts show ${xr.fund} as a ${xr.plan} plan charging ${xr.er}%, versus ${xr.directEr}% for its Direct plan. At the ${xr.grossReturn}% gross-return assumption, the fee difference models ${fmtCompact(xr.feeLoss)} over ${xr.years} years. It also reports ${xr.overlapPct}% overlap with ${xr.overlapWith}; review taxes and exit load before any switch.`,
         widget: { type: 'xray', data: xr },
         why: [
-          `Expense ratios from AMC fact sheets: Regular ${xr.er}% vs Direct ${xr.directEr}%`,
+          `Supplied fund facts: Regular ${xr.er}% vs Direct ${xr.directEr}%`,
           `Fee-loss projection: same fund, same returns, only the fee differs, ${xr.years}-year horizon with your current SIP`,
-          `Overlap computed on top-25 holdings of both funds`,
+          'Overlap is supplied in the demo fund facts; underlying holdings are not independently fetched',
         ],
         chips: ['Switch me to Direct plans', 'Show my portfolio', 'Harvest my capital gains'],
         cta: { label: 'Simulate Direct-plan switch', type: 'direct-switch', amount: 0 },
@@ -590,6 +607,7 @@ function respondCore(text, riskProfile = 'Balanced') {
     }
 
     case 'harvest': {
+      if (!holdings.some((h) => ['Mutual Fund', 'Stocks'].includes(h.type) && Number.isFinite(h.cost))) return { mood: 'thinking', text: 'Holding values and purchase costs are required to estimate unrealised gains. Connect those facts before a harvesting simulation.', chips: ['Show my portfolio'] };
       const lh = ltcgHarvest();
       if (lh.harvested) {
         return {
@@ -637,7 +655,7 @@ function respondCore(text, riskProfile = 'Balanced') {
               { label: 'Certainty', fd: 'Contractual loan saving', mf: 'Market-linked' },
               { label: `₹50K outcome (${Math.round(pv.loanMonths / 12)} yrs)`, fd: `saves ${fmt(pv.interestSaved)}`, mf: `may earn ${fmt(Math.round(pv.investGain))}` },
               { label: 'Loan ends', fd: `${pv.monthsSaved} months earlier`, mf: 'on schedule' },
-              { label: 'MITRA says', fd: 'Prepay this one', mf: 'Invest after loan closes' },
+              { label: 'Scenario comparison', fd: better ? 'Ranks higher' : 'Ranks lower', mf: better ? 'Ranks lower' : 'Ranks higher' },
             ],
           },
         },
@@ -664,7 +682,7 @@ function respondCore(text, riskProfile = 'Balanced') {
       const gc = goalCollision(modelPortfolios[riskProfile].expectedReturn);
       return {
         mood: 'thinking',
-        text: `Time for honest maths. Funding all four goals on schedule needs ${fmt(gc.needTotal)}/month — you have ${fmt(gc.capacity)}/month of investing capacity. That's a ${fmt(gc.deficit)} collision. Rather than pretending, here's my triage: fully fund the emergency fund and ${goalName('home')} first, keep retirement compounding, and push the ${flavourGoalName()} out ~8 months. Dreams don't die in this plan — they just queue politely.`,
+        text: `Funding ${goals.length} goals on schedule needs ${fmt(gc.needTotal)}/month against ${fmt(gc.capacity)}/month of investing capacity. ${gc.deficit > 0 ? `The shortfall is ${fmt(gc.deficit)}/month. Review the priority-based funding amounts below; underfunded goals need a revised amount or date.` : 'The current scenario has enough capacity for these goal contributions.'}`,
         widget: { type: 'collision', data: gc },
         why: [
           `Required SIPs computed per goal at ${modelPortfolios[riskProfile].expectedReturn}% expected return`,

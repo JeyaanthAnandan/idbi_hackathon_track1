@@ -1,5 +1,5 @@
 import React from 'react';
-import { customer } from '../data/customer.js';
+import { customer, holdings } from '../data/customer.js';
 import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap, topNudges } from '../engine/analytics.js';
 import { levelInfo } from '../engine/xp.js';
 import Avatar from './Avatar.jsx';
@@ -8,6 +8,7 @@ import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
 import { ScoreRing } from './charts.jsx';
 import idbiLogo from '../assets/idbi-logo.png';
+import { getBootstrap } from '../engine/api.js';
 
 const selfEmployed = customer.segment.toLowerCase().includes('self-employed');
 
@@ -26,7 +27,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
   const anomaly = spendingAnomalies()[0];
   const topNudge = topNudges(riskProfile)[0];
 
-  const recentTxns = [
+  const recentTxns = getBootstrap().session ? [] : [
     { icon: 'bag', name: 'Swiggy', cat: 'Food delivery · today', amt: -485 },
     { icon: 'bolt', name: 'Electricity bill', cat: 'BBPS · yesterday', amt: -2140 },
     ...(cf.avgInvested > 0 ? [{ icon: 'trendUp', name: 'SIP — Auto Invest', cat: 'Auto-debit · 3 Jul', amt: -Math.round(cf.avgInvested) }] : []),
@@ -73,14 +74,14 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
       <div className="balance-card">
         <div className="balance-top">
           <div>
-            <div className="balance-greet">Good afternoon · {customer.city}, 34°C</div>
+            <div className="balance-greet">Welcome · {customer.city}</div>
             <div className="bank-name">{customer.name}</div>
           </div>
           <ScoreRing score={hs.total} size={66} label="Health" onNight />
         </div>
         <div className="balance-body">
-          <div className="balance-label">Savings a/c ···4127</div>
-          <div className="balance-value"><Counter value={customer.savingsBalance} format={fmt} /></div>
+          <div className="balance-label">Reported savings balance</div>
+          <div className="balance-value">{holdings.some((h) => h.type === 'Savings Account') ? <Counter value={customer.savingsBalance} format={fmt} /> : <span style={{ fontSize: 30 }}>Not supplied</span>}</div>
           <div className="balance-actions">
             <button className="primary">Pay / UPI</button>
             <button>Deposits</button>
@@ -111,7 +112,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
         </Ring>
         <div>
           <div className="mb-eyebrow">MITRA found something</div>
-          <div className="mb-title">{fmt(cf.surplus)} idle, every month</div>
+          <div className="mb-title">{fmt(cf.surplus)} average monthly cashflow left</div>
           <div className="mb-sub">Let me put it to work for your goals →</div>
         </div>
       </button>
@@ -141,9 +142,10 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
       </div>
 
       <div className="section-title">
-        <span>Recent activity</span> <small>View all ›</small>
+        <span>{getBootstrap().session ? 'Recent activity' : 'Illustrative demo activity'}</span>
       </div>
       <div className="list-card">
+        {!recentTxns.length && <p style={{ padding: 16 }}>Individual transactions are not retained in this view. Open the Ledger to review imported spending totals.</p>}
         {recentTxns.map((t) => (
           <div className="txn" key={t.name}>
             <div className="txn-ic">

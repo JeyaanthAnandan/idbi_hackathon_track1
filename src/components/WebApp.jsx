@@ -5,9 +5,10 @@ import Icon from './Icons.jsx';
 import Counter from './Counter.jsx';
 import AvatarChat from './AvatarChat.jsx';
 import WealthDashboard from './WealthDashboard.jsx';
+import DataStatus from './DataStatus.jsx';
 import Simulator from './Simulator.jsx';
 import { ScoreRing, ConcentricRings, ProjectionChart } from './charts.jsx';
-import { customer, totalWealth, spendByCategory, subscriptions } from '../data/customer.js';
+import { customer, holdings, totalWealth, spendByCategory, subscriptions } from '../data/customer.js';
 import {
   fmt, fmtCompact, healthScore, cashflow, allocation, drift, projectWealth,
   marketPulse, spendingAnomalies, taxGap,
@@ -105,9 +106,9 @@ function HomePanel({ riskProfile, onAsk }) {
           <span /><span />
         </div>
         <div className="web-hero-main">
-          <div className="web-eyebrow">Savings a/c ···4127</div>
+          <div className="web-eyebrow">Reported savings balance</div>
           <div className="web-hero-value">
-            <Counter value={customer.savingsBalance} format={fmt} />
+            {holdings.some((h) => h.type === 'Savings Account') ? <Counter value={customer.savingsBalance} format={fmt} /> : <span style={{ fontSize: 30 }}>Not supplied</span>}
           </div>
           <div className="web-hero-actions">
             <button className="web-btn web-btn-primary">Pay / UPI</button>
@@ -117,7 +118,7 @@ function HomePanel({ riskProfile, onAsk }) {
         </div>
         <div className="web-hero-stats">
           <div className="web-stat">
-            <div className="web-eyebrow">Total with IDBI</div>
+            <div className="web-eyebrow">Total supplied holdings</div>
             <div className="web-stat-value">{fmt(totalWealth())}</div>
           </div>
           <div className="web-stat web-stat-accent">
@@ -138,7 +139,7 @@ function HomePanel({ riskProfile, onAsk }) {
           </Ring>
           <span>
             <span className="web-eyebrow web-eyebrow-accent">MITRA found something</span>
-            <span className="web-card-title">{fmt(cf.surplus)} idle, every month</span>
+            <span className="web-card-title">{fmt(cf.surplus)} average monthly cashflow left</span>
             <span className="web-card-sub">Ask me in the panel and I'll put it to work →</span>
           </span>
         </button>
@@ -248,7 +249,7 @@ function LedgerPanel({ onAsk }) {
     .sort((a, b) => b.amount - a.amount)
     .map((c) => ({ ...c, deltaPct: c.avg3m > 0 ? ((c.amount - c.avg3m) / c.avg3m) * 100 : 0 }));
   const peak = Math.max(...rows.map((r) => Math.max(r.amount, r.avg3m)));
-  const idle = subscriptions.filter((s) => s.lastUsed !== 'active');
+  const idle = subscriptions.filter((s) => s.lastUsed.startsWith('unused'));
 
   return (
     <>
@@ -376,7 +377,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
         <header className="web-topbar">
           <div className="web-topbar-id">
             <div className="web-greet">
-              <div className="web-eyebrow">Good afternoon · {customer.city}, 34°C</div>
+              <div className="web-eyebrow">Welcome · {customer.city}</div>
               <div className="web-greet-name">{customer.name}</div>
             </div>
             <div className="web-persona">
@@ -400,6 +401,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
         </header>
 
         <div className="web-scroll" key={active}>
+          <DataStatus />
           {active === 'home' && <HomePanel riskProfile={riskProfile} onAsk={ask} />}
           {active === 'wealth' && <div className="web-span web-embed"><WealthDashboard onAsk={ask} riskProfile={riskProfile} /></div>}
           {active === 'simulate' && <div className="web-span web-embed" data-surface="night"><Simulator onAsk={ask} /></div>}

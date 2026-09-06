@@ -14,22 +14,20 @@ import { customer } from '../data/customer.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
 import {
-  hasDeepSeek, translate, analyzeOffer, extractGoal, selectDeepSeekAdvisorTool,
-  chatMessages, LANGUAGES, langLabel,
+  hasDeepSeek, translate, analyzeOffer, selectDeepSeekAdvisorTool,
+  LANGUAGES, langLabel,
 } from '../engine/deepseek.js';
-import { sipRequired } from '../engine/analytics.js';
 import { applyAction } from '../engine/portfolioState.js';
 import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
 import {
   hasSarvam, translateSarvam, translateToEnglish, selectSarvamAdvisorTool, toSarvamLang,
 } from '../engine/sarvam.js';
 import {
-  ADVISOR_TOOL_DEFINITIONS, executeAdvisorTool, validateAdvisorResponse,
-  validateAdvisorToolCall, validateGoalDraft, validateOfferAnalysis, figuresPreserved,
+  validateAdvisorResponse, validateOfferAnalysis, figuresPreserved,
 } from '../engine/advisorTools.js';
 import { buildAdvicePassport } from '../engine/advicePassport.js';
 import { createAdviceReceipt } from '../engine/api.js';
-import { returnScenario } from '../data/policy.js';
+import { answerConversation } from '../engine/conversation.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
 // ids already sitting in restored (persisted) history.
@@ -38,6 +36,9 @@ const mid = () => ++msgId;
 
 export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitial }) {
   const [messages, setMessages] = useState(loadChatHistory);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const requestBusy = useRef(false);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -293,9 +294,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
   };
 
-  const GOAL_TRIGGERS = /^(add|create|new|set)\s+(a\s+)?goal|^goal[:\-]|^i want to (buy|save|afford)|^save (up )?for/i;
-
   const handleSend = async (raw) => {
+    if (requestBusy.current) return;
+    requestBusy.current = true;
+    try { await sendMessage(raw); }
+    catch { pushMitra(fallbackResponse(true)); }
+    finally { requestBusy.current = false; setTyping(false); }
+  };
+
+  const sendMessage = async (raw) => {
     const text = (raw ?? input).trim();
     if (!text) return;
     if (inCallRef.current && callListeningRef.current) {
@@ -344,17 +351,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     let engineText = text;
     if (langRef.current !== 'en' && voiceAI) {
       try {
-        engineText = await translateToEnglish(text);
+        const translated = await translateToEnglish(text);
+        if (figuresPreserved(text, translated)) engineText = translated;
       } catch {
         /* translation down — let the engine try the raw text */
       }
     }
 
     // ── Natural-language goal creation ──
-    if (aiKey && GOAL_TRIGGERS.test(engineText)) {
-      await runGoalCreate(engineText);
-      return;
-    }
+    // Explicit goal costs and periods are resolved by the shared engine.
 
     // No artificial "thinking" pause here any more. It was 500–900ms of theatre
     // added back when the rule engine answered instantly; stacked on top of real
@@ -362,36 +367,12 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
     // Deterministic intents own both the numbers and the narration. An LLM is
     // used only to select a validated tool when keyword routing has no answer.
-    const ruled = respond(engineText, riskProfile, canTranslate ? 'en' : langRef.current);
-    const history = messages.filter((m) => m.text);
-    if (ruled) {
-      setTyping(false);
-      pushMitra(await localise({ ...ruled, engineMode: 'DETERMINISTIC' }));
-      return;
-    }
-
-    if (voiceAI || aiKey) {
-      try {
-        const messagesForRouter = chatMessages(history, engineText);
-        const candidate = voiceAI
-          ? await selectSarvamAdvisorTool({ messages: messagesForRouter, tools: ADVISOR_TOOL_DEFINITIONS })
-          : await selectDeepSeekAdvisorTool({ messages: messagesForRouter, tools: ADVISOR_TOOL_DEFINITIONS });
-        const toolCall = validateAdvisorToolCall(candidate);
-        const response = toolCall.ok ? executeAdvisorTool(toolCall.value, riskProfile) : null;
-        const safe = validateAdvisorResponse(response);
-        if (safe.ok) {
-          setTyping(false);
-          pushMitra(await localise({ ...safe.value, toolRouted: true, engineMode: 'STRUCTURED_TOOL' }));
-          return;
-        }
-      } catch (error) {
-        console.warn('[MITRA advisor] tool routing failed; using policy fallback', { error: error?.message || String(error) });
-        /* fall through to the honest deterministic fallback */
-      }
-    }
-
-    setTyping(false);
-    pushMitra(await localise(fallbackResponse(aiKey || voiceAI)));
+    const response = await answerConversation({
+      text: engineText, history: messagesRef.current.filter((m) => m.text), riskProfile,
+      lang: canTranslate ? 'en' : langRef.current,
+      routers: [voiceAI && selectSarvamAdvisorTool, aiKey && selectDeepSeekAdvisorTool].filter(Boolean),
+    });
+    pushMitra(await localise(response));
   };
 
   // ── Offer Analyzer: scam / mis-selling verdict on pasted text ──
@@ -423,32 +404,6 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       await finish(a || analyzeOfferOffline(text));
     } catch {
       await finish(analyzeOfferOffline(text));
-    }
-  };
-
-  // ── Natural-language goal creation → SIP plan ──
-  const runGoalCreate = async (text) => {
-    setTyping(true);
-    try {
-      const g = validateGoalDraft(await extractGoal(text));
-      setTyping(false);
-      if (!g || !g.ok) {
-        pushMitra(await localise({ text: "I couldn't quite catch that goal — tell me what you want and roughly when, like \"a car in 3 years\".", mood: 'thinking', chips: ['Invest my surplus'] }));
-        return;
-      }
-      const assumedReturn = returnScenario(riskProfile).base;
-      const monthly = sipRequired(g.target, assumedReturn, g.years || 3, 0);
-      awardXP(20, 'nl-goal');
-      pushMitra(await localise({
-        mood: 'excited',
-        text: `For the ${g.name} goal, the current ${riskProfile.toLowerCase()} policy scenario estimates about ${fmt(monthly)}/month at ${assumedReturn}% p.a. Returns are not guaranteed.${g.estimated ? ' The target is an estimate—confirm it before acting.' : ''}`,
-        widget: { type: 'sip', data: { monthly, rate: assumedReturn, years: g.years, fv: g.target, fvIdle: g.target * 0.6 } },
-        chips: [`Simulate ${fmt(Math.round(monthly / 500) * 500)}/mo SIP`, 'Show my goals'],
-        cta: { label: `Simulate SIP for ${g.name}`, type: 'sip-setup', amount: Math.round(monthly / 500) * 500, source: 'nlgoal' },
-      }));
-    } catch {
-      setTyping(false);
-      pushMitra(await localise(fallbackResponse()));
     }
   };
 

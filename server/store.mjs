@@ -2,7 +2,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const DATA_DIR = path.resolve(process.cwd(), '.data');
+const DATA_DIR = path.resolve(process.env.MITRA_DATA_DIR || path.join(process.cwd(), '.data'));
 const DATA_FILE = path.join(DATA_DIR, 'mitra.json');
 const EMPTY = { users: {}, sessions: {}, audit: [], adviceReceipts: [] };
 let queue = Promise.resolve();

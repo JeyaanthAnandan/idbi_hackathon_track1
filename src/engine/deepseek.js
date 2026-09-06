@@ -8,12 +8,17 @@
 // key must live server-side — here it's client-side for a zero-backend demo.
 // ─────────────────────────────────────────────────────────────
 import { POLICY } from '../data/policy.js';
+import { ADVISOR_SYSTEM_PROMPT, boundedChatMessages } from './advisorPrompt.js';
 
 const KEY_STORAGE = 'mitra_deepseek_key';
 const BASE = 'https://api.deepseek.com/chat/completions';
-export const MODEL_CHAT = 'deepseek-chat';       // DeepSeek-V3
+const ENV_KEY = (import.meta.env?.VITE_DEEPSEEK_API_KEY || '').trim();
+export const MODEL_CHAT = (import.meta.env?.VITE_DEEPSEEK_MODEL || 'deepseek-v4-flash').trim();
+export const MODEL_VERSION = 'deepseek-v4-flash';
 
-export const getDeepSeekKey = () => localStorage.getItem(KEY_STORAGE) || '';
+export const getDeepSeekKey = () => {
+  try { return localStorage.getItem(KEY_STORAGE) || ENV_KEY; } catch { return ENV_KEY; }
+};
 export const setDeepSeekKey = (k) => localStorage.setItem(KEY_STORAGE, (k || '').trim());
 export const hasDeepSeek = () => !!getDeepSeekKey();
 
@@ -38,12 +43,15 @@ export const SPEECH_LANG = {
 };
 
 // ── low-level: non-streaming completion ──────────────────────
-export async function complete({ system, messages, model = MODEL_CHAT, json = false, temperature = 0.4, maxTokens = 700 }) {
+export async function complete({ system, messages, model = MODEL_CHAT, json = false, temperature = 0.4, maxTokens = 700, signal }) {
   const key = getDeepSeekKey();
   if (!key) throw new Error('no-key');
   const body = {
     model,
     messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
+    // Routine app tasks use non-thinking mode: lower latency/cost and required
+    // for tool_choice on DeepSeek V4 Flash.
+    thinking: { type: 'disabled' },
     temperature,
     max_tokens: maxTokens,
   };
@@ -51,6 +59,7 @@ export async function complete({ system, messages, model = MODEL_CHAT, json = fa
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+    signal: signal || AbortSignal.timeout(12000),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('DeepSeek ' + res.status + ' ' + (await res.text()).slice(0, 200));
@@ -71,17 +80,18 @@ export async function selectDeepSeekAdvisorTool({ messages, tools, signal }) {
       messages: [
         {
           role: 'system',
-          content: 'Route the latest request to exactly one supplied tool. Never answer in prose. Use decline_high_risk for stock tips, guaranteed returns, tax evasion, credential requests, or transaction execution.',
+          content: ADVISOR_SYSTEM_PROMPT,
         },
         ...messages,
       ],
       tools,
       tool_choice: 'required',
+      thinking: { type: 'disabled' },
       temperature: 0.1,
       max_tokens: 220,
     }),
   });
-  if (!res.ok) throw new Error(`DeepSeek ${res.status}`);
+  if (!res.ok) throw new Error(`DeepSeek ${res.status} ${(await res.text()).slice(0, 240)}`);
   const data = await res.json();
   const call = data.choices?.[0]?.message?.tool_calls?.[0]?.function;
   if (!call?.name) throw new Error('DeepSeek returned no advisor tool');
@@ -104,10 +114,7 @@ export function parseJSON(text) {
 }
 
 export function chatMessages(history, userText) {
-  return [
-    ...history.slice(-6).map((m) => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text })),
-    { role: 'user', content: userText },
-  ];
+  return boundedChatMessages(history, userText);
 }
 
 // ── Feature 2: translate a finished reply, preserving all numbers ──

@@ -54,7 +54,7 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
     monthlySummary,
     spendByCategory,
     subscriptions,
-    goals: defaultGoals({ monthlyIncome, savingsBalance, age }),
+    goals: monthlyIncome > 0 ? defaultGoals({ monthlyIncome, savingsBalance, age }) : [],
     tax: { section80CUsed: 0, section80CLimit: POLICY.tax.section80CLimit, regime: 'Unknown', regimeConfirmed: false, dataAvailable: false },
     insurance: { termCover: 0, healthCover: 0, dependents: 0, dataAvailable: false },
     peers: {

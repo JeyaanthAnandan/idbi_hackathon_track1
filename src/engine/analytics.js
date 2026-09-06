@@ -117,7 +117,7 @@ export function allocation() {
 export function equityExposure() {
   const total = totalWealth();
   const equity = holdings
-    .filter((h) => h.type === 'Mutual Fund')
+    .filter((h) => ['Mutual Fund', 'Stocks'].includes(h.type))
     .reduce((s, h) => s + h.value, 0);
   return total > 0 ? (equity / total) * 100 : 0;
 }
@@ -147,7 +147,7 @@ export function healthScore() {
       label: 'Diversification',
       score: equityExposure() > 15 && equityExposure() < 70 ? 20 : 12,
       max: 25,
-      note: `${equityExposure().toFixed(0)}% in growth assets; heavy cash & FD tilt`,
+      note: `${equityExposure().toFixed(0)}% in growth assets under the prototype asset mapping`,
     },
     {
       label: 'Goal Readiness',
@@ -257,7 +257,7 @@ export function protectionGap() {
 
 // ---- Market pulse: what the week did to *your* money ---------
 export function marketPulse() {
-  const equity = holdings.filter((h) => h.type === 'Mutual Fund').reduce((s, h) => s + h.value, 0);
+  const equity = holdings.filter((h) => ['Mutual Fund', 'Stocks'].includes(h.type)).reduce((s, h) => s + h.value, 0);
   const delta = equity * (market.weekChangePct / 100);
   return { ...market, equity, delta };
 }
@@ -280,7 +280,7 @@ export function drift(riskProfile = 'Balanced') {
   const bucket = (types) =>
     total > 0 ? (holdings.filter((h) => types.includes(h.type)).reduce((s, h) => s + h.value, 0) / total) * 100 : 0;
   const current = [
-    { name: 'Equity', pct: bucket(['Mutual Fund']), color: 'var(--teal)' },
+    { name: 'Equity', pct: bucket(['Mutual Fund', 'Stocks']), color: 'var(--teal)' },
     { name: 'Debt / FD', pct: bucket(['Fixed Deposit']), color: 'var(--teal-2)' },
     { name: 'Gold', pct: bucket(['Gold']), color: 'var(--amber)' },
     { name: 'Cash', pct: bucket(['Savings Account']), color: 'var(--slate)' },
@@ -375,10 +375,10 @@ export function xray() {
 // ---- LTCG harvesting: use the ₹1.25L exemption every year ----
 export function ltcgHarvest() {
   const harvested = hasAction('harvest');
-  const equity = holdings.filter((h) => h.type === 'Mutual Fund');
+  const equity = holdings.filter((h) => ['Mutual Fund', 'Stocks'].includes(h.type));
   const gains = equity.reduce((s, h) => s + (h.value - (h.cost || h.value)), 0);
   const exemption = POLICY.tax.ltcgEquityExemption;
-  const harvestable = harvested ? 0 : Math.min(gains, exemption);
+  const harvestable = harvested ? 0 : Math.max(0, Math.min(gains, exemption));
   const taxSaved = harvestable * POLICY.tax.ltcgEquityRate;
   const habitValue = sipFutureValue((harvested ? sumAction('harvest') : taxSaved) / 12, returnScenario('Balanced').base, 20);
   return { gains, exemption, harvestable, taxSaved, habitValue, harvested };

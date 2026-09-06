@@ -1,5 +1,7 @@
 # MITRA — Engineering Docs
 
+Read [VERIFICATION.md](./VERIFICATION.md) for the tested implementation as of 7 September 2026. The architecture and audit documents below contain historical findings and future plans that are not all current runtime behavior.
+
 Planning artifacts for moving MITRA from a static browser prototype to a sandbox
 environment with real data integration on AWS.
 

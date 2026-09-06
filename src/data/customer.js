@@ -8,8 +8,13 @@
 import { PERSONAS, PERSONA_LIST, getActivePersonaId, switchPersona } from './personas.js';
 import { getBootstrap } from '../engine/api.js';
 import { returnScenario } from './policy.js';
+import { buildCustomPersona } from '../engine/personaBuilder.js';
 
-const persona = getBootstrap().profile?.persona || PERSONAS[getActivePersonaId()];
+const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
+const boot = getBootstrap();
+const persona = demo ? PERSONAS[getActivePersonaId()] : boot.profile?.persona || (boot.session
+  ? buildCustomPersona({ name: boot.session.name }).persona
+  : PERSONAS[getActivePersonaId()]);
 
 export const customer = persona.customer;
 export const holdings = persona.holdings;

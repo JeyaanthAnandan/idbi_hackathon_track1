@@ -6,6 +6,7 @@ import OnboardingChoice from './components/OnboardingChoice.jsx';
 import Auth from './components/Auth.jsx';
 import Simulator from './components/Simulator.jsx';
 import WebApp from './components/WebApp.jsx';
+import DataStatus from './components/DataStatus.jsx';
 import Avatar from './components/Avatar.jsx';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
@@ -60,6 +61,7 @@ function ThemePicker() {
 
 function PersonaPicker() {
   const active = getActivePersonaId();
+  if (getSession()) return null;
   return (
     <>
       <label className="settings-label">Switch demo customer</label>
@@ -104,8 +106,12 @@ function AccountSection() {
         className="ghost-btn"
         onClick={async () => {
           if (window.confirm('Log out of MITRA?')) {
-            await logOut();
-            window.location.reload();
+            try {
+              await logOut();
+              window.location.reload();
+            } catch {
+              window.alert('Could not log out because the API is unavailable. Please retry.');
+            }
           }
         }}
       >
@@ -501,7 +507,7 @@ export default function App() {
             key={!session ? 'auth' : !onboarded ? 'onboard' : tab}
           >
             {!session ? (
-              <Auth onAuthed={(s) => setSession(s)} />
+              <Auth onAuthed={(s) => s.demo ? setSession(s) : window.location.reload()} />
             ) : !onboarded ? (
               <OnboardingChoice
                 onDone={(profile) => {
@@ -515,6 +521,7 @@ export default function App() {
               />
             ) : (
               <>
+                <DataStatus />
                 {tab === 'home' && (
                   <BankHome onOpenMitra={() => setTab('mitra')} onAsk={askMitra} riskProfile={riskProfile} />
                 )}

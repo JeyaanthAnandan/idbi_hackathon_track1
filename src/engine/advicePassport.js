@@ -21,7 +21,7 @@ const FORMULAS = {
 
 function evidenceFor(response) {
   const cf = cashflow();
-  const evidenceAsOf = getBootstrap().profile?.savedAt?.slice(0, 10) || dataQuality.dataAsOf || 'Demo fixture';
+  const evidenceAsOf = dataQuality.dataAsOf || (getBootstrap().profile ? 'Unknown observation date' : 'Demo fixture');
   const evidence = [
     { field: 'customer.totalWealth', value: fmt(totalWealth()), source: 'customer-360' },
     { field: 'cashflow.monthlyIncome', value: fmt(cf.avgIncome), source: 'transaction-analytics' },
@@ -44,7 +44,7 @@ export function buildAdvicePassport({ question, response, riskProfile, engineMod
   const type = response.widget?.type || response.cta?.type || 'guidance';
   const connectedSources = getBootstrap().profile?.sources;
   const sources = connectedSources?.length ? connectedSources : dataQuality.sources?.length ? dataQuality.sources : ['synthetic:customer-360'];
-  const observedAsOf = getBootstrap().profile?.savedAt?.slice(0, 10) || dataQuality.dataAsOf || 'Demo fixture';
+  const observedAsOf = dataQuality.dataAsOf || (getBootstrap().profile ? 'Unknown observation date' : 'Demo fixture');
   const scenario = returnScenario(riskProfile);
   const assumptions = [
     `Policy ${POLICY.version}, effective ${POLICY.asOf}`,
@@ -56,6 +56,7 @@ export function buildAdvicePassport({ question, response, riskProfile, engineMod
     summary: response.text,
     recommendationType: type,
     engineMode,
+    promptVersion: response.promptVersion || null,
     riskProfile,
     policyVersion: POLICY.version,
     dataAsOf: observedAsOf,

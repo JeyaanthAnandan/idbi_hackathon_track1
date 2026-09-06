@@ -22,6 +22,7 @@
 // production bank build must proxy these calls server-side.
 // ─────────────────────────────────────────────────────────────
 
+import { ADVISOR_SYSTEM_PROMPT } from './advisorPrompt.js';
 const BASE = 'https://api.sarvam.ai';
 const KEY_STORAGE = 'mitra_sarvam_key';
 const SPEAKER_STORAGE = 'mitra_sarvam_speaker';
@@ -356,7 +357,7 @@ export async function selectSarvamAdvisorTool({ messages, tools, signal }) {
       messages: [
         {
           role: 'system',
-          content: 'Route the latest request to exactly one supplied tool. Never answer in prose. Use decline_high_risk for stock tips, guaranteed returns, tax evasion, credential requests, or transaction execution.',
+          content: ADVISOR_SYSTEM_PROMPT,
         },
         ...messages,
       ],

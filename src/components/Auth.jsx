@@ -50,7 +50,7 @@ export default function Auth({ onAuthed }) {
       <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
       <p className="ob-sub">
         {mode === 'login'
-          ? 'Log in to your IDBI account to continue.'
+          ? 'Log in to your MITRA prototype account to continue.'
           : "A few details and MITRA will get to know you next."}
       </p>
 
@@ -113,7 +113,7 @@ export default function Auth({ onAuthed }) {
         className="ghost-btn"
         type="button"
         style={{ marginTop: 16, alignSelf: 'center' }}
-        onClick={() => onAuthed({ name: customer.name, email: 'demo@idbi.local', demo: true })}
+        onClick={() => { window.location.search = '?demo=1'; }}
       >
         Skip · try the demo as {customer.name.split(' ')[0]}
       </button>

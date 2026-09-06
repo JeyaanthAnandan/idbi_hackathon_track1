@@ -27,6 +27,7 @@ export function normalizeAdvicePassport(input) {
     summary: input.summary.slice(0, 4000),
     recommendationType: String(input.recommendationType || 'general').slice(0, 80),
     engineMode: String(input.engineMode || 'DETERMINISTIC').slice(0, 40),
+    promptVersion: input.promptVersion ? String(input.promptVersion).slice(0, 80) : null,
     riskProfile: String(input.riskProfile || 'Unknown').slice(0, 40),
     policyVersion: String(input.policyVersion || '').slice(0, 80),
     dataAsOf: String(input.dataAsOf || '').slice(0, 40),

@@ -29,16 +29,20 @@ function categorize(description) {
 
 function parseDate(s) {
   if (!s) return null;
-  let d = new Date(s);
-  if (!isNaN(d)) return d;
-  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (m) {
-    let [, dd, mm, yyyy] = m;
-    if (yyyy.length === 2) yyyy = `20${yyyy}`;
-    d = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`);
-    if (!isNaN(d)) return d;
-  }
-  return null;
+  const value = String(s).trim();
+  const indian = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!indian && !iso) return null;
+  const [, first, month, last] = indian || iso;
+  const year = indian ? Number(last.length === 2 ? `20${last}` : last) : Number(first);
+  const day = Number(indian ? first : last);
+  const d = new Date(Date.UTC(year, Number(month) - 1, day));
+  return d.getUTCFullYear() === year && d.getUTCMonth() === Number(month) - 1 && d.getUTCDate() === day ? d : null;
+}
+
+function numericValue(value) {
+  const clean = String(value ?? '').replace(/[,₹%\s]/g, '');
+  return clean && Number.isFinite(Number(clean)) ? Number(clean) : NaN;
 }
 
 // Expected columns (case-insensitive, order-independent): date, description
@@ -49,7 +53,7 @@ export function parseBankStatementCSV(text) {
   return rows
     .map((r) => {
       const rawAmount = r.amount ?? r.amt ?? r['debit/credit'] ?? '0';
-      const numeric = parseFloat(String(rawAmount).replace(/[,₹\s]/g, '')) || 0;
+      const numeric = numericValue(rawAmount);
       const explicitType = (r.type || r['dr/cr'] || '').toLowerCase();
       const type = explicitType.startsWith('cr') || explicitType === 'credit'
         ? 'credit'
@@ -57,13 +61,13 @@ export function parseBankStatementCSV(text) {
           ? 'debit'
           : numeric < 0 ? 'debit' : 'credit';
       return {
-        date: r.date || r['transaction date'] || r['txn date'] || '',
+        date: parseDate(r.date || r['transaction date'] || r['txn date'])?.toISOString().slice(0, 10) || '',
         description: r.description || r.narration || r.particulars || r.details || '',
         amount: Math.abs(numeric),
         type,
       };
     })
-    .filter((t) => t.amount > 0 && parseDate(t.date));
+    .filter((t) => Number.isFinite(t.amount) && t.amount > 0 && parseDate(t.date));
 }
 
 // Expected columns: name/scheme/symbol, type, value/current value, cost,
@@ -74,12 +78,12 @@ export function parseHoldingsCSV(text) {
     .map((r) => ({
       type: r.type || 'Mutual Fund',
       label: r.name || r.scheme || r.fund || r.symbol || 'Holding',
-      value: parseFloat(String(r.value ?? r['current value'] ?? r.value_inr ?? '0').replace(/[,₹\s]/g, '')) || 0,
-      cost: parseFloat(String(r.cost ?? r['invested value'] ?? '0').replace(/[,₹\s]/g, '')) || undefined,
-      growth: parseFloat(String(r.growth ?? r['return%'] ?? r.cagr ?? '0').replace(/[%\s]/g, '')) || 0,
+      value: numericValue(r.value ?? r['current value'] ?? r.value_inr),
+      cost: numericValue(r.cost ?? r['invested value']) || undefined,
+      growth: numericValue(r.growth ?? r['return%'] ?? r.cagr) || 0,
       liquid: (r.liquid ?? 'true').toLowerCase() !== 'false',
     }))
-    .filter((h) => h.value > 0);
+    .filter((h) => Number.isFinite(h.value) && h.value > 0 && (h.cost === undefined || h.cost >= 0));
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -173,6 +177,7 @@ export function detectSubscriptions(transactions) {
   const groups = new Map();
   transactions.forEach((t) => {
     if (t.type !== 'debit') return;
+    if (categorize(t.description).category !== 'Subscriptions') return;
     const d = parseDate(t.date);
     if (!d) return;
     const key = t.description.toLowerCase().trim();
@@ -186,7 +191,7 @@ export function detectSubscriptions(transactions) {
     const avg = entries.reduce((s, e) => s + e.amount, 0) / entries.length;
     const consistent = entries.every((e) => Math.abs(e.amount - avg) / avg < 0.1);
     if (!consistent) return;
-    subs.push({ name: key.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 40), amount: Math.round(avg), lastUsed: 'active' });
+    subs.push({ name: key.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 40), amount: Math.round(avg), lastUsed: 'unknown' });
   });
   return subs.slice(0, 8);
 }

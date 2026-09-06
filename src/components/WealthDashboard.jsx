@@ -104,7 +104,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
           <div className="wh-title">My wealth</div>
           <div className="wh-tag">360° · {riskProfile}</div>
         </div>
-        <div className="wh-label">Total with IDBI · {holdings.length} holdings</div>
+        <div className="wh-label">Total supplied holdings · {holdings.length} holdings</div>
         <div className="wh-value"><Counter value={totalWealth()} format={fmt} /></div>
         <div className="wh-badges">
           <div className="wh-badge">Surplus/mo<b>{fmt(cf.surplus)}</b></div>

@@ -8,6 +8,7 @@
 import { SPEECH_LANG } from './deepseek.js';
 import { hasSarvam, synthesize, transcribe, getSarvamSpeaker } from './sarvam.js';
 import { recordUtterance, canRecord } from './recorder.js';
+import { prepareSpeechMotion, attachAudioSpeechMotion, beginTextSpeechMotion, stopSpeechMotion } from './speechMotion.js';
 
 const VOICE_PREF = 'mitra_voice';
 
@@ -79,6 +80,7 @@ let audioEl = null;
 let token = 0;
 
 function stopAudio() {
+  stopSpeechMotion();
   if (audioEl) {
     audioEl.pause();
     audioEl.src = '';
@@ -90,15 +92,18 @@ function stopAudio() {
 // Long answers arrive batch by batch, so playback starts on the first batch
 // while the rest are still being synthesized. `done()` says no more are
 // coming, which is what lets the player know when the reply has truly ended.
-function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken }) {
+function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken, motionText = () => '' }) {
   const urls = [];
   let i = 0;
   let playing = false;
   let complete = false;
   let playbackStarted = false;
   let playbackFailed = false;
+  let finished = false;
 
   const finish = () => {
+    if (finished || myToken !== token) return;
+    finished = true;
     urls.forEach(URL.revokeObjectURL);
     audioEl = null;
     if (!playbackStarted && urls.length) {
@@ -113,6 +118,7 @@ function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken }) {
 
   const step = () => {
     if (myToken !== token) return; // interrupted by the next utterance
+    stopSpeechMotion();
     if (i >= urls.length) {
       playing = false;
       if (complete) finish();
@@ -121,16 +127,22 @@ function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken }) {
     playing = true;
     const el = new Audio(urls[i++]);
     audioEl = el;
-    el.onended = step;
-    el.onerror = step; // a bad clip shouldn't strand the rest of the reply
+    const tracked = attachAudioSpeechMotion(el);
+    let advanced = false;
+    const next = () => { if (!advanced) { advanced = true; step(); } };
+    el.onended = next;
+    el.onerror = next; // a bad clip shouldn't strand the rest of the reply
     el.play()
       .then(() => {
+        if (myToken !== token) { el.pause(); return; }
+        if (advanced) return;
+        if (!tracked) beginTextSpeechMotion(motionText());
         if (!playbackStarted) {
           playbackStarted = true;
           onPlaybackStart?.();
         }
       })
-      .catch(() => step());
+      .catch(next);
   };
 
   return {
@@ -148,7 +160,7 @@ function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken }) {
   };
 }
 
-function speakWebSpeech(text, { onStart, onEnd, lang }) {
+function speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful = false }) {
   if (!window.speechSynthesis) {
     onEnd?.();
     return false;
@@ -162,14 +174,32 @@ function speakWebSpeech(text, { onStart, onEnd, lang }) {
     .replace(/\s+/g, ' ')
     .trim();
   const u = new SpeechSynthesisUtterance(clean);
-  const v = lang === 'en' ? currentVoice() : voiceForLang(lang);
+  let v = lang === 'en' ? currentVoice() : voiceForLang(lang);
+  if (voiceGender === 'boy') {
+    refreshVoices();
+    v = voices.find((voice) => voice.lang.startsWith(lang) && /\b(daniel|rishi|alex|david|mark|aaron|ravi|george|guy|male)\b/i.test(voice.name)) || v;
+  }
   if (v) u.voice = v;
   u.lang = SPEECH_LANG[lang] || 'en-IN';
   u.rate = 0.98;
-  u.pitch = 1.04;
-  u.onstart = () => onStart?.('device');
-  u.onend = () => onEnd?.();
-  u.onerror = () => onEnd?.();
+  u.pitch = playful ? 1.15 : voiceGender === 'boy' ? 1 : 1.04;
+  const speechToken = token;
+  let boundary;
+  u.onstart = () => {
+    if (speechToken !== token) return;
+    boundary = beginTextSpeechMotion(clean, u.rate);
+    onStart?.('device');
+  };
+  u.onboundary = (event) => { if (speechToken === token) boundary?.(event.charIndex); };
+  u.onpause = () => { if (speechToken === token) stopSpeechMotion(); };
+  u.onresume = (event) => {
+    if (speechToken !== token) return;
+    boundary = beginTextSpeechMotion(clean, u.rate);
+    boundary(event.charIndex || 0);
+  };
+  const finish = () => { if (speechToken === token) { stopSpeechMotion(); onEnd?.(); } };
+  u.onend = finish;
+  u.onerror = finish;
   window.speechSynthesis.speak(u);
   return true;
 }
@@ -183,8 +213,9 @@ function speakWebSpeech(text, { onStart, onEnd, lang }) {
  * rather than letting MITRA silently turn robotic, which reads to the
  * customer as the product breaking.
  */
-export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
+export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, voiceGender, playful = false } = {}) {
   stopSpeaking();
+  prepareSpeechMotion();
   const myToken = ++token;
   if (!text?.trim()) {
     onEnd?.();
@@ -194,12 +225,13 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
   if (hasSarvam()) {
     const fallbackToDevice = () => {
       onFallback?.();
-      speakWebSpeech(text, { onStart, onEnd, lang });
+      speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful });
     };
     let started = false;
     const player = createPlayer({
       onEnd,
       myToken,
+      motionText: () => text,
       onPlaybackStart: () => {
         started = true;
         onStart?.('sarvam');
@@ -209,7 +241,7 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
 
     synthesize(text, {
       lang,
-      speaker: getSarvamSpeaker(),
+      speaker: speaker || getSarvamSpeaker(),
       onBatch: (urls) => {
         if (myToken !== token) {
           urls.forEach(URL.revokeObjectURL);
@@ -240,7 +272,7 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
     return true;
   }
 
-  return speakWebSpeech(text, { onStart, onEnd, lang });
+  return speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful });
 }
 
 /**
@@ -250,6 +282,7 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en' } = {}) {
  */
 export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
   stopSpeaking();
+  prepareSpeechMotion();
   const myToken = ++token;
 
   if (!hasSarvam()) {
@@ -261,10 +294,12 @@ export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
     };
   }
 
-  const player = createPlayer({ onEnd, myToken });
   let started = false;
   let chain = Promise.resolve(); // serialises synthesis so audio stays in order
   let all = '';
+  const player = createPlayer({ onEnd, myToken, motionText: () => all,
+    onPlaybackStart: () => onStart?.('sarvam'),
+  });
 
   return {
     push(sentence) {
@@ -280,7 +315,6 @@ export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
           }
           if (!started) {
             started = true;
-            onStart?.('sarvam');
           }
           player.push(urls);
         } catch {
@@ -314,7 +348,7 @@ export function stopSpeaking() {
 //   listen({ onResult(text, detectedLang), onEnd, onError, lang })
 // `lang: null` asks Sarvam to auto-detect — that's what lets a customer just
 // start speaking Tamil and have MITRA answer in Tamil.
-function listenWebSpeech({ onResult, onEnd, onError, lang }) {
+function listenWebSpeech({ onResult, onInterim, onEnd, onError, lang }) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     onError?.('Voice input needs Chrome/Edge.');
@@ -322,31 +356,43 @@ function listenWebSpeech({ onResult, onEnd, onError, lang }) {
   }
   const rec = new SR();
   rec.lang = SPEECH_LANG[lang] || 'en-IN';
-  rec.interimResults = false;
+  rec.interimResults = !!onInterim;
   rec.maxAlternatives = 1;
-  rec.onresult = (e) => onResult?.(e.results[0][0].transcript, null);
-  rec.onend = () => onEnd?.();
-  rec.onerror = (e) => onError?.(e.error);
+  let delivered = false, aborted = false;
+  rec.onresult = (e) => {
+    if (aborted || delivered) return;
+    let interim = '', final = '';
+    for (let i = e.resultIndex || 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal !== false) final += `${e.results[i][0].transcript} `;
+      else interim += e.results[i][0].transcript;
+    }
+    onInterim?.(interim);
+    if (final.trim()) { delivered = true; onResult?.(final.trim(), null); }
+  };
+  rec.onend = () => { if (!aborted) onEnd?.(); };
+  rec.onerror = (e) => { if (!aborted) onError?.(e.error); };
   rec.start();
-  return rec;
+  return { stop: () => rec.stop(), abort: () => { aborted = true; rec.abort(); } };
 }
 
-export function listen({ onResult, onEnd, onError, onLevel, onTranscribing, lang = 'en', autoDetect = true }) {
+export function listen({ onResult, onInterim, onEnd, onError, onLevel, onTranscribing, lang = 'en', autoDetect = true }) {
   if (!hasSarvam() || !canRecord()) {
-    return listenWebSpeech({ onResult, onEnd, onError, lang });
+    return listenWebSpeech({ onResult, onInterim, onEnd, onError, lang });
   }
 
   const session = recordUtterance({ onLevel });
-  let finished = false;
+  let finished = false, aborted = false;
 
   session.result
     .then(async (blob) => {
+      if (aborted) return;
       onEnd?.();          // mic is closed; we're on to transcription
       onTranscribing?.(true);
       // autoDetect leaves language_code as 'unknown' so Saaras identifies it
       const { transcript, detected, confidence } = await transcribe(blob, {
         lang: autoDetect ? null : lang,
       });
+      if (aborted) return;
       onTranscribing?.(false);
       finished = true;
       if (!transcript) {
@@ -358,6 +404,7 @@ export function listen({ onResult, onEnd, onError, onLevel, onTranscribing, lang
       onResult?.(transcript, confidence >= 0.6 ? detected : null);
     })
     .catch((err) => {
+      if (aborted) return;
       onTranscribing?.(false);
       if (finished) return;
       const msg = err?.message || 'mic-failed';
@@ -366,5 +413,5 @@ export function listen({ onResult, onEnd, onError, onLevel, onTranscribing, lang
     });
 
   // matches the Web Speech recognition handle the callers already use
-  return { stop: () => session.stop(), abort: () => session.abort() };
+  return { stop: () => session.stop(), abort: () => { aborted = true; session.abort(); } };
 }

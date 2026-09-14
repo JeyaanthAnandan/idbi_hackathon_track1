@@ -1,0 +1,110 @@
+/* Embedded explanations inherit MITRA's existing day/night design tokens. */
+.web-presenter { min-width: 0; container: mitra-explanation / inline-size; }
+.web-explain-entry { display: flex; gap: 18px; justify-content: space-between; align-items: center; padding: 18px 22px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.web-explain-entry > div { display: flex; align-items: center; gap: 12px; color: var(--blue-link); }
+.web-explain-entry > div > span { display: grid; gap: 5px; }
+.web-explain-entry strong { font-family: var(--display); color: var(--ink); font-size: 16px; }
+.web-explain-entry small { color: var(--ink-soft); font-size: 12px; }
+.web-explain-entry .web-btn { flex-shrink: 0; font-size: 12px; }
+.web-explain-entry .web-btn:disabled { opacity: .5; cursor: wait; }
+.chart-explain-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 8px 0 12px; padding: 12px 14px; background: var(--card-2); border: 1px solid var(--line-strong); border-radius: 14px; color: var(--blue-link); font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer; }
+.chart-explain-btn:hover { border-color: var(--blue-link); }
+.chart-explain-btn:disabled { opacity: .5; cursor: wait; }
+.chart-explain-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+.chart-explain-btn > span { margin-left: auto; }
+.presenter-character-picker[hidden] { display: none; }
+.presenter-integrated { --p-ink: var(--ink); --p-muted: var(--ink-soft); --p-green: var(--blue-link); min-height: 0; padding: 0; background: transparent; color: var(--ink); font-family: var(--font); color-scheme: normal; }
+.integrated-presenter-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 4px 0 16px; border-bottom: 1px solid var(--line); }
+.integrated-presenter-heading h2 { font-family: var(--display); font-size: clamp(24px, 2.4vw, 32px); letter-spacing: -.045em; margin: 6px 0 0; color: var(--ink); line-height: 1.15; }
+.integrated-presenter-heading .web-eyebrow { color: var(--ink-soft); font-family: var(--mono); font-size: 12px; }
+.integrated-presenter-heading .ghost-btn { font-size: 12px; padding: 9px 12px; white-space: nowrap; }
+.presenter-integrated .presenter-toolbar { padding: 16px 0 12px; flex-wrap: wrap; gap: 10px; }
+.presenter-integrated .presenter-toolbar nav { gap: 4px; }
+.presenter-integrated .presenter-toolbar nav button { font-size: 12px; padding: 9px 10px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); color: var(--ink-soft); }
+.presenter-integrated .presenter-toolbar nav button.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.presenter-integrated .presenter-toolbar nav button > span { display: none; }
+.presenter-integrated .presenter-stage-tools button { border-color: var(--line-strong); color: var(--ink-soft); font-size: 12px; padding: 7px 9px; }
+.integrated-character-toggle { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); padding: 9px 14px; font-size: 14px !important; }
+.integrated-character-toggle > span:last-child { margin-left: auto; font-size: 12px; color: var(--blue-link); }
+.integrated-character-toggle strong { color: var(--ink); }
+.presenter-integrated .presenter-character-picker { background: var(--card); border-color: var(--line); border-radius: var(--radius-sm); display: block; margin: 0 0 16px; padding: 14px; }
+.presenter-integrated .presenter-character-picker[hidden] { display: none; }
+.presenter-integrated .presenter-character-picker > div:first-child { margin-bottom: 12px; }
+.presenter-integrated .presenter-character-picker > div:first-child > span { max-width: none; }
+.presenter-integrated .presenter-character-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.presenter-integrated .presenter-character-options > button { flex-direction: column; text-align: center; padding: 9px 5px; background: var(--card); border-color: var(--line); color: var(--ink); }
+.presenter-integrated .presenter-character-options > button.chosen { background: var(--card-2); border-color: var(--blue-link); box-shadow: 0 0 0 1px var(--blue-link); }
+.presenter-integrated .presenter-character-options i { color: var(--blue-link); }
+.presenter-integrated .presenter-stage { grid-template-columns: minmax(0, 26%) minmax(0, 1fr); gap: 2%; min-height: 500px; display: grid; }
+.presenter-integrated .presenter-person { width: 26%; height: 490px; position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: transparent; overflow: visible; }
+.presenter-integrated .presenter-stage.presenter-on-right .presenter-person { left: 74%; }
+.presenter-integrated .presenter-stage.presenter-on-right .presenter-board { transform: translateX(-38.8889%); }
+.presenter-integrated .presenter-avatar-wrap { position: relative; left: auto; top: auto; width: 100%; height: 250px; margin: 8px 0 -12px; }
+.presenter-integrated .presenter-avatar-wrap > .mitra-avatar { height: 250px !important; }
+.presenter-integrated .presenter-person-heading { position: static; margin-top: 16px; font-size: 12px; text-align: center; }
+.presenter-integrated .presenter-character-bubble { position: static; margin-top: 18px; background: var(--card); border-color: var(--line-strong); color: var(--ink); box-shadow: none; font-size: 12px; text-align: center; padding: 9px; }
+.presenter-integrated .presenter-person-name { position: static; align-items: center; }
+.presenter-integrated .presenter-person-name strong { font-family: var(--display); }
+.presenter-integrated .presenter-meet { position: static; background: var(--card-2); border-color: var(--line-strong); color: var(--blue-link); font-size: 12px; padding: 8px 12px; margin: 14px 0 8px; }
+.presenter-integrated .presenter-meet:hover { border-color: var(--blue-link); background: var(--card); }
+.presenter-integrated .presenter-gesture-controls { position: static; gap: 4px; }
+.presenter-integrated .presenter-gesture-controls > button { background: var(--card); color: var(--ink-soft); border: 1px solid var(--line); padding: 7px; }
+.presenter-integrated .presenter-board { background: var(--card); border-color: var(--line); border-radius: var(--radius); box-shadow: none; padding: 22px 20px; min-width: 0; }
+.presenter-integrated .presenter-board h1 { font-family: var(--display); font-size: 27px; color: var(--ink); letter-spacing: -.045em; margin: 16px 0 22px; }
+.presenter-integrated .presenter-board-heading { font-family: var(--mono); font-size: 12px; flex-wrap: wrap; }
+.presenter-integrated .presenter-board-heading > span:last-child { background: var(--card-2); }
+.presenter-integrated .presenter-stats { border-color: var(--line); gap: 18px; }
+.presenter-integrated .presenter-stats strong { font-family: var(--display); font-size: 24px; }
+.presenter-integrated .presenter-chart-heading { gap: 8px; font-size: 12px; }
+.presenter-integrated .presenter-bar-row { grid-template-columns: minmax(70px, 1.1fr) minmax(40px, 1fr) 68px 12px; padding: 10px 4px; gap: 7px; }
+.presenter-integrated .presenter-bar-label { font-size: 12px; }
+.presenter-integrated .presenter-bar-row strong { font-size: 12px; font-family: var(--mono); }
+.presenter-integrated .presenter-bar-row:hover, .presenter-integrated .presenter-bar-row.selected { background: var(--card-2); }
+.presenter-integrated .presenter-bar-row.selected { border-color: var(--blue-link); }
+.presenter-integrated .presenter-bar-track { background: var(--chart-track); }
+.presenter-integrated .presenter-bar-fill { background: var(--teal-2); }
+.presenter-integrated .presenter-bar-row.selected .presenter-bar-fill { background: var(--teal); }
+.presenter-integrated .presenter-bar-row.negative .presenter-bar-fill { background: var(--red); }
+.presenter-integrated .presenter-bar-average { background: var(--orange); border-color: var(--paper); }
+.presenter-integrated .presenter-bar-pointer { color: var(--orange); }
+.presenter-integrated .presenter-data-note { border-color: var(--line); }
+.presenter-integrated .presenter-sliders { gap: 12px; grid-template-columns: 1fr; }
+.presenter-integrated .presenter-timeline path:nth-child(2) { stroke: var(--teal); }
+.presenter-integrated .presenter-timeline path:nth-child(3) { stroke: var(--ink-soft); }
+.presenter-integrated .presenter-timeline circle { fill: var(--orange); }
+.presenter-integrated .presenter-conversation { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: var(--radius-sm); margin-top: 16px; padding: 20px; }
+.presenter-integrated .presenter-caption-meta { color: var(--ink-soft); font-size: 12px; flex-wrap: wrap; }
+.presenter-integrated .presenter-caption-meta i { color: var(--teal); }
+.presenter-integrated .presenter-caption { font-family: var(--font); font-size: 16px; }
+.presenter-integrated .presenter-transport button { color: var(--ink); border-color: var(--line-strong); font-size: 12px; }
+.presenter-integrated .presenter-transport button.presenter-play { background: var(--blue); color: #fff; border-color: var(--blue); }
+.presenter-integrated .presenter-transport-hint { color: var(--ink-soft); width: 100%; margin: 5px 0 0; }
+.presenter-integrated .presenter-ask { background: var(--card-2); border-color: var(--line-strong); }
+.presenter-integrated .presenter-ask input, .presenter-integrated .presenter-ask button { color: var(--ink); }
+.presenter-integrated .presenter-ask input::placeholder { color: var(--ink-soft); }
+.presenter-integrated .presenter-ask button.listening { background: var(--red); color: white; }
+.presenter-integrated .presenter-notice { color: var(--ink-soft); }
+.presenter-compact { container: mitra-explanation / inline-size; }
+@container mitra-explanation (max-width: 660px) {
+  .integrated-presenter-heading { align-items: flex-start; flex-wrap: wrap; }
+  .integrated-presenter-heading h2 { font-size: 25px; }
+  .presenter-integrated .presenter-toolbar { display: grid; }
+  .presenter-integrated .presenter-character-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .presenter-integrated .presenter-character-options > button { flex-direction: row; text-align: left; padding: 8px; }
+  .presenter-integrated .presenter-stage { display: flex; flex-direction: column; min-height: 0; gap: 14px; }
+  .presenter-integrated .presenter-person, .presenter-integrated .presenter-stage.presenter-on-right .presenter-person { position: relative; left: 0; width: 100%; height: 270px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); display: block; overflow: hidden; }
+  .presenter-integrated .presenter-avatar-wrap { position: absolute; left: 0; top: 18px; width: 46%; height: 200px; margin: 0; }
+  .presenter-integrated .presenter-avatar-wrap > .mitra-avatar { height: 200px !important; }
+  .presenter-integrated .presenter-person .presenter-person-heading { position: absolute; left: 48%; right: 10px; top: 13px; margin: 0; text-align: left; }
+  .presenter-integrated .presenter-character-bubble { position: absolute; left: 48%; right: 12px; top: 52px; margin: 0; }
+  .presenter-integrated .presenter-person .presenter-person-name { position: absolute; left: 48%; top: 105px; align-items: flex-start; }
+  .presenter-integrated .presenter-person .presenter-meet { position: absolute; top: 150px; left: 48%; margin: 0; }
+  .presenter-integrated .presenter-gesture-controls { position: absolute; top: 218px; left: 0; right: 0; }
+  .presenter-integrated .presenter-stage.presenter-on-right .presenter-board { transform: none; }
+  .presenter-integrated .presenter-board { padding: 20px 14px; }
+  .presenter-integrated .presenter-board h1 { font-size: 25px; }
+  .presenter-integrated .presenter-conversation { padding: 16px; }
+}
+@media (max-width: 1250px) {
+  .web-explain-entry { flex-wrap: wrap; }
+}

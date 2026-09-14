@@ -68,7 +68,7 @@ export async function complete({ system, messages, model = MODEL_CHAT, json = fa
   return { content: msg.content || '', reasoning: msg.reasoning_content || '' };
 }
 
-export async function selectDeepSeekAdvisorTool({ messages, tools, signal }) {
+export async function selectDeepSeekAdvisorTool({ messages, tools, signal, system = ADVISOR_SYSTEM_PROMPT }) {
   const key = getDeepSeekKey();
   if (!key) throw new Error('no-key');
   const res = await fetch(BASE, {
@@ -80,7 +80,7 @@ export async function selectDeepSeekAdvisorTool({ messages, tools, signal }) {
       messages: [
         {
           role: 'system',
-          content: ADVISOR_SYSTEM_PROMPT,
+          content: system,
         },
         ...messages,
       ],

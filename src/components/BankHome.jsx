@@ -71,7 +71,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
       </div>
 
       {/* the one dark object on this screen — balance owns it */}
-      <div className="balance-card">
+      <div className="balance-card" data-guide-target="home-summary">
         <div className="balance-top">
           <div>
             <div className="balance-greet">Welcome · {customer.city}</div>

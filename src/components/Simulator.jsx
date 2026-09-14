@@ -55,7 +55,7 @@ export default function Simulator({ onAsk }) {
       <div className="eyebrow" style={{ letterSpacing: '0.18em' }}>Time Machine® · what-if</div>
 
       <div className="eyebrow" style={{ marginTop: 14 }}>Age of financial freedom</div>
-      <div className="sim-hero">
+      <div className="sim-hero" data-guide-target="simulator-chart">
         <div className="figure">{result.fireAge ?? '60+'}</div>
         <p>
           {newlyPossible ? (

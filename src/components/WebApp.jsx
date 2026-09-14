@@ -4,6 +4,9 @@ import Ring from './Ring.jsx';
 import Icon from './Icons.jsx';
 import Counter from './Counter.jsx';
 import AvatarChat from './AvatarChat.jsx';
+import MitraCompanion from './MitraCompanion.jsx';
+import PresenterStudio from './PresenterStudio.jsx';
+import { stopSpeaking } from '../engine/speech.js';
 import WealthDashboard from './WealthDashboard.jsx';
 import DataStatus from './DataStatus.jsx';
 import Simulator from './Simulator.jsx';
@@ -101,7 +104,7 @@ function HomePanel({ riskProfile, onAsk }) {
   return (
     <>
       {/* the one dark object in the main column — balance owns it */}
-      <section className="web-hero web-span" data-surface="night">
+      <section className="web-hero web-span" data-surface="night" data-guide-target="home-summary">
         <div className="web-hero-rings" aria-hidden="true">
           <span /><span />
         </div>
@@ -322,6 +325,10 @@ function LedgerPanel({ onAsk }) {
 export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [query, setQuery] = useState('');
+  const [presentation, setPresentation] = useState(() => new URLSearchParams(window.location.search).get('presenter') === '1' ? { topic: 'portfolio', key: 0 } : null);
+  const [conversationBusy, setConversationBusy] = useState(false);
+  const present = (request) => setPresentation((previous) => ({ ...request, key: (previous?.key || 0) + 1 }));
+  const navigate = (next) => { setPresentation(null); onTab(next); };
 
   const hs = healthScore();
   const lvl = levelInfo();
@@ -330,7 +337,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
   // so that tab collapses back to Home for the purpose of nav highlighting.
   const active = tab === 'mitra' ? 'home' : tab;
 
-  const ask = (prompt) => setPendingPrompt(prompt);
+  const ask = (prompt) => { setPresentation(null); setPendingPrompt(prompt); };
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -353,7 +360,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
               key={id}
               className={`web-rail-item ${active === id ? 'is-on' : ''}`}
               aria-current={active === id ? 'page' : undefined}
-              onClick={() => onTab(id)}
+              onClick={() => navigate(id)}
             >
               <Icon name={ic} size={19} />
               {label}
@@ -364,7 +371,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
           <button
             className={`web-rail-item ${active === 'settings' ? 'is-on' : ''}`}
             aria-current={active === 'settings' ? 'page' : undefined}
-            onClick={() => onTab('settings')}
+            onClick={() => navigate('settings')}
           >
             <Icon name="gear" size={19} />
             Settings
@@ -402,11 +409,25 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
 
         <div className="web-scroll" key={active}>
           <DataStatus />
+          {presentation ? <div className="web-span web-presenter">
+            <PresenterStudio key={presentation.key} embedded riskProfile={riskProfile}
+              initialTopic={presentation.topic} initialScenario={presentation.scenario}
+              initialSpending={presentation.spending} initialVoice={presentation.voice ?? true}
+              onClose={() => setPresentation(null)} onAsk={ask} />
+          </div> : <>
+          {['home', 'wealth', 'simulate'].includes(active) && <div className="web-span web-explain-entry">
+            <div><Icon name="chart" size={19} /><span><strong>Explore your numbers with MITRA</strong><small>Animated explanations for investments, spending and SIPs.</small></span></div>
+            <button type="button" className="web-btn web-btn-primary" disabled={conversationBusy} onClick={() => {
+              stopSpeaking();
+              present({ topic: active === 'simulate' ? 'growth' : 'portfolio' });
+            }}>Explain with charts ↗</button>
+          </div>}
           {active === 'home' && <HomePanel riskProfile={riskProfile} onAsk={ask} />}
           {active === 'wealth' && <div className="web-span web-embed"><WealthDashboard onAsk={ask} riskProfile={riskProfile} /></div>}
           {active === 'simulate' && <div className="web-span web-embed" data-surface="night"><Simulator onAsk={ask} /></div>}
           {active === 'ledger' && <LedgerPanel onAsk={ask} />}
           {active === 'settings' && <div className="web-span web-embed">{settingsPanel}</div>}
+          </>}
         </div>
       </div>
 
@@ -415,8 +436,13 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
           riskProfile={riskProfile}
           initialPrompt={pendingPrompt}
           onConsumeInitial={() => setPendingPrompt(null)}
+          onPresent={present}
+          onConversationActivity={() => setPresentation(null)}
+          presentationActive={!!presentation}
+          onBusyChange={setConversationBusy}
         />
       </aside>
+      <MitraCompanion onNavigate={navigate} onAsk={ask} enabled={!presentation && active !== 'settings'} busy={conversationBusy} />
     </div>
   );
 }

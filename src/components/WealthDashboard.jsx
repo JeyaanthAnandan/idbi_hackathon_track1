@@ -174,7 +174,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" data-guide-target="wealth-health">
         <h3>
           Financial health <span>AI-computed monthly</span>
         </h3>
@@ -193,7 +193,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" data-guide-target="wealth-allocation">
         <h3>Allocation · concentric</h3>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
           <ConcentricRings
@@ -211,7 +211,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" data-guide-target="wealth-cashflow">
         <h3>
           Income vs spend <span>last 6 months</span>
         </h3>

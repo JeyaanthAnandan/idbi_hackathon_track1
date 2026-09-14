@@ -349,7 +349,7 @@ export async function translateToEnglish(text, { signal } = {}) {
 
 // The model selects a narrowly-scoped financial tool; it never writes the
 // recommendation itself. The deterministic engine executes the validated call.
-export async function selectSarvamAdvisorTool({ messages, tools, signal }) {
+export async function selectSarvamAdvisorTool({ messages, tools, signal, system = ADVISOR_SYSTEM_PROMPT }) {
   const data = await sarvamFetch('/v1/chat/completions', {
     signal,
     body: {
@@ -357,7 +357,7 @@ export async function selectSarvamAdvisorTool({ messages, tools, signal }) {
       messages: [
         {
           role: 'system',
-          content: ADVISOR_SYSTEM_PROMPT,
+          content: system,
         },
         ...messages,
       ],

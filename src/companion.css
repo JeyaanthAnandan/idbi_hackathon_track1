@@ -1,0 +1,109 @@
+.mitra-ui-highlight { outline: 3px solid #e9a45c !important; outline-offset: 5px; transition: outline-color .2s; }
+.mitra-guide-line { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; overflow: visible; z-index: 1; }
+.mitra-guide-line path { fill: none; stroke: #e9a45c; stroke-width: 2; stroke-dasharray: 5 7; opacity: .7; }
+.mitra-guide-line circle { fill: #efb576; stroke: #61422c; stroke-width: 2; }
+.mitra-companion { position: fixed; z-index: 80; left: 100px; bottom: 22px; display: flex; align-items: flex-end; gap: 4px; color: #173f36; font-family: inherit; }
+.mitra-pet { flex: 0 0 110px; width: 110px; border: 0; background: transparent; padding: 0; color: inherit; cursor: pointer; position: relative; z-index: 2; animation: mitra-pop .65s cubic-bezier(.2,.9,.3,1.15) both; }
+.mitra-pet > span { display: block; font-size: 11px; background: #fffdf7; border: 1px solid #b4c9bf; border-radius: 20px; padding: 6px; box-shadow: 0 4px 12px #153e3020; }
+.mitra-companion-bubble { position: relative; z-index: 2; width: 290px; max-height: min(480px, 75dvh); overflow-y: auto; padding: 16px; border: 1px solid #bdcfc3; border-radius: 20px 20px 20px 4px; background: #fffdf7; box-shadow: 0 12px 45px #163d3326; animation: mitra-pop .45s .15s both; }
+.mitra-companion-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mitra-companion-title strong { font-size: 16px; }
+.mitra-companion-title span { color: #c67c39; }
+.mitra-companion-title button { border: 0; background: transparent; color: #456158; font-size: 25px; width: 30px; height: 30px; cursor: pointer; }
+.mitra-companion-bubble p { margin: 8px 0 14px; font-size: 13px; line-height: 1.55; }
+.mitra-companion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mitra-companion-actions button { border: 1px solid #c6d7ca; border-radius: 20px; padding: 8px 10px; background: #eff5ed; color: #245545; cursor: pointer; font: inherit; font-size: 11px; }
+.mitra-companion-actions button:first-of-type { background: #176556; color: white; border-color: #176556; }
+.mitra-companion-bubble form { display: flex; margin-top: 12px; border-bottom: 1px solid #c6d7ca; }
+.mitra-companion-bubble input { min-width: 0; width: 100%; border: 0; background: transparent; color: #173f36; padding: 9px 0; font: inherit; font-size: 12px; }
+.mitra-companion-bubble form button { border: 0; background: transparent; font-size: 22px; color: #176556; cursor: pointer; }
+.mitra-companion-choice { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 10px; color: #5d7468; }
+.mitra-companion-choice select { min-width: 0; flex: 1; border: 0; background: transparent; color: #245545; font: inherit; padding: 4px 0; }
+.mitra-companion button:disabled { opacity: .5; cursor: default; }
+.mitra-call-room { position: fixed; inset: 0; z-index: 5000; display: flex; flex-direction: column; width: 100%; height: 100dvh; overflow: hidden; background: #071e1b; color: #f4f1e8; --text: #f4f1e8; --text-2: #b0c8bd; --text-3: #93afa2; --border: #ffffff20; --card: #102d27; --accent: #e9b878; }
+.mitra-call-room * { box-sizing: border-box; }
+.mitra-call-room button, .mitra-call-room input { font: inherit; }
+.mitra-call-room button { cursor: pointer; }
+.mitra-call-room button:disabled { cursor: default; opacity: .45; }
+.mitra-call-room button:focus-visible, .mitra-companion button:focus-visible { outline: 3px solid #e9b878; outline-offset: 3px; }
+.mitra-call-header { display: flex; align-items: center; gap: 24px; padding: 24px 32px; border-bottom: 1px solid #ffffff16; flex-shrink: 0; }
+.mitra-call-header > div { flex: 1; }
+.mitra-call-room .eyebrow { color: #b4cabe; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
+.mitra-call-header h1 { margin: 7px 0 0; font-size: clamp(19px, 2.1vw, 29px); font-weight: 500; }
+.mitra-call-clock { font-size: 13px; color: #b4cabe; font-variant-numeric: tabular-nums; }
+.mitra-call-end { display: flex; align-items: center; gap: 8px; background: #6a342e; border: 1px solid #b37467; color: #fff1e7; padding: 11px 16px; border-radius: 30px; font-size: 13px !important; }
+.mitra-call-workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(200px, 24%) minmax(0, 1fr); overflow-y: auto; }
+.mitra-call-guide { align-self: start; position: sticky; top: 0; display: flex; align-items: center; flex-direction: column; padding: 35px 18px 24px; text-align: center; background: radial-gradient(ellipse at 50% 20%, #27564a55, transparent 70%); }
+.mitra-call-guide > div:first-child { width: min(100%, 270px); }
+.mitra-call-guide .avatar { max-width: 100%; }
+.mitra-call-guide h2 { font-size: 24px; font-weight: 500; margin: 0 0 8px; }
+.mitra-call-guide p { margin: 0; color: #c1d2c8; font-size: 12px; line-height: 1.5; }
+.mitra-call-guide .mitra-call-hint { max-width: 190px; color: #91aa9e; margin: 18px 0; }
+.mitra-call-room .ghost-btn { padding: 10px 14px; color: #d7e5d9; border: 1px solid #ffffff25; background: transparent; border-radius: 20px; font-size: 11px; }
+.mitra-call-meter { height: 36px; display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 10px; }
+.mitra-call-meter i { display: block; width: 4px; border-radius: 3px; background: #c1cf93; transition: height .12s; }
+.mitra-call-content { min-width: 0; padding: 28px 32px 32px 12px; }
+.mitra-call-your-words { padding: 20px 24px; background: #b9cdb30c; border: 1px solid #afceba30; border-radius: 16px; margin-bottom: 22px; }
+.mitra-call-your-words p { font-size: clamp(17px, 1.8vw, 24px); line-height: 1.5; margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mitra-call-your-words small { color: #b4cabe; }
+.mitra-call-panels { display: grid; gap: 22px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+.mitra-call-panels.has-chart { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.mitra-call-transcript, .mitra-call-chart { min-width: 0; }
+.mitra-call-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.mitra-call-panel-heading h2 { font-size: 14px; font-weight: 500; margin: 0; color: #c7d5cc; }
+.mitra-call-panel-heading button { background: transparent; border: 0; color: #e9b878; font-size: 11px; padding: 6px; }
+.mitra-call-message { margin-bottom: 16px; padding: 18px 20px; border-radius: 16px; border: 1px solid #c9dbc015; background: #15332b; }
+.mitra-call-message.user { background: #0d2722; border-color: #c9dbc030; }
+.mitra-call-message > span { color: #e9b878; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.mitra-call-message > p, .mitra-call-response { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.8; }
+.mitra-call-chart { padding: 20px; border: 1px solid #e9b87840; border-radius: 16px; background: #102b25; }
+.mitra-call-chart > .ghost-btn { margin-top: 16px; }
+.mitra-call-bars { margin-top: 24px; --p-ink: #e8efdf; --p-green: #77bba4; }
+.mitra-call-bars h3 { font-size: 15px; font-weight: 500; }
+.mitra-call-bars > p { font-size: 12px; color: #a9c1b1; line-height: 1.6; }
+.mitra-call-bars .presenter-bar-row { grid-template-columns: minmax(65px, 1fr) minmax(35px, 1fr) 60px 12px; gap: 6px; padding: 12px 4px; }
+.mitra-call-bars .presenter-bar-row:hover, .mitra-call-bars .presenter-bar-row.selected { background: #ffffff0c; }
+.mitra-call-bars .presenter-bar-label, .mitra-call-bars .presenter-bar-row strong { font-size: 12px; }
+.mitra-call-bars .presenter-bar-track { background: #ffffff0a; box-shadow: 2px 4px 0 #0002; }
+.mitra-call-bars .presenter-bar-fill { background: linear-gradient(180deg, #8ab6a6, #487d68); box-shadow: 0 4px 0 #335d4f; }
+.mitra-call-bars .presenter-bar-row.negative .presenter-bar-fill { background: #c76254; box-shadow: 0 4px 0 #733c33; }
+.mitra-call-guide > div:first-child > .mitra-avatar, .mitra-pet > .mitra-avatar { height: auto !important; aspect-ratio: 1; }
+.mitra-call-working { color: #b4cabe; font-size: 12px; }
+.mitra-call-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; margin-top: 16px; background: #53322a; color: #ffe1c0; font-size: 12px; }
+.mitra-call-error button { background: transparent; color: inherit; border: 1px solid #e9b87880; border-radius: 20px; padding: 6px 12px; }
+.mitra-call-footer { flex-shrink: 0; padding: 14px max(24px, 8vw) max(18px, env(safe-area-inset-bottom)); border-top: 1px solid #ffffff16; background: #0a211c; position: relative; z-index: 2; }
+.mitra-call-suggestions { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; }
+.mitra-call-suggestions button { white-space: nowrap; background: #ffffff07; border: 1px solid #ffffff20; border-radius: 20px; color: #c2d2c6; padding: 8px 12px; font-size: 11px; }
+.mitra-call-footer form { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid #ffffff30; border-radius: 30px; background: #16342b; }
+.mitra-call-footer input { min-width: 0; flex: 1; background: transparent; border: 0; color: #f4f1e8; padding: 9px 4px; font-size: 14px; }
+.mitra-call-footer input::placeholder { color: #9ab2a3; }
+.mitra-call-footer form button { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: transparent; border: 0; color: #d8dfca; }
+.mitra-call-footer form button[type=submit], .mitra-call-footer form .is-listening { background: #c6d8a8; color: #163b2f; }
+@keyframes mitra-pop { from { opacity: 0; transform: translateY(70px) scale(.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 1100px) { .mitra-call-panels.has-chart { grid-template-columns: minmax(0, 1fr); } .mitra-call-chart { grid-row: 1; } }
+@media (max-width: 760px) {
+  .mitra-companion { left: 8px; bottom: 90px; gap: 0; }
+  .mitra-pet { width: 82px; flex-basis: 82px; }
+  .mitra-companion-bubble { width: min(290px, calc(100vw - 104px)); padding: 12px; }
+  .mitra-companion-title strong { font-size: 14px; }
+  .mitra-call-header { padding: 15px 16px; gap: 10px; }
+  .mitra-call-header h1 { font-size: 18px; }
+  .mitra-call-clock { display: none; }
+  .mitra-call-end { padding: 10px 12px; font-size: 11px !important; }
+  .mitra-call-workspace { display: block; }
+  .mitra-call-guide { position: sticky; top: 0; z-index: 2; background: #0a241e; padding: 12px 16px; min-height: 130px; align-items: flex-start; padding-left: 138px; text-align: left; }
+  .mitra-call-guide > div:first-child { position: absolute; width: 125px; height: 125px; left: 10px; top: 4px; overflow: hidden; }
+  .mitra-call-guide > div:first-child > .mitra-avatar { width: 125px !important; height: 125px !important; }
+  .mitra-call-guide h2 { font-size: 20px; margin-top: 10px; }
+  .mitra-call-guide .mitra-call-hint, .mitra-call-guide .mitra-call-meter { display: none; }
+  .mitra-call-guide .ghost-btn { padding: 7px 10px; margin-top: 10px; font-size: 10px; }
+  .mitra-call-content { padding: 12px 16px 24px; }
+  .mitra-call-your-words { padding: 16px; }
+  .mitra-call-message { padding: 16px; }
+  .mitra-call-message > p { font-size: 14px; }
+  .mitra-call-footer { padding: 10px 12px max(12px, env(safe-area-inset-bottom)); }
+  .mitra-call-footer input { font-size: 16px; }
+  .mitra-call-footer form { gap: 2px; }
+  .mitra-call-chart { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .mitra-pet, .mitra-companion-bubble { animation: none; } .mitra-ui-highlight, .mitra-call-meter i { transition: none; } }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import BankHome from './components/BankHome.jsx';
+import MitraCompanion from './components/MitraCompanion.jsx';
 import WealthDashboard from './components/WealthDashboard.jsx';
 import AvatarChat from './components/AvatarChat.jsx';
 import OnboardingChoice from './components/OnboardingChoice.jsx';
@@ -382,7 +383,7 @@ function useRoomForWebShell() {
 // capturing marketing shots and for a "resume where I was" style entry.
 const demoParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 const DEMO = demoParams.get('demo') === '1';
-const DEMO_SCREEN = demoParams.get('screen') || 'home';
+const DEMO_SCREEN = demoParams.get('screen') || (demoParams.get('presenter') === '1' ? 'mitra' : 'home');
 
 // After the Connect/Upload onboarding paths finish (which finalize via a
 // full page reload, since customer.js binds the active persona at module
@@ -540,6 +541,7 @@ export default function App() {
           </div>
         </div>
 
+        {session && onboarded && <MitraCompanion onNavigate={setTab} onAsk={askMitra} enabled={tab !== 'mitra' && tab !== 'settings'} />}
         {session && onboarded && (
           <div className="bottom-nav">
             {[

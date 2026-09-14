@@ -5,12 +5,17 @@ import Ring from './Ring.jsx';
 import ChatWidget from './ChatWidgets.jsx';
 import AdvicePassport from './AdvicePassport.jsx';
 import AvatarGuide from './AvatarGuide.jsx';
+import PresenterStudio from './PresenterStudio.jsx';
+import FullScreenCall from './FullScreenCall.jsx';
+import { planAvatarDirection, fallbackDirection } from '../engine/avatarDirector.js';
+import { presentationForWidget, callChartTargets } from '../engine/presenter.js';
 import {
   respond, fallbackResponse, analyzeOfferOffline,
 } from '../engine/advisor.js';
 import { speak, stopSpeaking, listen } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
-import { customer } from '../data/customer.js';
+import { customer, holdings } from '../data/customer.js';
+import { getCharacter, savedCharacter } from '../engine/characters.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
 import {
@@ -34,7 +39,7 @@ import { answerConversation } from '../engine/conversation.js';
 let msgId = Date.now();
 const mid = () => ++msgId;
 
-export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitial }) {
+export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitial, onPresent, onConversationActivity, presentationActive = false, onBusyChange }) {
   const [messages, setMessages] = useState(loadChatHistory);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -77,23 +82,55 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const wrapRef = useRef(null);
   // the call is a full-bleed takeover: it has to escape the scrolling
   // screen so it covers the status bar and the nav pill too
-  const [shell, setShell] = useState(null);
+
   const [guideFocus, setGuideFocus] = useState(null);
+  const [showPresenter, setShowPresenter] = useState(() => !onPresent && new URLSearchParams(window.location.search).get('presenter') === '1' ? { topic: 'portfolio', key: 0 } : null);
+  const openPresenter = (request = { topic: 'portfolio' }) => {
+    if (requestBusy.current || transcribingRef.current || inCallRef.current) return;
+    stopSpeaking();
+    recRef.current?.abort?.();
+    recRef.current = null;
+    setListening(false);
+    setSpeaking(false);
+    const next = { ...request, voice: voiceOn };
+    if (onPresent) onPresent(next);
+    else {
+      setShowPresenter((previous) => ({ ...next, key: (previous?.key || 0) + 1 }));
+      bodyRef.current?.scrollTo({ top: 0 });
+    }
+  };
+  const returnToConversation = () => {
+    setShowPresenter(null);
+    onConversationActivity?.();
+  };
 
   // ── Live call state ──
   const [inCall, setInCall] = useState(false);
   const [callCaption, setCallCaption] = useState('');
   const [callHeard, setCallHeard] = useState('');
+  const [callInterim, setCallInterim] = useState('');
+  const [callStartId, setCallStartId] = useState(0);
+  const [callDirection, setCallDirection] = useState(null);
+  const directorRef = useRef(null);
+  const mountedRef = useRef(true);
   const [callError, setCallError] = useState('');
   const [preparingVoice, setPreparingVoice] = useState(false);
   const [callListening, setCallListening] = useState(false);
   const [callSecs, setCallSecs] = useState(0);
-  const [micOk, setMicOk] = useState(true);
+  const [callCompletion, setCallCompletion] = useState(0);
   const inCallRef = useRef(false);
   const callSessionRef = useRef(0);
   const callListeningRef = useRef(false);
   const recRef = useRef(null);
   const lastQuestionRef = useRef('');
+  const presenterActiveRef = useRef(false);
+  presenterActiveRef.current = presentationActive || !!showPresenter;
+  useEffect(() => {
+    onBusyChange?.(typing || transcribing || listening || inCall);
+  }, [typing, transcribing, listening, inCall, onBusyChange]);
+  useEffect(() => {
+    if (presentationActive) { stopSpeaking(); setSpeaking(false); }
+  }, [presentationActive]);
 
   const showToast = (t) => {
     setToast(t);
@@ -115,11 +152,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     if (!inCallRef.current || callListeningRef.current || transcribingRef.current) return;
     const callSession = callSessionRef.current;
     setCallError('');
-    setMicOk(true);
+
+    setCallInterim('');
     try {
       const rec = listen({
         lang: langRef.current,
         onLevel: setMicLevel,
+        onInterim: (text) => {
+          if (inCallRef.current && callSession === callSessionRef.current) setCallInterim(text);
+        },
         onTranscribing: (value) => {
           if (inCallRef.current && callSession === callSessionRef.current) updateTranscribing(value);
         },
@@ -129,6 +170,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           recRef.current = null;
           setCallListening(false);
           setCallHeard(t);
+          setCallInterim('');
           setCallCaption('Checking that against your financial plan…');
           applyDetectedLang(detected);
           handleSend(t);
@@ -154,7 +196,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             : 'The microphone is unavailable. Retry or use a prompt below.';
           console.warn('[MITRA call] listening failed', { error: String(e) });
           setCallError(message);
-          setMicOk(false);
+
         },
       });
       if (rec) {
@@ -163,16 +205,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         setCallListening(true);
       } else {
         setCallError('Voice input needs Chrome or Edge. You can still use the prompts below.');
-        setMicOk(false);
+
       }
     } catch (error) {
       console.warn('[MITRA call] could not start microphone', { error: error?.message || String(error) });
       setCallError('The microphone could not start. Check browser permission and retry.');
-      setMicOk(false);
+
     }
   };
 
-  const pushMitra = (resp) => {
+  const pushMitra = (resp, session = callSessionRef.current) => {
+    if (!mountedRef.current || session !== callSessionRef.current) return;
     const checked = validateAdvisorResponse(resp);
     const safeResp = checked.ok ? checked.value : { ...fallbackResponse(true), engineMode: 'POLICY_FALLBACK' };
     const id = mid();
@@ -191,6 +234,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         .then(({ receipt }) => setMessages((items) => items.map((item) => (item.id === id ? { ...item, passport: receipt } : item))))
         .catch(() => {});
     }
+    const person = getCharacter(savedCharacter());
+    const voiceOptions = { speaker: ({ asha: 'neha', aarav: 'kabir', tara: 'tanya', kabir: 'rahul' })[person.id], voiceGender: person.gender, playful: person.style === 'playful' };
     const onFallback = () => {
       setPreparingVoice(false);
       if (inCallRef.current) setCallError("MITRA's neural voice is unavailable, so the device voice is being used.");
@@ -202,27 +247,39 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setSpeaking(true);
     };
     if (inCallRef.current) {
+      directorRef.current?.abort();
+      const controller = new AbortController();
+      directorRef.current = controller;
+      const context = { question: lastQuestionRef.current, surface: 'call', hasChart: !!safeResp.widget, chartType: safeResp.widget?.type, chartTargets: callChartTargets(safeResp.widget, holdings) };
+      setCallDirection({ steps: fallbackDirection(context), source: 'local' });
+      void planAvatarDirection({ ...context, signal: controller.signal,
+        routers: [voiceAI && selectSarvamAdvisorTool, aiKey && selectDeepSeekAdvisorTool].filter(Boolean),
+      }).then((plan) => {
+        if (!controller.signal.aborted && inCallRef.current && session === callSessionRef.current) setCallDirection(plan);
+      });
       setCallCaption(safeResp.text);
       setPreparingVoice(voiceOnRef.current);
       if (!voiceOnRef.current) {
         setPreparingVoice(false);
-        setTimeout(startCallListen, 80);
+        setTimeout(() => { if (session === callSessionRef.current) startCallListen(); }, 80);
         return;
       }
       speak(safeResp.text, {
+        ...voiceOptions,
         lang: langRef.current,
         onFallback,
         onStart,
         onEnd: () => {
           setPreparingVoice(false);
           setSpeaking(false);
-          startCallListen();
+          if (session === callSessionRef.current) { setCallCompletion((count) => count + 1); startCallListen(); }
         },
       });
       return;
     }
-    if (voiceOn) {
+    if (voiceOn && !presenterActiveRef.current) {
       speak(safeResp.text, {
+        ...voiceOptions,
         lang: langRef.current,
         onFallback,
         onStart,
@@ -232,18 +289,30 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   };
 
   const startCall = () => {
+    if (requestBusy.current || transcribingRef.current) return;
+    returnToConversation();
     callSessionRef.current += 1;
+    const session = callSessionRef.current;
+    const startBoundary = msgId;
+    setCallStartId(startBoundary);
+    lastQuestionRef.current = 'hello';
+    setCallDirection(null);
+    setCallInterim('');
+    recRef.current?.abort?.();
+    setListening(false);
+    window.dispatchEvent(new CustomEvent('mitra-call-state', { detail: true }));
     inCallRef.current = true;
     setInCall(true);
-    setCallSecs(0);
-    setMicOk(true);
+    setCallSecs(0); setCallCompletion(0);
+
     setCallError('');
     setCallHeard('');
     setCallCaption('Connecting to MITRA’s neural voice…');
     setPreparingVoice(true);
     stopSpeaking();
+    setSpeaking(false);
     setTimeout(async () => {
-      if (!inCallRef.current) return;
+      if (!inCallRef.current || session !== callSessionRef.current || msgId > startBoundary) return;
       const first = customer.name.split(' ')[0];
       // hand-written Hindi stays; every other language is localised live
       const greeting =
@@ -253,12 +322,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               mood: 'happy',
               text: `Hi ${first}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
             });
-      if (!inCallRef.current) return;
-      pushMitra(greeting);
+      if (!inCallRef.current || session !== callSessionRef.current || msgId > startBoundary) return;
+      pushMitra(greeting, session);
     }, 700);
   };
 
   const endCall = () => {
+    directorRef.current?.abort();
+    window.dispatchEvent(new CustomEvent('mitra-call-state', { detail: false }));
     callSessionRef.current += 1;
     inCallRef.current = false;
     setInCall(false);
@@ -296,13 +367,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   const handleSend = async (raw) => {
     if (requestBusy.current) return;
+    if (!(raw ?? input).trim()) return;
+    returnToConversation();
     requestBusy.current = true;
-    try { await sendMessage(raw); }
-    catch { pushMitra(fallbackResponse(true)); }
+    const session = callSessionRef.current;
+    try { await sendMessage(raw, session); }
+    catch { pushMitra(fallbackResponse(true), session); }
     finally { requestBusy.current = false; setTyping(false); }
   };
 
-  const sendMessage = async (raw) => {
+  const sendMessage = async (raw, session) => {
     const text = (raw ?? input).trim();
     if (!text) return;
     if (inCallRef.current && callListeningRef.current) {
@@ -312,7 +386,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setCallListening(false);
       setMicLevel(0);
     }
-    if (inCallRef.current) setCallError('');
+    directorRef.current?.abort();
+    if (inCallRef.current) { setCallError(''); setCallHeard(text); setCallInterim(''); setPreparingVoice(false); }
     setGuideFocus(null);
     lastQuestionRef.current = text;
     setInput('');
@@ -340,7 +415,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // UPI handles and numbers are the evidence, and translating mangles them.
     if (offerRef.current) {
       setOfferMode(false);
-      await runOfferAnalysis(text);
+      await runOfferAnalysis(text, session);
       return;
     }
 
@@ -372,19 +447,19 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       lang: canTranslate ? 'en' : langRef.current,
       routers: [voiceAI && selectSarvamAdvisorTool, aiKey && selectDeepSeekAdvisorTool].filter(Boolean),
     });
-    pushMitra(await localise(response));
+    pushMitra(await localise(response), session);
   };
 
   // ── Offer Analyzer: scam / mis-selling verdict on pasted text ──
   // Uses schema-validated DeepSeek classification when configured; otherwise
   // falls back to the deterministic rule-based scorer.
-  const runOfferAnalysis = async (text) => {
+  const runOfferAnalysis = async (text, session = callSessionRef.current) => {
     setTyping(true);
     setMood('thinking');
     const finish = async (rawAnalysis) => {
       const a = validateOfferAnalysis(rawAnalysis);
       setTyping(false);
-      if (!a) { pushMitra(await localise(fallbackResponse())); return; }
+      if (!a) { pushMitra(await localise(fallbackResponse()), session); return; }
       const verdictLine = { safe: 'This looks legitimate', caution: 'Be careful with this one', avoid: 'Please do not proceed' }[a.verdict] || '';
       awardXP(20, 'offer-analysis');
       pushMitra(await localise({
@@ -392,7 +467,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         text: `${verdictLine}. ${a.headline}`,
         widget: { type: 'offer', data: a },
         chips: ['Where should I invest instead?', 'Check another offer', 'Am I protected?'],
-      }));
+      }), session);
     };
     if (!aiKey) {
       await new Promise((r) => setTimeout(r, 500));
@@ -421,44 +496,49 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       setTyping(true);
       setTimeout(() => {
         setTyping(false);
-        pushMitra(respond('hello', riskProfile));
+        if (!inCallRef.current && mountedRef.current) pushMitra(respond('hello', riskProfile));
       }, 250);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
 
-  useEffect(() => {
-    setShell(wrapRef.current?.closest('.app-shell') ?? null);
-  }, []);
 
   useEffect(() => {
     saveChatHistory(messages);
   }, [messages]);
 
   useEffect(() => {
+    if (showPresenter) return;
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, typing]);
+  }, [messages, typing, showPresenter]);
 
   useEffect(() => {
-    if (!guideFocus) return undefined;
+    if (!guideFocus || inCall) return undefined;
     const timer = setTimeout(() => {
       document.getElementById(`advice-${guideFocus.target}-${guideFocus.messageId}`)?.scrollIntoView({
         behavior: 'smooth', block: 'center', inline: 'nearest',
       });
     }, 120);
     return () => clearTimeout(timer);
-  }, [guideFocus]);
+  }, [guideFocus, inCall]);
 
   useEffect(
-    () => () => {
+    () => {
+      mountedRef.current = true;
+      return () => {
+      mountedRef.current = false;
+      directorRef.current?.abort();
+      window.dispatchEvent(new CustomEvent('mitra-call-state', { detail: false }));
       inCallRef.current = false;
       stopSpeaking();
       try { recRef.current?.abort?.(); } catch { /* noop */ }
+      };
     },
     []
   );
 
   const handleMic = () => {
+    returnToConversation();
     // tapping again while recording ends the turn early instead of doing nothing
     if (listening) {
       recRef.current?.stop?.();
@@ -583,7 +663,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   return (
     <div className="chat-wrap" ref={wrapRef}>
-      <div className="chat-header">
+      <div className="chat-header" data-guide-target="nav-mitra">
         <Ring size={52} dot={6} color="rgba(15,140,126,0.5)">
           <Avatar size={42} speaking={speaking} mood={typing ? 'thinking' : mood} />
         </Ring>
@@ -601,6 +681,9 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               : `Online · ${toSarvamLang(lang)}`}
           </div>
         </div>
+        <button className="icon-btn" title="Explain with charts" aria-label="Explain with charts" disabled={typing || transcribing || inCall} onClick={() => openPresenter()}>
+          <Icon name="chart" size={17} />
+        </button>
         <button className="icon-btn" title="Call MITRA" aria-label="Call MITRA" onClick={startCall}>
           <Icon name="phone" size={15} />
         </button>
@@ -625,6 +708,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   onClick={() => {
                     setLangMenu(false);
                     if (l.code === lang) return;
+                    returnToConversation();
                     setLang(l.code);
                     langRef.current = l.code;
                     stopSpeaking();
@@ -646,6 +730,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           aria-pressed={voiceOn}
           onClick={() => {
             if (voiceOn) { stopSpeaking(); setSpeaking(false); }
+            returnToConversation();
             setVoiceOn(!voiceOn);
           }}
         >
@@ -654,6 +739,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       </div>
 
       <div className="chat-body" ref={bodyRef}>
+        {showPresenter ? <PresenterStudio
+          key={showPresenter.key} embedded compact
+          riskProfile={riskProfile}
+          initialTopic={showPresenter.topic}
+          initialScenario={showPresenter.scenario}
+          initialSpending={showPresenter.spending}
+          initialVoice={showPresenter.voice ?? voiceOn}
+          onClose={() => setShowPresenter(null)}
+          onAsk={handleSend}
+        /> : <>
         {messages.map((m) =>
           m.from === 'user' ? (
             <div className="msg-row user" key={m.id}>
@@ -673,6 +768,9 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   className={`advice-focus-target ${m.id === last?.id && activeGuideTargetFor(m) === 'result' ? 'is-guided' : ''}`}
                 >
                   <ChatWidget widget={m.widget} onChip={handleSend} />
+                  {presentationForWidget(m.widget) && <button type="button" className="chart-explain-btn" disabled={typing || transcribing || inCall} onClick={() => openPresenter(presentationForWidget(m.widget))}>
+                    <Icon name="chart" size={15} />{presentationForWidget(m.widget).label}<span aria-hidden="true">↗</span>
+                  </button>}
                 </div>
               )}
               {m.why && (
@@ -733,9 +831,10 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
             ))}
           </div>
         )}
+        </>}
       </div>
 
-      <div className="chat-input">
+      {!showPresenter && <div className="chat-input">
         <button
           className={`mic-btn ${listening ? 'listening' : ''} ${transcribing ? 'transcribing' : ''}`}
           onClick={handleMic}
@@ -763,125 +862,48 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         <button className="send-btn" onClick={() => handleSend()} title="Send" aria-label="Send message">
           <Icon name="send" size={16} />
         </button>
-      </div>
+      </div>}
 
       {toast && <div className="toast">{toast}</div>}
 
-      {inCall && shell && createPortal(
-        <div className="call-overlay">
-          <div className="call-topbar">
-            <span><b>● Secure line</b></span>
-            <span className="call-timer">
-              {String(Math.floor(callSecs / 60)).padStart(2, '0')}:{String(callSecs % 60).padStart(2, '0')}
-            </span>
-          </div>
-
-          <div className="call-stage">
-            <div
-              className={`call-rings ${speaking ? 'speaking' : callListening ? 'listening' : ''}`}
-              style={callListening ? { '--mic-level': micLevel.toFixed(2) } : undefined}
-            >
-              <span className="call-inner-ring" />
-              <span className="call-orbit"><i /></span>
-              <Avatar size={160} speaking={speaking} mood={mood} />
-            </div>
-            <div className="call-name">
-              MITRA<sup>®</sup>
-            </div>
-            <div className="call-status">
-              {speaking
-                ? `Speaking · ${toSarvamLang(lang)}`
-                : transcribing
-                ? 'Understanding…'
-                : callListening
-                ? 'Listening · go ahead'
-                : typing
-                ? 'Thinking…'
-                : preparingVoice
-                ? 'Preparing voice…'
-                : 'On call · hands-free'}
-            </div>
-            <div className="call-model-path" aria-label="AI model pipeline">
-              <span className={callListening || transcribing ? 'active' : ''}>Saaras · hearing</span>
-              <span className={typing ? 'active' : ''}>Policy + Sarvam · reasoning</span>
-              <span className={speaking || preparingVoice ? 'active' : ''}>Bulbul · voice</span>
-            </div>
-            {callHeard && (
-              <div className="call-heard">
-                <span>You asked</span>
-                “{callHeard}”
-              </div>
-            )}
-            <div className="call-caption">{callCaption}</div>
-            {callError && (
-              <div className="call-error" role="alert">
-                <span>{callError}</span>
-                {!micOk && (
-                  <button type="button" onClick={startCallListen}>Retry mic</button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="call-chips">
-            {['Invest my surplus', 'Am I protected?', 'Harvest my gains'].map((c) => (
-              <button
-                key={c}
-                className="call-chip"
-                disabled={typing || transcribing}
-                onClick={() => {
-                  setCallHeard(c);
-                  setCallCaption('Checking that against your financial plan…');
-                  handleSend(c);
-                }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <div className="call-actions">
-            <button
-              className={`call-mic ${callListening ? 'on' : ''}`}
-              title={callListening ? 'Finish speaking' : 'Speak to MITRA'}
-              aria-label={callListening ? 'Finish speaking' : 'Speak to MITRA'}
-              disabled={transcribing || typing}
-              onClick={() => {
-                if (callListening) {
-                  recRef.current?.stop?.();
-                  return;
-                }
-                stopSpeaking();
-                setSpeaking(false);
-                startCallListen();
-              }}
-            >
-              <Icon name="mic" size={18} />
-            </button>
-            <button className="call-end" title="End call" aria-label="End call" onClick={endCall}>
-              <Icon name="x" size={20} />
-            </button>
-            <button
-              className={`call-mic ${voiceOn ? '' : 'on'}`}
-              title="Toggle MITRA's voice"
-              aria-label={voiceOn ? "Mute MITRA's voice" : "Unmute MITRA's voice"}
-              onClick={() => {
-                if (voiceOn) { stopSpeaking(); setSpeaking(false); }
-                const next = !voiceOn;
-                voiceOnRef.current = next;
-                setVoiceOn(next);
-                if (!next && inCallRef.current && !callListeningRef.current && !transcribingRef.current) {
-                  setPreparingVoice(false);
-                  startCallListen();
-                }
-              }}
-            >
-              <Icon name={voiceOn ? 'speaker' : 'speakerOff'} size={18} />
-            </button>
-          </div>
-        </div>,
-        shell
-      )}
+      {inCall && createPortal(<FullScreenCall
+        messages={messages.filter((message) => message.id > callStartId)}
+        caption={callCaption} heard={callHeard} interim={callInterim}
+        speaking={speaking} listening={callListening} transcribing={transcribing}
+        typing={typing} preparing={preparingVoice} secs={callSecs} error={callError}
+        voiceOn={voiceOn} micLevel={micLevel} direction={callDirection} completion={callCompletion}
+        onSend={handleSend} onEnd={endCall}
+        onExplain={async (step, widget) => {
+          if (requestBusy.current || transcribingRef.current) return;
+          const session = callSessionRef.current;
+          recRef.current?.abort?.(); recRef.current = null;
+          callListeningRef.current = false; setCallListening(false); setMicLevel(0);
+          stopSpeaking(); setSpeaking(false);
+          const question = `Explain ${step.label}`;
+          lastQuestionRef.current = question; setCallHeard(question); setCallInterim('');
+          setMessages((items) => [...items, { id: mid(), from: 'user', text: question }]);
+          requestBusy.current = true; setTyping(true);
+          try { pushMitra(await localise({ text: step.text, widget, mood: 'happy' }), session); }
+          finally { requestBusy.current = false; setTyping(false); }
+        }}
+        onPause={() => {
+          stopSpeaking(); setSpeaking(false); setPreparingVoice(false);
+          callSessionRef.current += 1;
+          directorRef.current?.abort();
+          recRef.current?.abort?.(); recRef.current = null;
+          callListeningRef.current = false; setCallListening(false);
+          updateTranscribing(false); setCallInterim(''); setMicLevel(0);
+        }}
+        onMic={() => {
+          if (callListening) { recRef.current?.stop?.(); return; }
+          stopSpeaking(); setSpeaking(false); setPreparingVoice(false); startCallListen();
+        }}
+        onMute={() => {
+          const next = !voiceOn;
+          voiceOnRef.current = next; setVoiceOn(next);
+          if (!next) { stopSpeaking(); setSpeaking(false); setPreparingVoice(false); }
+        }}
+      />, document.body)}
     </div>
   );
 }

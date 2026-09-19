@@ -126,24 +126,24 @@ function HomePanel({ riskProfile, onAsk }) {
           </div>
           <div className="web-stat web-stat-accent">
             <div className="web-eyebrow">Surplus / mo</div>
-            <div className="web-stat-value">{fmt(cf.surplus)}</div>
+            <div className="web-stat-value">{cf.incomeKnown ? fmt(cf.surplus) : 'Not supplied'}</div>
           </div>
           <div className="web-stat">
             <div className="web-eyebrow">Savings rate</div>
-            <div className="web-stat-value">{cf.savingsRate.toFixed(0)}%</div>
+            <div className="web-stat-value">{cf.incomeKnown ? `${cf.savingsRate.toFixed(0)}%` : '—'}</div>
           </div>
         </div>
       </section>
 
       <div className="web-span web-pair">
-        <button className="web-card web-mitra" onClick={() => onAsk(`Put my ${fmt(cf.surplus)} monthly surplus to work`)}>
+        <button className="web-card web-mitra" onClick={() => onAsk(cf.incomeKnown ? `Put my ${fmt(cf.surplus)} monthly surplus to work` : 'Analyse my spending')}>
           <Ring size={66} dot={8} color="rgba(15,140,126,0.45)">
             <Avatar size={54} mood="happy" />
           </Ring>
           <span>
             <span className="web-eyebrow web-eyebrow-accent">MITRA found something</span>
-            <span className="web-card-title">{fmt(cf.surplus)} average monthly cashflow left</span>
-            <span className="web-card-sub">Ask me in the panel and I'll put it to work →</span>
+            <span className="web-card-title">{cf.incomeKnown ? `${fmt(cf.surplus)} average monthly cashflow left` : 'Income needed for a surplus estimate'}</span>
+            <span className="web-card-sub">{cf.incomeKnown ? "Ask me in the panel and I'll put it to work →" : 'I can still analyse supplied transactions and balances →'}</span>
           </span>
         </button>
 

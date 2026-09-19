@@ -4,7 +4,7 @@ import { PROVIDERS } from '../engine/mockProviderData.js';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
 import { getSession } from '../engine/auth.js';
-import { connectSandbox } from '../engine/api.js';
+import { connectSandbox, fetchIdbiConsentSnapshot, requestIdbiConsent } from '../engine/api.js';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
 const BADGE_COLOR = { zerodha: '#387ed1', upstox: '#7e3ff2', groww: '#00d09c', indmoney: '#3643ba', bank: 'var(--teal)' };
@@ -25,9 +25,10 @@ function ProviderBadge({ id }) {
 export default function ConnectAccounts({ onBack }) {
   const session = getSession();
   const [connected, setConnected] = useState({}); // providerId -> { holdings?, transactions? }
-  const [phase, setPhase] = useState('list'); // list | consent | connecting | details
+  const [phase, setPhase] = useState('list'); // list | consent | consent-pending | connecting | details
   const [activeId, setActiveId] = useState(null);
   const [error, setError] = useState('');
+  const [consent, setConsent] = useState(null);
   const [name, setName] = useState(session?.name || '');
   const [age, setAge] = useState('');
   const [city, setCity] = useState('');
@@ -44,13 +45,40 @@ export default function ConnectAccounts({ onBack }) {
   const submitConsent = async () => {
     setPhase('connecting');
     try {
-      const result = await connectSandbox(activeId);
+      let result;
+      if (activeId === 'bank') {
+        try {
+          const requested = await requestIdbiConsent();
+          setConsent(requested);
+          setPhase('consent-pending');
+          return;
+        } catch (err) {
+          // Local development without IDBI_LIVE_SANDBOX keeps the existing
+          // deterministic fixture journey available.
+          if (!/sandbox mode is disabled/i.test(err.message)) throw err;
+          result = await connectSandbox(activeId);
+        }
+      } else result = await connectSandbox(activeId);
       setConnected((c) => ({ ...c, [activeId]: result }));
       setPhase('list');
       setActiveId(null);
     } catch (err) {
       setError(err.message);
       setPhase('list');
+    }
+  };
+
+  const loadConsentData = async () => {
+    setPhase('connecting');
+    try {
+      const result = await fetchIdbiConsentSnapshot();
+      setConnected((c) => ({ ...c, bank: result }));
+      setPhase('list');
+      setActiveId(null);
+      setConsent(null);
+    } catch (err) {
+      setError(err.message);
+      setPhase('consent-pending');
     }
   };
 
@@ -101,6 +129,34 @@ export default function ConnectAccounts({ onBack }) {
         </div>
         <h2 style={{ fontSize: 22 }}>Connecting to {provider?.label}…</h2>
         <p className="ob-sub">Calling the local connector API and recording consent.</p>
+      </div>
+    );
+  }
+
+  if (phase === 'consent-pending' && provider) {
+    return (
+      <div className="onboard">
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <ProviderBadge id={provider.id} />
+        </div>
+        <h2 style={{ fontSize: 24 }}>Approve your data consent</h2>
+        <p className="ob-sub">
+          IDBI has created a pending consent. Open the registered Account Aggregator page,
+          approve access, then fetch the approved statement into MITRA.
+        </p>
+        {consent?.status && <div style={{ fontSize: 12, color: 'var(--orange)', textAlign: 'center' }}>Consent status: {consent.status}</div>}
+        {consent?.redirectUrl && (
+          <button className="primary-btn" style={{ marginTop: 18 }} onClick={() => window.open(consent.redirectUrl, '_blank', 'noopener,noreferrer')}>
+            Open IDBI consent page ↗
+          </button>
+        )}
+        <button className="primary-btn" style={{ marginTop: 12 }} onClick={loadConsentData}>
+          Fetch approved data
+        </button>
+        {error && <div className="auth-error">{error}</div>}
+        <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={() => setPhase('list')}>
+          Cancel
+        </button>
       </div>
     );
   }

@@ -13,6 +13,7 @@ import {
   totalWealth,
   market,
   roundupStats,
+  dataQuality,
   modelPortfolios,
   insurance,
   fundFacts,
@@ -76,9 +77,10 @@ export function cashflow() {
   const avgInvested = baseAvgInvested + committedSip + roundupAdded + stepupBonus;
 
   const protectionCost = sumAction('protection-fix');
-  const surplus = avgIncome - avgSpend - avgInvested - protectionCost;
-  const savingsRate = avgIncome > 0 ? ((avgIncome - avgSpend) / avgIncome) * 100 : 0;
-  return { last, avgIncome, avgSpend, avgInvested, surplus, savingsRate };
+  const incomeKnown = dataQuality?.incomeAvailable !== false;
+  const surplus = incomeKnown ? avgIncome - avgSpend - avgInvested - protectionCost : 0;
+  const savingsRate = incomeKnown && avgIncome > 0 ? ((avgIncome - avgSpend) / avgIncome) * 100 : 0;
+  return { last, avgIncome, avgSpend, avgInvested, surplus, savingsRate, incomeKnown };
 }
 
 // ---- Spending anomalies -------------------------------------

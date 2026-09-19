@@ -112,8 +112,8 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
         </Ring>
         <div>
           <div className="mb-eyebrow">MITRA found something</div>
-          <div className="mb-title">{fmt(cf.surplus)} average monthly cashflow left</div>
-          <div className="mb-sub">Let me put it to work for your goals →</div>
+          <div className="mb-title">{cf.incomeKnown ? `${fmt(cf.surplus)} average monthly cashflow left` : 'Income needed for a surplus estimate'}</div>
+          <div className="mb-sub">{cf.incomeKnown ? 'Let me put it to work for your goals →' : 'I can still analyse supplied transactions and balances →'}</div>
         </div>
       </button>
 

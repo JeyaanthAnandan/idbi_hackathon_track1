@@ -98,7 +98,7 @@ export default function Simulator({ onAsk }) {
           style={{ '--fill': `${(extra / MAX_EXTRA) * 100}%` }}
           onChange={(e) => setExtra(+e.target.value)}
         />
-        <div className="sim-hint">Detected surplus {fmt(cf.surplus)} — drag there</div>
+        <div className="sim-hint">{cf.incomeKnown ? `Detected surplus ${fmt(cf.surplus)} — drag there` : 'Connect a statement with identifiable income to set a surplus target'}</div>
 
         <div className="scenario-pills" style={{ marginTop: 14 }}>
           {SCENARIOS.map((s) => (

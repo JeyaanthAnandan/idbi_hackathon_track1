@@ -3,6 +3,7 @@ import { parseBankStatementCSV, parseHoldingsCSV } from '../src/engine/statement
 import { buildCustomPersona } from '../src/engine/personaBuilder.js';
 import { validPersona, validRisk, validState } from './validation.mjs';
 import { issueAdviceReceipt, normalizeAdvicePassport, verifyAdviceReceiptChain } from './adviceReceipts.mjs';
+import { fetchIdbiConsentSnapshot, fetchIdbiDirectSnapshot, idbiEnabled, requestIdbiConsent } from './idbi.mjs';
 import {
   audit, hashPassword, newId, newToken, passwordMatches, publicSession,
   readStore, tokenHash, updateStore,
@@ -79,7 +80,8 @@ function bootstrap(user) {
 
 // A reproducible sandbox fixture proves the consent -> provider -> profile API
 // boundary without impersonating a licensed Account Aggregator connection.
-function sandboxProviderData(providerId) {
+async function sandboxProviderData(providerId) {
+  if (providerId === 'bank' && idbiEnabled()) return fetchIdbiDirectSnapshot();
   if (providerId === 'bank') {
     const csv = [
       'date,description,amount,type',
@@ -168,9 +170,31 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req);
       const allowed = new Set(['bank', 'zerodha', 'upstox', 'groww', 'indmoney']);
       if (!allowed.has(input.providerId)) return problem(res, 422, 'Unknown sandbox provider');
-      const data = sandboxProviderData(input.providerId);
+      const data = await sandboxProviderData(input.providerId);
       await updateStore((db) => audit(db, user.id, 'sandbox.connected', { providerId: input.providerId }));
-      return json(res, 200, { ...data, mode: 'SANDBOX_FIXTURE', providerId: input.providerId, consentId: newId('cns'), dataAsOf: '2026-08-28' });
+      const live = input.providerId === 'bank' && idbiEnabled();
+      return json(res, 200, {
+        ...data,
+        mode: data.mode || 'SANDBOX_FIXTURE',
+        providerId: input.providerId,
+        ...(live ? {} : { consentId: newId('cns'), dataAsOf: '2026-08-28' }),
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/idbi/consent/request') {
+      if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox mode is disabled', 'Set IDBI_LIVE_SANDBOX=true on the server.');
+      const input = await body(req);
+      const consent = await requestIdbiConsent(input);
+      await updateStore((db) => audit(db, user.id, 'idbi.consent.requested', { consentHandle: consent.consentHandle, status: consent.status }));
+      return json(res, 201, consent);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/idbi/consent/snapshot') {
+      if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox mode is disabled', 'Set IDBI_LIVE_SANDBOX=true on the server.');
+      const input = await body(req);
+      const snapshot = await fetchIdbiConsentSnapshot(input);
+      await updateStore((db) => audit(db, user.id, 'idbi.consent.snapshot', { consentId: snapshot.consent.consentId, transactionCount: snapshot.transactions.length }));
+      return json(res, 200, snapshot);
     }
 
     if (req.method === 'PUT' && url.pathname === '/api/profile') {

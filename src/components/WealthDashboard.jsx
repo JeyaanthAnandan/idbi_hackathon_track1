@@ -107,8 +107,8 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         <div className="wh-label">Total supplied holdings · {holdings.length} holdings</div>
         <div className="wh-value"><Counter value={totalWealth()} format={fmt} /></div>
         <div className="wh-badges">
-          <div className="wh-badge">Surplus/mo<b>{fmt(cf.surplus)}</b></div>
-          <div className="wh-badge accent">Savings rate<b>{cf.savingsRate.toFixed(0)}%</b></div>
+          <div className="wh-badge">Surplus/mo<b>{cf.incomeKnown ? fmt(cf.surplus) : 'Not supplied'}</b></div>
+          <div className="wh-badge accent">Savings rate<b>{cf.incomeKnown ? `${cf.savingsRate.toFixed(0)}%` : '—'}</b></div>
           <div className="wh-badge">Active SIPs<b>{fmt(cf.avgInvested)}</b></div>
         </div>
       </div>

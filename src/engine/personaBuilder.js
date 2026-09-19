@@ -30,6 +30,7 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
   const spendByCategory = transactions.length ? buildSpendByCategory(transactions) : [];
   const subscriptions = transactions.length ? detectSubscriptions(transactions) : [];
   const monthlyIncome = transactions.length ? totalIncome(transactions) : 0;
+  const incomeAvailable = transactions.some((t) => /salary|payroll|pension|wages|professional fee|business receipt|invoice|client payment/i.test(t.description || ''));
   const savingsBalance = holdings.find((h) => h.type === 'Savings Account')?.value ?? 0;
   const finalHoldings = holdings;
 
@@ -65,6 +66,7 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
     roundupStats: { upiTxnsPerMonth: 0, avgRoundup: 0 },
     dataQuality: {
       transactionMonths: transactions.length ? monthlySummary.length : 0,
+      incomeAvailable,
       hasHoldings: holdings.length > 0,
       hasTax: false,
       hasInsurance: false,

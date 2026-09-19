@@ -130,6 +130,10 @@ const HI_TEXT = {
   greeting: () => {
     const cf = cashflow();
     const hs = healthScore();
+    if (!cf.incomeKnown) return {
+      text: `नमस्ते ${firstName}! मैं MITRA हूँ — आपकी दौलत की दोस्त। आपका फाइनेंशियल हेल्थ स्कोर ${hs.total}/100 है। आय की पुष्टि होने पर मैं आपका मासिक सरप्लस निकालूँगी।`,
+      chips: ['मेरा पोर्टफोलियो दिखाओ', 'खर्च का विश्लेषण करो', 'टैक्स बचाओ'],
+    };
     return {
       text: `नमस्ते ${firstName}! मैं MITRA हूँ — आपकी दौलत की दोस्त। आपका फाइनेंशियल हेल्थ स्कोर ${hs.total}/100 है, और हर महीने ${fmt(cf.surplus)} बिना काम के पड़े हैं। बताइए, इन्हें आपके सपनों पर लगाएँ?`,
       chips: ['सरप्लस निवेश करो', 'मेरा पोर्टफोलियो दिखाओ', 'खर्च का विश्लेषण करो', 'टैक्स बचाओ'],
@@ -206,6 +210,12 @@ function respondCore(text, riskProfile = 'Balanced') {
 
   switch (intent) {
     case 'greeting':
+      if (!cf.incomeKnown) return {
+        mood: 'happy',
+        meta: `Health score ${hs.total} · income not supplied`,
+        text: `Hi ${firstName}, I can see your connected balances and transactions. I do not have an identifiable salary or income credit yet, so I will not estimate a monthly surplus. You can still ask me to review your portfolio or supplied spending.`,
+        chips: ['Show my portfolio', 'Analyse my spending', 'What data do I need?'],
+      };
       return {
         mood: 'happy',
         meta: `Health score ${hs.total} · surplus detected`,
@@ -244,6 +254,11 @@ function respondCore(text, riskProfile = 'Balanced') {
     }
 
     case 'surplus': {
+      if (!cf.incomeKnown) return {
+        mood: 'thinking',
+        text: 'I cannot estimate a monthly surplus yet because the connected statement has no identifiable income credit. Add a statement with salary or other income narration, then I can calculate it without guessing.',
+        chips: ['Analyse my spending', 'Show my portfolio', 'Talk to a human advisor'],
+      };
       if (cf.surplus <= 0) return {
         mood: 'thinking', text: `Your observed monthly cashflow has a ${fmt(Math.abs(cf.surplus))} shortfall. There is no additional surplus to invest in this scenario. Review spending and existing commitments first.`,
         chips: ['Analyse my spending', 'Show my goals', 'Talk to a human advisor'],

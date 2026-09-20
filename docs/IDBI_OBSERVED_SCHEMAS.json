@@ -1,0 +1,6521 @@
+{
+  "checkedAt": "2026-09-19T17:20:13.597Z",
+  "note": "Observed field types only; no response values. Not a provider-guaranteed schema.",
+  "routes": {
+    "/Development/createLeadtest": [
+      {
+        "sample": "01",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.message": [
+            "string"
+          ],
+          "$.result.errors": [
+            "array"
+          ]
+        }
+      },
+      {
+        "sample": "02",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.message": [
+            "string"
+          ],
+          "$.result.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/performAccountEnquirytest": [
+      {
+        "sample": "04",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.acctId": [
+            "string"
+          ],
+          "$.acctType": [
+            "object"
+          ],
+          "$.acctType.schmCode": [
+            "string"
+          ],
+          "$.acctType.schmType": [
+            "string"
+          ],
+          "$.acctCurr": [
+            "string"
+          ],
+          "$.custId": [
+            "string"
+          ],
+          "$.personName": [
+            "object"
+          ],
+          "$.personName.lastName": [
+            "string"
+          ],
+          "$.personName.firstName": [
+            "string"
+          ],
+          "$.personName.middleName": [
+            "string"
+          ],
+          "$.personName.name": [
+            "string"
+          ],
+          "$.personName.titlePrefix": [
+            "string"
+          ],
+          "$.acctOpenDt": [
+            "string"
+          ],
+          "$.bankAcctStatusCode": [
+            "string"
+          ],
+          "$.bankInfo": [
+            "object"
+          ],
+          "$.bankInfo.bankId": [
+            "string"
+          ],
+          "$.bankInfo.name": [
+            "string"
+          ],
+          "$.bankInfo.branchId": [
+            "string"
+          ],
+          "$.bankInfo.branchName": [
+            "string"
+          ],
+          "$.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.acctBal": [
+            "array"
+          ],
+          "$.acctBal[]": [
+            "object"
+          ],
+          "$.acctBal[].balType": [
+            "string"
+          ],
+          "$.acctBal[].balAmt": [
+            "object"
+          ],
+          "$.acctBal[].balAmt.amountValue": [
+            "string"
+          ],
+          "$.acctBal[].balAmt.currencyCode": [
+            "string"
+          ],
+          "$.custStat": [
+            "object"
+          ],
+          "$.custStat.refCode": [
+            "string"
+          ],
+          "$.custStat.refRecType": [
+            "string"
+          ],
+          "$.custStat.refDesc": [
+            "string"
+          ],
+          "$.acctInqCustomData": [
+            "object"
+          ],
+          "$.acctInqCustomData.acctName": [
+            "string"
+          ],
+          "$.acctInqCustomData.status": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "05",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.acctId": [
+            "string"
+          ],
+          "$.acctType": [
+            "object"
+          ],
+          "$.acctType.schmCode": [
+            "string"
+          ],
+          "$.acctType.schmType": [
+            "string"
+          ],
+          "$.acctCurr": [
+            "string"
+          ],
+          "$.custId": [
+            "string"
+          ],
+          "$.personName": [
+            "object"
+          ],
+          "$.personName.lastName": [
+            "string"
+          ],
+          "$.personName.firstName": [
+            "string"
+          ],
+          "$.personName.middleName": [
+            "string"
+          ],
+          "$.personName.name": [
+            "string"
+          ],
+          "$.personName.titlePrefix": [
+            "string"
+          ],
+          "$.acctOpenDt": [
+            "string"
+          ],
+          "$.bankAcctStatusCode": [
+            "string"
+          ],
+          "$.bankInfo": [
+            "object"
+          ],
+          "$.bankInfo.bankId": [
+            "string"
+          ],
+          "$.bankInfo.name": [
+            "string"
+          ],
+          "$.bankInfo.branchId": [
+            "string"
+          ],
+          "$.bankInfo.branchName": [
+            "string"
+          ],
+          "$.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.acctBal": [
+            "array"
+          ],
+          "$.acctBal[]": [
+            "object"
+          ],
+          "$.acctBal[].balType": [
+            "string"
+          ],
+          "$.acctBal[].balAmt": [
+            "object"
+          ],
+          "$.acctBal[].balAmt.amountValue": [
+            "string"
+          ],
+          "$.acctBal[].balAmt.currencyCode": [
+            "string"
+          ],
+          "$.custStat": [
+            "object"
+          ],
+          "$.custStat.refCode": [
+            "string"
+          ],
+          "$.custStat.refRecType": [
+            "string"
+          ],
+          "$.custStat.refDesc": [
+            "string"
+          ],
+          "$.acctInqCustomData": [
+            "object"
+          ],
+          "$.acctInqCustomData.acctName": [
+            "string"
+          ],
+          "$.acctInqCustomData.status": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/performAccountEnquirytest01": [
+      {
+        "sample": "06",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.acctId": [
+            "string"
+          ],
+          "$.acctType": [
+            "object"
+          ],
+          "$.acctType.schmCode": [
+            "string"
+          ],
+          "$.acctType.schmType": [
+            "string"
+          ],
+          "$.acctCurr": [
+            "string"
+          ],
+          "$.custId": [
+            "string"
+          ],
+          "$.personName": [
+            "object"
+          ],
+          "$.personName.lastName": [
+            "string"
+          ],
+          "$.personName.firstName": [
+            "string"
+          ],
+          "$.personName.middleName": [
+            "string"
+          ],
+          "$.personName.name": [
+            "string"
+          ],
+          "$.personName.titlePrefix": [
+            "string"
+          ],
+          "$.acctOpenDt": [
+            "string"
+          ],
+          "$.bankAcctStatusCode": [
+            "string"
+          ],
+          "$.bankInfo": [
+            "object"
+          ],
+          "$.bankInfo.bankId": [
+            "string"
+          ],
+          "$.bankInfo.name": [
+            "string"
+          ],
+          "$.bankInfo.branchId": [
+            "string"
+          ],
+          "$.bankInfo.branchName": [
+            "string"
+          ],
+          "$.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.acctBal": [
+            "array"
+          ],
+          "$.acctBal[]": [
+            "object"
+          ],
+          "$.acctBal[].balType": [
+            "string"
+          ],
+          "$.acctBal[].balAmt": [
+            "object"
+          ],
+          "$.acctBal[].balAmt.amountValue": [
+            "string"
+          ],
+          "$.acctBal[].balAmt.currencyCode": [
+            "string"
+          ],
+          "$.custStat": [
+            "object"
+          ],
+          "$.custStat.refRecType": [
+            "string"
+          ],
+          "$.acctInqCustomData": [
+            "object"
+          ],
+          "$.acctInqCustomData.acctName": [
+            "string"
+          ],
+          "$.acctInqCustomData.status": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/pushDataNotificationtest": [
+      {
+        "sample": "07",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.message": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getLoanOverdueDetailstest01": [
+      {
+        "sample": "08",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.overdueDetails": [
+            "array"
+          ],
+          "$.overdueDetails[]": [
+            "object"
+          ],
+          "$.overdueDetails[].customerId": [
+            "string"
+          ],
+          "$.overdueDetails[].accountId": [
+            "string"
+          ],
+          "$.overdueDetails[].outstandingBal": [
+            "string"
+          ],
+          "$.overdueDetails[].overdueDate": [
+            "string"
+          ],
+          "$.overdueDetails[].dpd": [
+            "string"
+          ],
+          "$.overdueDetails[].npaStatus": [
+            "string"
+          ],
+          "$.overdueDetails[].totalOverdueAmt": [
+            "string"
+          ],
+          "$.overdueDetails[].npaDate": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/accountLienEnquirytest": [
+      {
+        "sample": "09",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.acctId": [
+            "string"
+          ],
+          "$.result.moduleType": [
+            "string"
+          ],
+          "$.result.acctCurr": [
+            "string"
+          ],
+          "$.result.acctType": [
+            "object"
+          ],
+          "$.result.acctType.schmCode": [
+            "string"
+          ],
+          "$.result.acctType.schmType": [
+            "string"
+          ],
+          "$.result.bankInfo": [
+            "object"
+          ],
+          "$.result.bankInfo.bankId": [
+            "string"
+          ],
+          "$.result.bankInfo.name": [
+            "string"
+          ],
+          "$.result.bankInfo.branchId": [
+            "string"
+          ],
+          "$.result.bankInfo.branchName": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.result.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.result.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails": [
+            "object"
+          ],
+          "$.result.bankInfo.lienDetails.newLienAmt": [
+            "object"
+          ],
+          "$.result.bankInfo.lienDetails.newLienAmt.amountValue": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.newLienAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.oldLienAmt": [
+            "object"
+          ],
+          "$.result.bankInfo.lienDetails.oldLienAmt.amountValue": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.oldLienAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.lienDate": [
+            "object"
+          ],
+          "$.result.bankInfo.lienDetails.lienDate.startDate": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.lienDate.endDate": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.reasonCode": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.remarks": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.isDeleted": [
+            "string"
+          ],
+          "$.result.bankInfo.lienDetails.lienId": [
+            "string"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/getFullAccountStatementWithPaginationtest": [
+      {
+        "sample": "11",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.accountBalances": [
+            "object"
+          ],
+          "$.result.accountBalances.acid": [
+            "string"
+          ],
+          "$.result.accountBalances.availableBalance": [
+            "object"
+          ],
+          "$.result.accountBalances.availableBalance.amountValue": [
+            "string"
+          ],
+          "$.result.accountBalances.availableBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.accountBalances.branchId": [
+            "string"
+          ],
+          "$.result.accountBalances.currencyCode": [
+            "string"
+          ],
+          "$.result.accountBalances.fFDBalance": [
+            "object"
+          ],
+          "$.result.accountBalances.fFDBalance.amountValue": [
+            "string"
+          ],
+          "$.result.accountBalances.fFDBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.accountBalances.floatingBalance": [
+            "object"
+          ],
+          "$.result.accountBalances.floatingBalance.amountValue": [
+            "string"
+          ],
+          "$.result.accountBalances.floatingBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.accountBalances.ledgerBalance": [
+            "object"
+          ],
+          "$.result.accountBalances.ledgerBalance.amountValue": [
+            "string"
+          ],
+          "$.result.accountBalances.ledgerBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.accountBalances.userDefinedBalance": [
+            "object"
+          ],
+          "$.result.accountBalances.userDefinedBalance.amountValue": [
+            "string"
+          ],
+          "$.result.accountBalances.userDefinedBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.field125": [
+            "string"
+          ],
+          "$.result.field126": [
+            "string"
+          ],
+          "$.result.field127": [
+            "string"
+          ],
+          "$.result.hasMoreData": [
+            "string"
+          ],
+          "$.result.transactionDetails": [
+            "array"
+          ],
+          "$.result.transactionDetails[]": [
+            "object"
+          ],
+          "$.result.transactionDetails[].pstdDate": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary": [
+            "object"
+          ],
+          "$.result.transactionDetails[].transactionSummary.instrumentId": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnAmt": [
+            "object"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnAmt.amountValue": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnDate": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnDesc": [
+            "string"
+          ],
+          "$.result.transactionDetails[].transactionSummary.txnType": [
+            "string"
+          ],
+          "$.result.transactionDetails[].txnBalance": [
+            "object"
+          ],
+          "$.result.transactionDetails[].txnBalance.amountValue": [
+            "string"
+          ],
+          "$.result.transactionDetails[].txnBalance.currencyCode": [
+            "string"
+          ],
+          "$.result.transactionDetails[].txnCat": [
+            "string"
+          ],
+          "$.result.transactionDetails[].txnId": [
+            "string"
+          ],
+          "$.result.transactionDetails[].txnSrlNo": [
+            "string"
+          ],
+          "$.result.transactionDetails[].valueDate": [
+            "string"
+          ],
+          "$.customData": [
+            "object"
+          ],
+          "$.customData.THB": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/fetchLoanInterestRatestest": [
+      {
+        "sample": "12",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.permCity": [
+            "string"
+          ],
+          "$.corporateIdentityNumber": [
+            "string"
+          ],
+          "$.loanOverdueDetails": [
+            "array"
+          ],
+          "$.loanOverdueDetails[]": [
+            "object"
+          ],
+          "$.loanOverdueDetails[].accountId": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].outstandingBal": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].npaStatus": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].totalOverdueAmt": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].dpd": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].overdueDate": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].customerId": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].npaDate": [
+            "string"
+          ],
+          "$.accountSchemeCode": [
+            "string"
+          ],
+          "$.wcConsentHandle": [
+            "string"
+          ],
+          "$.schmCode": [
+            "string"
+          ],
+          "$.hpPayoffInfo": [
+            "object"
+          ],
+          "$.hpPayoffInfo.pendingPrincipal": [
+            "string"
+          ],
+          "$.hpPayoffInfo.interestRate": [
+            "string"
+          ],
+          "$.hpPayoffInfo.netPayofamt": [
+            "string"
+          ],
+          "$.hpPayoffInfo.accountLiab": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingNormalInterest": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingOverdueInterest": [
+            "string"
+          ],
+          "$.hpPayoffInfo.interestSinceLastApplication": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingPenalInterest": [
+            "string"
+          ],
+          "$.refDesc": [
+            "string"
+          ],
+          "$.cibilDob": [
+            "string"
+          ],
+          "$.leads": [
+            "array"
+          ],
+          "$.leads[]": [
+            "object"
+          ],
+          "$.leads[].preferedTime": [
+            "string"
+          ],
+          "$.leads[].solid": [
+            "string"
+          ],
+          "$.leads[].preferedDate": [
+            "string"
+          ],
+          "$.leads[].leadType": [
+            "string"
+          ],
+          "$.leads[].estimatedAmount": [
+            "string"
+          ],
+          "$.leads[].leadChannel": [
+            "string"
+          ],
+          "$.leads[].leadSource": [
+            "string"
+          ],
+          "$.leads[].prodSubCategory": [
+            "string"
+          ],
+          "$.leads[].leadId": [
+            "string"
+          ],
+          "$.leads[].prodCategory": [
+            "string"
+          ],
+          "$.leads[].product": [
+            "string"
+          ],
+          "$.ckycAppFormNo": [
+            "string"
+          ],
+          "$.primarySolId": [
+            "string"
+          ],
+          "$.dateOfBirth": [
+            "string"
+          ],
+          "$.decryptInfo": [
+            "object"
+          ],
+          "$.decryptInfo.srcRef": [
+            "string"
+          ],
+          "$.decryptInfo.status": [
+            "string"
+          ],
+          "$.decryptInfo.errorCode": [
+            "string"
+          ],
+          "$.decryptInfo.redirect": [
+            "string"
+          ],
+          "$.decryptInfo.txnId": [
+            "string"
+          ],
+          "$.decryptInfo.sessionId": [
+            "string"
+          ],
+          "$.ckycRecordId": [
+            "string"
+          ],
+          "$.ein": [
+            "string"
+          ],
+          "$.aaPartyIdValue": [
+            "string"
+          ],
+          "$.oicCard": [
+            "string"
+          ],
+          "$.refCode": [
+            "string"
+          ],
+          "$.custTitleCode": [
+            "string"
+          ],
+          "$.ckycInfo": [
+            "object"
+          ],
+          "$.ckycInfo.queryId": [
+            "string"
+          ],
+          "$.ckycInfo.ckycRequestDate": [
+            "string"
+          ],
+          "$.ckycInfo.parentCompany": [
+            "string"
+          ],
+          "$.ckycInfo.ckycAge": [
+            "string"
+          ],
+          "$.ckycInfo.ckycPhoto": [
+            "string"
+          ],
+          "$.ckycInfo.recordIdentifier": [
+            "string"
+          ],
+          "$.ckycInfo.ckycGenDate": [
+            "string"
+          ],
+          "$.ckycInfo.ckycUpdatedDate": [
+            "string"
+          ],
+          "$.ckycInfo.idDetails": [
+            "array"
+          ],
+          "$.ckycInfo.idDetails[]": [
+            "object"
+          ],
+          "$.ckycInfo.idDetails[].status": [
+            "string"
+          ],
+          "$.ckycInfo.idDetails[].type": [
+            "string"
+          ],
+          "$.ckycInfo.ckycPhotoBytes": [
+            "string"
+          ],
+          "$.ckycInfo.applicationFormNo": [
+            "string"
+          ],
+          "$.ckycInfo.ckycRequestId": [
+            "string"
+          ],
+          "$.schmType": [
+            "string"
+          ],
+          "$.acctOpenDt": [
+            "string"
+          ],
+          "$.permPincode": [
+            "string"
+          ],
+          "$.lien": [
+            "object"
+          ],
+          "$.lien.oldLienAmt": [
+            "string"
+          ],
+          "$.lien.newLienAmt": [
+            "string"
+          ],
+          "$.lien.reasonCode": [
+            "string"
+          ],
+          "$.lien.lienId": [
+            "string"
+          ],
+          "$.lien.remarks": [
+            "string"
+          ],
+          "$.lien.endDate": [
+            "string"
+          ],
+          "$.lien.startDate": [
+            "string"
+          ],
+          "$.nregaJobCard": [
+            "string"
+          ],
+          "$.sourceSystem": [
+            "string"
+          ],
+          "$.permAddr1": [
+            "string"
+          ],
+          "$.wcConsentId": [
+            "string"
+          ],
+          "$.comuCountry": [
+            "string"
+          ],
+          "$.ckycBranchCode": [
+            "string"
+          ],
+          "$.accountOwnership": [
+            "string"
+          ],
+          "$.nriFlag": [
+            "string"
+          ],
+          "$.psprtNo": [
+            "string"
+          ],
+          "$.ckycSourceSystem": [
+            "string"
+          ],
+          "$.permAddr2": [
+            "string"
+          ],
+          "$.ckycNo": [
+            "string"
+          ],
+          "$.natIdCardNo": [
+            "string"
+          ],
+          "$.webRedirectInfo": [
+            "object"
+          ],
+          "$.webRedirectInfo.timestamp": [
+            "string"
+          ],
+          "$.webRedirectInfo.ver": [
+            "string"
+          ],
+          "$.webRedirectInfo.webRedirectionUrl": [
+            "string"
+          ],
+          "$.bankName": [
+            "string"
+          ],
+          "$.gstRegistration": [
+            "string"
+          ],
+          "$.comuCity": [
+            "string"
+          ],
+          "$.panCardNo": [
+            "string"
+          ],
+          "$.ckycGender": [
+            "string"
+          ],
+          "$.accountType": [
+            "string"
+          ],
+          "$.comuAddr2": [
+            "string"
+          ],
+          "$.arKey": [
+            "string"
+          ],
+          "$.loanAcctId": [
+            "string"
+          ],
+          "$.lastName": [
+            "string"
+          ],
+          "$.comuAddr1": [
+            "string"
+          ],
+          "$.custName": [
+            "string"
+          ],
+          "$.emailId": [
+            "string"
+          ],
+          "$.pioCard": [
+            "string"
+          ],
+          "$.workPermit": [
+            "string"
+          ],
+          "$.loanLimits": [
+            "object"
+          ],
+          "$.loanLimits.drwngPower": [
+            "array"
+          ],
+          "$.loanLimits.drwngPower[]": [
+            "object"
+          ],
+          "$.loanLimits.drwngPower[].amountValue": [
+            "string"
+          ],
+          "$.loanLimits.drwngPower[].pcnt": [
+            "string"
+          ],
+          "$.loanLimits.drwngPower[].applicableDate": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit": [
+            "array"
+          ],
+          "$.loanLimits.sanctLimit[]": [
+            "object"
+          ],
+          "$.loanLimits.sanctLimit[].amountValue": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit[].expiryDate": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit[].applicableDate": [
+            "string"
+          ],
+          "$.loanOverdue": [
+            "array"
+          ],
+          "$.loanOverdue[]": [
+            "object"
+          ],
+          "$.loanOverdue[].acctId": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalOvdu": [
+            "string"
+          ],
+          "$.loanOverdue[].totalIntDmd": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalColl": [
+            "string"
+          ],
+          "$.loanOverdue[].totalIntOvdu": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalDmd": [
+            "string"
+          ],
+          "$.loanOverdue[].totalIntColl": [
+            "string"
+          ],
+          "$.ckycDob": [
+            "string"
+          ],
+          "$.fullStmt": [
+            "object"
+          ],
+          "$.fullStmt.transactions": [
+            "array"
+          ],
+          "$.fullStmt.transactions[]": [
+            "object"
+          ],
+          "$.fullStmt.transactions[].txnBalance": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnDesc": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].valueDate": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnSrlNo": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].amount": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].instrumentId": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnDate": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].pstdDate": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnType": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnCat": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnId": [
+            "string"
+          ],
+          "$.fullStmt.ffdBalance": [
+            "string"
+          ],
+          "$.fullStmt.hasMoreData": [
+            "string"
+          ],
+          "$.fullStmt.userDefinedBalance": [
+            "string"
+          ],
+          "$.bankAcctStatusCode": [
+            "string"
+          ],
+          "$.custLimitInfo": [
+            "object"
+          ],
+          "$.custLimitInfo.accountManager": [
+            "string"
+          ],
+          "$.custLimitInfo.custRating": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.limits": [
+            "array"
+          ],
+          "$.custLimitInfo.limits[]": [
+            "object"
+          ],
+          "$.custLimitInfo.limits[].currency": [
+            "string"
+          ],
+          "$.custLimitInfo.limits[].expiryDate": [
+            "string"
+          ],
+          "$.custLimitInfo.limits[].sanctionDate": [
+            "string"
+          ],
+          "$.custLimitInfo.emptyLimitRecords": [
+            "string"
+          ],
+          "$.wrdRedirectUrl": [
+            "string"
+          ],
+          "$.custSex": [
+            "string"
+          ],
+          "$.freeText15": [
+            "string"
+          ],
+          "$.aaPartyIdType": [
+            "string"
+          ],
+          "$.branchName": [
+            "string"
+          ],
+          "$.leiCode": [
+            "string"
+          ],
+          "$.hrmsInfo": [
+            "object"
+          ],
+          "$.hrmsInfo.sol": [
+            "string"
+          ],
+          "$.hrmsInfo.supZone": [
+            "string"
+          ],
+          "$.hrmsInfo.fullNameTitle": [
+            "string"
+          ],
+          "$.hrmsInfo.empClass": [
+            "string"
+          ],
+          "$.hrmsInfo.supposition": [
+            "string"
+          ],
+          "$.hrmsInfo.gender": [
+            "string"
+          ],
+          "$.hrmsInfo.supFullNameTitle": [
+            "string"
+          ],
+          "$.hrmsInfo.organization": [
+            "string"
+          ],
+          "$.hrmsInfo.supLocation": [
+            "string"
+          ],
+          "$.hrmsInfo.supSol": [
+            "string"
+          ],
+          "$.hrmsInfo.supGrade": [
+            "string"
+          ],
+          "$.hrmsInfo.position": [
+            "string"
+          ],
+          "$.hrmsInfo.otpId": [
+            "number"
+          ],
+          "$.hrmsInfo.supEin": [
+            "string"
+          ],
+          "$.hrmsInfo.posId": [
+            "string"
+          ],
+          "$.hrmsInfo.location": [
+            "string"
+          ],
+          "$.hrmsInfo.supEmail": [
+            "string"
+          ],
+          "$.hrmsInfo.grade": [
+            "string"
+          ],
+          "$.hrmsInfo.region": [
+            "string"
+          ],
+          "$.hrmsInfo.email": [
+            "string"
+          ],
+          "$.hrmsInfo.vertical": [
+            "string"
+          ],
+          "$.hrmsInfo.zone": [
+            "string"
+          ],
+          "$.jcciCode": [
+            "string"
+          ],
+          "$.cibilStateCode": [
+            "string"
+          ],
+          "$.firstName": [
+            "string"
+          ],
+          "$.createdDate": [
+            "string"
+          ],
+          "$.hrmsOtpRequired": [
+            "string"
+          ],
+          "$.consentInfo": [
+            "object"
+          ],
+          "$.consentInfo.aaId": [
+            "string"
+          ],
+          "$.consentInfo.consentCreationData": [
+            "string"
+          ],
+          "$.consentInfo.status": [
+            "string"
+          ],
+          "$.consentInfo.accounts": [
+            "array"
+          ],
+          "$.consentInfo.accounts[]": [
+            "object"
+          ],
+          "$.consentInfo.accounts[].fipName": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].fipId": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].accountType": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].fiType": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.consentInfo.consentHandle": [
+            "string"
+          ],
+          "$.consentInfo.vua": [
+            "string"
+          ],
+          "$.consentInfo.accountID": [
+            "string"
+          ],
+          "$.consentInfo.consentID": [
+            "string"
+          ],
+          "$.consentInfo.timestamp": [
+            "string"
+          ],
+          "$.consentInfo.productID": [
+            "string"
+          ],
+          "$.hrmsChannelName": [
+            "string"
+          ],
+          "$.comuPincode": [
+            "string"
+          ],
+          "$.aaVua": [
+            "string"
+          ],
+          "$.moduleType": [
+            "string"
+          ],
+          "$.gstStateCode": [
+            "string"
+          ],
+          "$.udyogAadharNo": [
+            "null"
+          ],
+          "$.finProStmt": [
+            "object"
+          ],
+          "$.finProStmt.transactions": [
+            "array"
+          ],
+          "$.finProStmt.transactions[]": [
+            "object"
+          ],
+          "$.finProStmt.transactions[].txnId": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].amount": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].reference": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].type": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].mode": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].valueDate": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].currentBalance": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].narration": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].transactionTimestamp": [
+            "string"
+          ],
+          "$.finProStmt.micrCode": [
+            "string"
+          ],
+          "$.finProStmt.fiType": [
+            "string"
+          ],
+          "$.finProStmt.startDate": [
+            "string"
+          ],
+          "$.finProStmt.nominee": [
+            "string"
+          ],
+          "$.finProStmt.linkReferenceNumber": [
+            "string"
+          ],
+          "$.finProStmt.balanceDateTime": [
+            "string"
+          ],
+          "$.finProStmt.endDate": [
+            "string"
+          ],
+          "$.finProStmt.maskedAccountNumber": [
+            "string"
+          ],
+          "$.finProStmt.ifsc": [
+            "string"
+          ],
+          "$.finProStmt.facility": [
+            "string"
+          ],
+          "$.ckycInputIdType": [
+            "string"
+          ],
+          "$.branchId": [
+            "string"
+          ],
+          "$.modeOfOperation": [
+            "string"
+          ],
+          "$.ckycMiddleName": [
+            "string"
+          ],
+          "$.loanInfo": [
+            "object"
+          ],
+          "$.loanInfo.loanPeriodDays": [
+            "string"
+          ],
+          "$.loanInfo.amtAvailForDisb": [
+            "string"
+          ],
+          "$.loanInfo.disbAmt": [
+            "string"
+          ],
+          "$.loanInfo.amtAlreadyDisb": [
+            "string"
+          ],
+          "$.loanInfo.emiAmount": [
+            "string"
+          ],
+          "$.loanInfo.loanAmt": [
+            "string"
+          ],
+          "$.loanInfo.loanPeriodMonths": [
+            "string"
+          ],
+          "$.loanInfo.rePmtMethod": [
+            "string"
+          ],
+          "$.loanInfo.netIntRate": [
+            "string"
+          ],
+          "$.custMobileNo": [
+            "string"
+          ],
+          "$.balances": [
+            "object"
+          ],
+          "$.balances.FLOAT": [
+            "string"
+          ],
+          "$.balances.LIEN": [
+            "string"
+          ],
+          "$.balances.AVAIL": [
+            "string"
+          ],
+          "$.balances.ACCBAL": [
+            "string"
+          ],
+          "$.balances.LEDGER": [
+            "string"
+          ],
+          "$.balances.DRWPWR": [
+            "string"
+          ],
+          "$.balances.EFFAVL": [
+            "string"
+          ],
+          "$.acctId": [
+            "string"
+          ],
+          "$.customerId": [
+            "string"
+          ],
+          "$.rateInfo": [
+            "object"
+          ],
+          "$.rateInfo.penalRate": [
+            "string"
+          ],
+          "$.rateInfo.effectiveRate": [
+            "string"
+          ],
+          "$.rateInfo.slabs": [
+            "array"
+          ],
+          "$.rateInfo.slabs[]": [
+            "object"
+          ],
+          "$.rateInfo.slabs[].maxMonths": [
+            "number"
+          ],
+          "$.rateInfo.slabs[].penalPct": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].maxDays": [
+            "number"
+          ],
+          "$.rateInfo.slabs[].to": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].normalPct": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].from": [
+            "string"
+          ],
+          "$.rateInfo.baseRate": [
+            "string"
+          ],
+          "$.aaProductId": [
+            "string"
+          ],
+          "$.drivingLicence": [
+            "string"
+          ],
+          "$.stmtInfo": [
+            "object"
+          ],
+          "$.stmtInfo.fiType": [
+            "string"
+          ],
+          "$.stmtInfo.nominee": [
+            "string"
+          ],
+          "$.stmtInfo.linkReferenceNumber": [
+            "string"
+          ],
+          "$.stmtInfo.transactions": [
+            "array"
+          ],
+          "$.stmtInfo.transactions[]": [
+            "object"
+          ],
+          "$.stmtInfo.transactions[].transactionTimestamp": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].amount": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].txnId": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].narration": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].reference": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].valueDate": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].type": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].mode": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].transactionalBalance": [
+            "string"
+          ],
+          "$.stmtInfo.balanceDateTime": [
+            "string"
+          ],
+          "$.stmtInfo.maskedAccountNumber": [
+            "string"
+          ],
+          "$.stmtInfo.micrCode": [
+            "string"
+          ],
+          "$.stmtInfo.ifscCode": [
+            "string"
+          ],
+          "$.stmtInfo.endDate": [
+            "string"
+          ],
+          "$.stmtInfo.startDate": [
+            "string"
+          ],
+          "$.tradeLicence": [
+            "string"
+          ],
+          "$.permCountry": [
+            "string"
+          ],
+          "$.voterIdCard": [
+            "string"
+          ],
+          "$.cibilResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.tuVerification": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.tuVerification.isSuccess": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.memberCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.purpose": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.mfiBureau": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.DSTuNtc": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.idVerification": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.cibilBureau": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.NTCProductType": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.consumerConsentForUIDAIAuthentication": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.amount": [
+            "number"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.GSTStateCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationData.scoreType": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name.lastName": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name.firstName": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name.middleName": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.gender": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.dateOfBirth": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers": [
+            "array"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[]": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[].type": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[].value": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address.stateCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address.line2": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address.line1": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address.pinCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.address.city": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.document": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.document.id": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.document.name": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.authentication": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.authentication.token": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.authentication.status": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.status": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.decision": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.idVision": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.idVision.errorMessage": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.idVision.errorCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.idVision.isSuccess": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicationId": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.responseInfo": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.responseInfo.solutionSetInstanceId": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.responseInfo.applicationId": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse.errorDescription": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse.segmentError": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse.isSuccess": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse.errorCode": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.bureauResponse.status": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.apiName": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.transactionDate": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.statusCode": [
+            "number"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.apiVersion": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.success": [
+            "boolean"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.transactionId": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.statusMessage": [
+            "string"
+          ],
+          "$.ckycQueryId": [
+            "string"
+          ],
+          "$.bankId": [
+            "string"
+          ],
+          "$.cibilGender": [
+            "string"
+          ],
+          "$.customerType": [
+            "string"
+          ],
+          "$.minorFlag": [
+            "string"
+          ],
+          "$.permState": [
+            "string"
+          ],
+          "$.custCifId": [
+            "string"
+          ],
+          "$.acctCurr": [
+            "string"
+          ],
+          "$.comuState": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "13",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.aaPartyIdType": [
+            "string"
+          ],
+          "$.aaPartyIdValue": [
+            "string"
+          ],
+          "$.aaProductId": [
+            "string"
+          ],
+          "$.aaVua": [
+            "string"
+          ],
+          "$.accountType": [
+            "string"
+          ],
+          "$.acctCurr": [
+            "string"
+          ],
+          "$.acctId": [
+            "string"
+          ],
+          "$.acctOpenDt": [
+            "string"
+          ],
+          "$.balances": [
+            "object"
+          ],
+          "$.balances.FLOAT": [
+            "string"
+          ],
+          "$.balances.AVAIL": [
+            "string"
+          ],
+          "$.balances.LEDGER": [
+            "string"
+          ],
+          "$.balances.LIEN": [
+            "string"
+          ],
+          "$.balances.ACCBAL": [
+            "string"
+          ],
+          "$.balances.DRWPWR": [
+            "string"
+          ],
+          "$.balances.EFFAVL": [
+            "string"
+          ],
+          "$.bankAcctStatusCode": [
+            "string"
+          ],
+          "$.bankId": [
+            "string"
+          ],
+          "$.bankName": [
+            "string"
+          ],
+          "$.branchId": [
+            "string"
+          ],
+          "$.branchName": [
+            "string"
+          ],
+          "$.cibilDob": [
+            "string"
+          ],
+          "$.cibilGender": [
+            "string"
+          ],
+          "$.cibilResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.decision": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.body.dcResponse.applicant.name.firstName": [
+            "string"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header": [
+            "object"
+          ],
+          "$.cibilResponse.fetchCibilScoreResponse.header.success": [
+            "boolean"
+          ],
+          "$.cibilStateCode": [
+            "string"
+          ],
+          "$.ckycAppFormNo": [
+            "string"
+          ],
+          "$.ckycBranchCode": [
+            "string"
+          ],
+          "$.ckycDob": [
+            "string"
+          ],
+          "$.ckycGender": [
+            "string"
+          ],
+          "$.ckycInfo": [
+            "object"
+          ],
+          "$.ckycInfo.parentCompany": [
+            "string"
+          ],
+          "$.ckycInfo.ckycPhotoBytes": [
+            "string"
+          ],
+          "$.ckycInfo.ckycRequestId": [
+            "string"
+          ],
+          "$.ckycInfo.applicationFormNo": [
+            "string"
+          ],
+          "$.ckycInfo.ckycRequestDate": [
+            "string"
+          ],
+          "$.ckycInfo.ckycAge": [
+            "string"
+          ],
+          "$.ckycInfo.recordIdentifier": [
+            "string"
+          ],
+          "$.ckycInfo.ckycUpdatedDate": [
+            "string"
+          ],
+          "$.ckycInfo.ckycGenDate": [
+            "string"
+          ],
+          "$.ckycInfo.ckycPhoto": [
+            "string"
+          ],
+          "$.ckycInfo.queryId": [
+            "string"
+          ],
+          "$.ckycInfo.idDetails": [
+            "array"
+          ],
+          "$.ckycInfo.idDetails[]": [
+            "object"
+          ],
+          "$.ckycInfo.idDetails[].type": [
+            "string"
+          ],
+          "$.ckycInfo.idDetails[].status": [
+            "string"
+          ],
+          "$.ckycInputIdType": [
+            "string"
+          ],
+          "$.ckycNo": [
+            "string"
+          ],
+          "$.ckycQueryId": [
+            "string"
+          ],
+          "$.ckycRecordId": [
+            "string"
+          ],
+          "$.ckycSourceSystem": [
+            "string"
+          ],
+          "$.comuAddr1": [
+            "string"
+          ],
+          "$.comuAddr2": [
+            "string"
+          ],
+          "$.comuCity": [
+            "string"
+          ],
+          "$.comuCountry": [
+            "string"
+          ],
+          "$.comuPincode": [
+            "string"
+          ],
+          "$.comuState": [
+            "string"
+          ],
+          "$.consentHandle": [
+            "string"
+          ],
+          "$.consentId": [
+            "string"
+          ],
+          "$.consentInfo": [
+            "object"
+          ],
+          "$.consentInfo.accountID": [
+            "string"
+          ],
+          "$.consentInfo.consentCreationData": [
+            "string"
+          ],
+          "$.consentInfo.consentID": [
+            "string"
+          ],
+          "$.consentInfo.consentHandle": [
+            "string"
+          ],
+          "$.consentInfo.vua": [
+            "string"
+          ],
+          "$.consentInfo.productID": [
+            "string"
+          ],
+          "$.consentInfo.aaId": [
+            "string"
+          ],
+          "$.consentInfo.accounts": [
+            "array"
+          ],
+          "$.consentInfo.accounts[]": [
+            "object"
+          ],
+          "$.consentInfo.accounts[].fiType": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].fipId": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].fipName": [
+            "string"
+          ],
+          "$.consentInfo.accounts[].accountType": [
+            "string"
+          ],
+          "$.consentInfo.status": [
+            "string"
+          ],
+          "$.consentInfo.timestamp": [
+            "string"
+          ],
+          "$.custCifId": [
+            "string"
+          ],
+          "$.custLimitInfo": [
+            "object"
+          ],
+          "$.custLimitInfo.emptyLimitRecords": [
+            "string"
+          ],
+          "$.custLimitInfo.custRating": [
+            "string"
+          ],
+          "$.custLimitInfo.accountManager": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.fundedLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.nonFundedLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalOutstanding.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalLimit": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalLimit.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalLimit.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding": [
+            "object"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding.amount": [
+            "string"
+          ],
+          "$.custLimitInfo.exposure.totalNodeOutstanding.currency": [
+            "string"
+          ],
+          "$.custLimitInfo.limits": [
+            "array"
+          ],
+          "$.custLimitInfo.limits[]": [
+            "object"
+          ],
+          "$.custLimitInfo.limits[].sanctionDate": [
+            "string"
+          ],
+          "$.custLimitInfo.limits[].expiryDate": [
+            "string"
+          ],
+          "$.custLimitInfo.limits[].currency": [
+            "string"
+          ],
+          "$.custMobileNo": [
+            "string"
+          ],
+          "$.custName": [
+            "string"
+          ],
+          "$.custSex": [
+            "string"
+          ],
+          "$.custTitleCode": [
+            "string"
+          ],
+          "$.customerId": [
+            "string"
+          ],
+          "$.dateOfBirth": [
+            "string"
+          ],
+          "$.decryptInfo": [
+            "object"
+          ],
+          "$.decryptInfo.redirect": [
+            "string"
+          ],
+          "$.decryptInfo.errorCode": [
+            "string"
+          ],
+          "$.decryptInfo.sessionId": [
+            "string"
+          ],
+          "$.decryptInfo.srcRef": [
+            "string"
+          ],
+          "$.decryptInfo.status": [
+            "string"
+          ],
+          "$.decryptInfo.txnId": [
+            "string"
+          ],
+          "$.ein": [
+            "string"
+          ],
+          "$.emailId": [
+            "string"
+          ],
+          "$.finProStmt": [
+            "object"
+          ],
+          "$.finProStmt.linkReferenceNumber": [
+            "string"
+          ],
+          "$.finProStmt.maskedAccountNumber": [
+            "string"
+          ],
+          "$.finProStmt.fiType": [
+            "string"
+          ],
+          "$.finProStmt.ifsc": [
+            "string"
+          ],
+          "$.finProStmt.micrCode": [
+            "string"
+          ],
+          "$.finProStmt.facility": [
+            "string"
+          ],
+          "$.finProStmt.balanceDateTime": [
+            "string"
+          ],
+          "$.finProStmt.startDate": [
+            "string"
+          ],
+          "$.finProStmt.endDate": [
+            "string"
+          ],
+          "$.finProStmt.nominee": [
+            "string"
+          ],
+          "$.finProStmt.transactions": [
+            "array"
+          ],
+          "$.finProStmt.transactions[]": [
+            "object"
+          ],
+          "$.finProStmt.transactions[].mode": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].type": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].txnId": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].amount": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].narration": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].reference": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].transactionTimestamp": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].valueDate": [
+            "string"
+          ],
+          "$.finProStmt.transactions[].currentBalance": [
+            "string"
+          ],
+          "$.firstName": [
+            "string"
+          ],
+          "$.foracid": [
+            "string"
+          ],
+          "$.fullStmt": [
+            "object"
+          ],
+          "$.fullStmt.ffdBalance": [
+            "string"
+          ],
+          "$.fullStmt.userDefinedBalance": [
+            "string"
+          ],
+          "$.fullStmt.hasMoreData": [
+            "string"
+          ],
+          "$.fullStmt.transactions": [
+            "array"
+          ],
+          "$.fullStmt.transactions[]": [
+            "object"
+          ],
+          "$.fullStmt.transactions[].pstdDate": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].instrumentId": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].amount": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnDate": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnDesc": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnType": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnBalance": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnCat": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnId": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].txnSrlNo": [
+            "string"
+          ],
+          "$.fullStmt.transactions[].valueDate": [
+            "string"
+          ],
+          "$.gstStateCode": [
+            "string"
+          ],
+          "$.hpPayoffInfo": [
+            "object"
+          ],
+          "$.hpPayoffInfo.interestRate": [
+            "string"
+          ],
+          "$.hpPayoffInfo.interestSinceLastApplication": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingPenalInterest": [
+            "string"
+          ],
+          "$.hpPayoffInfo.netPayofamt": [
+            "string"
+          ],
+          "$.hpPayoffInfo.accountLiab": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingOverdueInterest": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingPrincipal": [
+            "string"
+          ],
+          "$.hpPayoffInfo.pendingNormalInterest": [
+            "string"
+          ],
+          "$.hrmsChannelName": [
+            "string"
+          ],
+          "$.hrmsInfo": [
+            "object"
+          ],
+          "$.hrmsInfo.supSol": [
+            "string"
+          ],
+          "$.hrmsInfo.fullNameTitle": [
+            "string"
+          ],
+          "$.hrmsInfo.gender": [
+            "string"
+          ],
+          "$.hrmsInfo.supLocation": [
+            "string"
+          ],
+          "$.hrmsInfo.supposition": [
+            "string"
+          ],
+          "$.hrmsInfo.vertical": [
+            "string"
+          ],
+          "$.hrmsInfo.empClass": [
+            "string"
+          ],
+          "$.hrmsInfo.supEmail": [
+            "string"
+          ],
+          "$.hrmsInfo.sol": [
+            "string"
+          ],
+          "$.hrmsInfo.posId": [
+            "string"
+          ],
+          "$.hrmsInfo.supZone": [
+            "string"
+          ],
+          "$.hrmsInfo.otpId": [
+            "number"
+          ],
+          "$.hrmsInfo.zone": [
+            "string"
+          ],
+          "$.hrmsInfo.supGrade": [
+            "string"
+          ],
+          "$.hrmsInfo.grade": [
+            "string"
+          ],
+          "$.hrmsInfo.organization": [
+            "string"
+          ],
+          "$.hrmsInfo.location": [
+            "string"
+          ],
+          "$.hrmsInfo.position": [
+            "string"
+          ],
+          "$.hrmsInfo.region": [
+            "string"
+          ],
+          "$.hrmsInfo.email": [
+            "string"
+          ],
+          "$.hrmsInfo.supEin": [
+            "string"
+          ],
+          "$.hrmsInfo.supFullNameTitle": [
+            "string"
+          ],
+          "$.hrmsOtpRequired": [
+            "string"
+          ],
+          "$.lastName": [
+            "string"
+          ],
+          "$.leads": [
+            "array"
+          ],
+          "$.leads[]": [
+            "object"
+          ],
+          "$.leads[].preferedTime": [
+            "string"
+          ],
+          "$.leads[].product": [
+            "string"
+          ],
+          "$.leads[].solid": [
+            "string"
+          ],
+          "$.leads[].prodCategory": [
+            "string"
+          ],
+          "$.leads[].leadType": [
+            "string"
+          ],
+          "$.leads[].leadSource": [
+            "string"
+          ],
+          "$.leads[].preferedDate": [
+            "string"
+          ],
+          "$.leads[].prodSubCategory": [
+            "string"
+          ],
+          "$.leads[].leadChannel": [
+            "string"
+          ],
+          "$.leads[].estimatedAmount": [
+            "string"
+          ],
+          "$.leads[].leadId": [
+            "string"
+          ],
+          "$.lien": [
+            "object"
+          ],
+          "$.lien.newLienAmt": [
+            "string"
+          ],
+          "$.lien.lienId": [
+            "string"
+          ],
+          "$.lien.endDate": [
+            "string"
+          ],
+          "$.lien.reasonCode": [
+            "string"
+          ],
+          "$.lien.oldLienAmt": [
+            "string"
+          ],
+          "$.lien.startDate": [
+            "string"
+          ],
+          "$.lien.remarks": [
+            "string"
+          ],
+          "$.loanAcctId": [
+            "string"
+          ],
+          "$.loanInfo": [
+            "object"
+          ],
+          "$.loanInfo.loanPeriodDays": [
+            "string"
+          ],
+          "$.loanInfo.rePmtMethod": [
+            "string"
+          ],
+          "$.loanInfo.emiAmount": [
+            "string"
+          ],
+          "$.loanInfo.loanPeriodMonths": [
+            "string"
+          ],
+          "$.loanInfo.amtAvailForDisb": [
+            "string"
+          ],
+          "$.loanInfo.disbAmt": [
+            "string"
+          ],
+          "$.loanInfo.loanAmt": [
+            "string"
+          ],
+          "$.loanInfo.netIntRate": [
+            "string"
+          ],
+          "$.loanInfo.amtAlreadyDisb": [
+            "string"
+          ],
+          "$.loanInfo.operAcctId": [
+            "string"
+          ],
+          "$.loanLimits": [
+            "object"
+          ],
+          "$.loanLimits.drwngPower": [
+            "array"
+          ],
+          "$.loanLimits.drwngPower[]": [
+            "object"
+          ],
+          "$.loanLimits.drwngPower[].pcnt": [
+            "string"
+          ],
+          "$.loanLimits.drwngPower[].amountValue": [
+            "string"
+          ],
+          "$.loanLimits.drwngPower[].applicableDate": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit": [
+            "array"
+          ],
+          "$.loanLimits.sanctLimit[]": [
+            "object"
+          ],
+          "$.loanLimits.sanctLimit[].expiryDate": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit[].amountValue": [
+            "string"
+          ],
+          "$.loanLimits.sanctLimit[].applicableDate": [
+            "string"
+          ],
+          "$.loanOverdue": [
+            "array"
+          ],
+          "$.loanOverdue[]": [
+            "object"
+          ],
+          "$.loanOverdue[].totalIntOvdu": [
+            "string"
+          ],
+          "$.loanOverdue[].totalIntDmd": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalColl": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalOvdu": [
+            "string"
+          ],
+          "$.loanOverdue[].pTotalDmd": [
+            "string"
+          ],
+          "$.loanOverdue[].acctId": [
+            "string"
+          ],
+          "$.loanOverdue[].totalIntColl": [
+            "string"
+          ],
+          "$.loanOverdueDetails": [
+            "array"
+          ],
+          "$.loanOverdueDetails[]": [
+            "object"
+          ],
+          "$.loanOverdueDetails[].accountId": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].overdueDate": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].customerId": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].dpd": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].outstandingBal": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].npaStatus": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].totalOverdueAmt": [
+            "string"
+          ],
+          "$.loanOverdueDetails[].npaDate": [
+            "string"
+          ],
+          "$.modeOfOperation": [
+            "string"
+          ],
+          "$.moduleType": [
+            "string"
+          ],
+          "$.natIdCardNo": [
+            "string"
+          ],
+          "$.panCardNo": [
+            "string"
+          ],
+          "$.primarySolId": [
+            "string"
+          ],
+          "$.rateInfo": [
+            "object"
+          ],
+          "$.rateInfo.baseRate": [
+            "string"
+          ],
+          "$.rateInfo.effectiveRate": [
+            "string"
+          ],
+          "$.rateInfo.penalRate": [
+            "string"
+          ],
+          "$.rateInfo.slabs": [
+            "array"
+          ],
+          "$.rateInfo.slabs[]": [
+            "object"
+          ],
+          "$.rateInfo.slabs[].from": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].to": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].maxMonths": [
+            "number"
+          ],
+          "$.rateInfo.slabs[].maxDays": [
+            "number"
+          ],
+          "$.rateInfo.slabs[].normalPct": [
+            "string"
+          ],
+          "$.rateInfo.slabs[].penalPct": [
+            "string"
+          ],
+          "$.refCode": [
+            "string"
+          ],
+          "$.refDesc": [
+            "string"
+          ],
+          "$.schmCode": [
+            "string"
+          ],
+          "$.schmType": [
+            "string"
+          ],
+          "$.stmtInfo": [
+            "object"
+          ],
+          "$.stmtInfo.fiType": [
+            "string"
+          ],
+          "$.stmtInfo.linkReferenceNumber": [
+            "string"
+          ],
+          "$.stmtInfo.endDate": [
+            "string"
+          ],
+          "$.stmtInfo.balanceDateTime": [
+            "string"
+          ],
+          "$.stmtInfo.nominee": [
+            "string"
+          ],
+          "$.stmtInfo.micrCode": [
+            "string"
+          ],
+          "$.stmtInfo.transactions": [
+            "array"
+          ],
+          "$.stmtInfo.transactions[]": [
+            "object"
+          ],
+          "$.stmtInfo.transactions[].mode": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].reference": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].amount": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].narration": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].transactionalBalance": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].valueDate": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].type": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].transactionTimestamp": [
+            "string"
+          ],
+          "$.stmtInfo.transactions[].txnId": [
+            "string"
+          ],
+          "$.stmtInfo.ifscCode": [
+            "string"
+          ],
+          "$.stmtInfo.maskedAccountNumber": [
+            "string"
+          ],
+          "$.stmtInfo.startDate": [
+            "string"
+          ],
+          "$.wcConsentHandle": [
+            "string"
+          ],
+          "$.wcConsentId": [
+            "string"
+          ],
+          "$.webRedirectInfo": [
+            "object"
+          ],
+          "$.webRedirectInfo.webRedirectionUrl": [
+            "string"
+          ],
+          "$.webRedirectInfo.ver": [
+            "string"
+          ],
+          "$.webRedirectInfo.timestamp": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/searchCkycDetailstest": [
+      {
+        "sample": "14",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.parentCompany": [
+            "string"
+          ],
+          "$.result.requestStatus": [
+            "string"
+          ],
+          "$.result.requestRejectionCode": [
+            "string"
+          ],
+          "$.result.requestRejectionDescription": [
+            "string"
+          ],
+          "$.result.details": [
+            "object"
+          ],
+          "$.result.details.searchInCkycResponseDetails": [
+            "object"
+          ],
+          "$.result.details.searchInCkycResponseDetails.queryId": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.transactionStatus": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.branchCode": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.recordIdentifier": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.applicationFormNo": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.sourceSystem": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.sourceSystemSegment": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.apiTags": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.remarks": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycAvailable": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycAccType": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycId": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycAge": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycFatherName": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycPhotoImageType": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycGenDate": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycName": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycPhoto": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycRequestId": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycRequestDate": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycUpdatedDate": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycPhotoBytes": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycremarks": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails": [
+            "object"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails.id": [
+            "array"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails.id[]": [
+            "object"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails.id[].ckycAvailableIdType": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails.id[].ckycAvailableIdTypeStatus": [
+            "string"
+          ],
+          "$.result.details.searchInCkycResponseDetails.ckycIdDetails.id[].ckycIdremarks": [
+            "string"
+          ],
+          "$.result.errors": [
+            "object"
+          ],
+          "$.result.errors.code": [
+            "string"
+          ],
+          "$.result.errors.type": [
+            "string"
+          ],
+          "$.result.errors.message": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/fetchHRMSEmployeeDetailstest": [
+      {
+        "sample": "15",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.failureStage": [
+            "null"
+          ],
+          "$.otpId": [
+            "number"
+          ],
+          "$.getHRMSEmployeeDetails": [
+            "object"
+          ],
+          "$.getHRMSEmployeeDetails.ein": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.fullNameTitle": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.grade": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.gender": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.empClass": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.vertical": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.organization": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.position": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.location": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.region": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.email": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.sol": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.zone": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supEin": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supFullNameTitle": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supGrade": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supEmail": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supposition": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supLocation": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supSol": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.supZone": [
+            "string"
+          ],
+          "$.getHRMSEmployeeDetails.posId": [
+            "string"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/fetchCustomerLimitDetailstest": [
+      {
+        "sample": "16",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.customerSummary": [
+            "object"
+          ],
+          "$.customerSummary.customerName": [
+            "string"
+          ],
+          "$.customerSummary.custCifId": [
+            "string"
+          ],
+          "$.customerSummary.accountManager": [
+            "string"
+          ],
+          "$.customerSummary.customerID": [
+            "string"
+          ],
+          "$.customerSummary.custRating": [
+            "string"
+          ],
+          "$.exposureSummary": [
+            "object"
+          ],
+          "$.exposureSummary.totalLimit": [
+            "object"
+          ],
+          "$.exposureSummary.totalLimit.amount": [
+            "string"
+          ],
+          "$.exposureSummary.totalLimit.currency": [
+            "string"
+          ],
+          "$.exposureSummary.fundedLimit": [
+            "object"
+          ],
+          "$.exposureSummary.fundedLimit.amount": [
+            "string"
+          ],
+          "$.exposureSummary.fundedLimit.currency": [
+            "string"
+          ],
+          "$.exposureSummary.nonFundedLimit": [
+            "object"
+          ],
+          "$.exposureSummary.nonFundedLimit.amount": [
+            "string"
+          ],
+          "$.exposureSummary.nonFundedLimit.currency": [
+            "string"
+          ],
+          "$.exposureSummary.totalOutstanding": [
+            "object"
+          ],
+          "$.exposureSummary.totalOutstanding.amount": [
+            "string"
+          ],
+          "$.exposureSummary.totalOutstanding.currency": [
+            "string"
+          ],
+          "$.exposureSummary.totalNodeLimit": [
+            "object"
+          ],
+          "$.exposureSummary.totalNodeLimit.amount": [
+            "string"
+          ],
+          "$.exposureSummary.totalNodeLimit.currency": [
+            "string"
+          ],
+          "$.exposureSummary.totalNodeOutstanding": [
+            "object"
+          ],
+          "$.exposureSummary.totalNodeOutstanding.amount": [
+            "string"
+          ],
+          "$.exposureSummary.totalNodeOutstanding.currency": [
+            "string"
+          ],
+          "$.customerLimits": [
+            "array"
+          ],
+          "$.customerLimits[]": [
+            "object"
+          ],
+          "$.customerLimits[].currency": [
+            "string"
+          ],
+          "$.customerLimits[].sanctionDate": [
+            "string"
+          ],
+          "$.customerLimits[].expiryDate": [
+            "string"
+          ],
+          "$.emptyLimitRecords": [
+            "string"
+          ],
+          "$.rawMetadata": [
+            "object"
+          ],
+          "$.rawMetadata.inquireCustomerLimitDetails_CustomData": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/InquireHPAyofftest": [
+      {
+        "sample": "17",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.executeFinacleScriptCustomData": [
+            "object"
+          ],
+          "$.executeFinacleScriptCustomData.netPayofamt": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.accountLiab": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.pendingPrincipal": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.pendingNormalInterest": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.pendingPenalInterest": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.pendingOverdueInterest": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.interestSinceLastApplication": [
+            "string"
+          ],
+          "$.executeFinacleScriptCustomData.interestRate": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getLoanAccountDetailstest": [
+      {
+        "sample": "18",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.result": [
+            "object"
+          ],
+          "$.result.loanAcctId": [
+            "object"
+          ],
+          "$.result.loanAcctId.acctId": [
+            "string"
+          ],
+          "$.result.loanAcctId.acctType": [
+            "object"
+          ],
+          "$.result.loanAcctId.acctType.schmCode": [
+            "string"
+          ],
+          "$.result.loanAcctId.acctType.schmType": [
+            "string"
+          ],
+          "$.result.loanAcctId.acctCurr": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo": [
+            "object"
+          ],
+          "$.result.loanAcctId.bankInfo.bankId": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.name": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.branchId": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.branchName": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.result.loanAcctId.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.result.netIntRate": [
+            "object"
+          ],
+          "$.result.netIntRate.value": [
+            "string"
+          ],
+          "$.result.acctOpenDt": [
+            "string"
+          ],
+          "$.result.modeOfOper": [
+            "string"
+          ],
+          "$.result.custId": [
+            "object"
+          ],
+          "$.result.custId.custId": [
+            "string"
+          ],
+          "$.result.custId.personName": [
+            "object"
+          ],
+          "$.result.custId.personName.lastName": [
+            "string"
+          ],
+          "$.result.custId.personName.firstName": [
+            "string"
+          ],
+          "$.result.custId.personName.middleName": [
+            "string"
+          ],
+          "$.result.custId.personName.name": [
+            "string"
+          ],
+          "$.result.custId.personName.titlePrefix": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo": [
+            "object"
+          ],
+          "$.result.loanAcctGenInfo.genLedgerSubHead": [
+            "object"
+          ],
+          "$.result.loanAcctGenInfo.genLedgerSubHead.genLedgerSubHeadCode": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.genLedgerSubHead.curCode": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctName": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.eotEnabled": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.drIntMethodInd": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctShortName": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtMode": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq": [
+            "object"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.cal": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.type": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.startDt": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.weekDay": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.weekNum": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtFreq.holStat": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.acctStmtNxtPrintDt": [
+            "string"
+          ],
+          "$.result.loanAcctGenInfo.despatchMode": [
+            "string"
+          ],
+          "$.result.amtAlreadyDisb": [
+            "object"
+          ],
+          "$.result.amtAlreadyDisb.amountValue": [
+            "string"
+          ],
+          "$.result.amtAlreadyDisb.currencyCode": [
+            "string"
+          ],
+          "$.result.amtAvailForDisb": [
+            "object"
+          ],
+          "$.result.amtAvailForDisb.amountValue": [
+            "string"
+          ],
+          "$.result.amtAvailForDisb.currencyCode": [
+            "string"
+          ],
+          "$.result.disbAmt": [
+            "object"
+          ],
+          "$.result.disbAmt.amountValue": [
+            "string"
+          ],
+          "$.result.disbAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.srcDealerCode": [
+            "object"
+          ],
+          "$.result.srcDealerCode.dsaId": [
+            "string"
+          ],
+          "$.result.srcDealerCode.dsaName": [
+            "string"
+          ],
+          "$.result.disbDealerCode": [
+            "object"
+          ],
+          "$.result.disbDealerCode.dsaId": [
+            "string"
+          ],
+          "$.result.disbDealerCode.dsaName": [
+            "string"
+          ],
+          "$.result.loanGenDetails": [
+            "object"
+          ],
+          "$.result.loanGenDetails.loanAmt": [
+            "object"
+          ],
+          "$.result.loanGenDetails.loanAmt.amountValue": [
+            "string"
+          ],
+          "$.result.loanGenDetails.loanAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.loanPeriodDays": [
+            "string"
+          ],
+          "$.result.loanGenDetails.loanPeriodMonths": [
+            "string"
+          ],
+          "$.result.loanGenDetails.rePmtMethod": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId": [
+            "object"
+          ],
+          "$.result.loanGenDetails.operAcctId.acctId": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.acctType": [
+            "object"
+          ],
+          "$.result.loanGenDetails.operAcctId.acctType.schmCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.acctType.schmType": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.acctCurr": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo": [
+            "object"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.bankId": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.name": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.branchId": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.branchName": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.result.loanGenDetails.operAcctId.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams": [
+            "object"
+          ],
+          "$.result.loanGenDetails.reschedParams.reschedAdjTenorAmtFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.autoReschedForEveryDisbFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.autoReschedForIntRateChange": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.reschedAmtFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.autoReschedPrepaymentFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.installmentGracePeriodDays": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.InstallmentGracePeriodMonths": [
+            "string"
+          ],
+          "$.result.loanGenDetails.reschedParams.rephasementCapitalizeChargeFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.holidayPeriod": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.autoReschedPostHolidayPeriod": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intDuringHolidayPeriod": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.cal": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.type": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.startDt": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.weekDay": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.weekNum": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.holidayPeriodDetails.intFreq.holStat": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.intRestBasis": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.intRestFreq": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.eqInstallDetails": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.eqInstallDetails.eqInstallFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.eqInstallDetails.eqInstallType": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.eqInstallDetails.eqInstallFormula": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.eqInstallDetails.repayCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec": [
+            "array"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[]": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installmentId": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installStartDt": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.cal": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.type": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.startDt": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.weekDay": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.weekNum": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installFreq.holStat": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.cal": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.type": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.startDt": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.weekDay": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.weekNum": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intFreq.holStat": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].noOfInstall": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].intStartDt": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].flowAmt": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].flowAmt.amountValue": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].flowAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installRate": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installRate.value": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].actualNoOfFlows": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].actualNoOfFlows.value": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.repmtRec[].installIndicator": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.hldyPerdIntAmt": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.hldyPerdIntAmt.amountValue": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.hldyPerdIntAmt.currencyCode": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.defApplIntRateFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.negotiatedRate": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.negotiatedRate.value": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.capEMIFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.defStartMonth": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.singEmiDiffFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.numOfAdvInst": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.brokenPeriodInterestFlg": [
+            "string"
+          ],
+          "$.result.loanGenDetails.pmtPlan.defApplIntRate": [
+            "object"
+          ],
+          "$.result.loanGenDetails.pmtPlan.defApplIntRate.value": [
+            "string"
+          ],
+          "$.result.ACHDetails": [
+            "object"
+          ],
+          "$.result.ACHDetails.paySysId": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId": [
+            "object"
+          ],
+          "$.result.ACHDetails.respAcctId.acctId": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.acctType": [
+            "object"
+          ],
+          "$.result.ACHDetails.respAcctId.acctType.schmCode": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.acctType.schmType": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.acctCurr": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo": [
+            "object"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.bankId": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.name": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.branchId": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.branchName": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.result.ACHDetails.respAcctId.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.result.refNum": [
+            "string"
+          ],
+          "$.result.tranId": [
+            "string"
+          ],
+          "$.result.tranDt": [
+            "string"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/getConsentListFromFinProtest": [
+      {
+        "sample": "20",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].consentID": [
+            "string"
+          ],
+          "$.data[].status": [
+            "string"
+          ],
+          "$.data[].consent_handle": [
+            "string"
+          ],
+          "$.data[].productID": [
+            "string"
+          ],
+          "$.data[].accountID": [
+            "string"
+          ],
+          "$.data[].aaId": [
+            "string"
+          ],
+          "$.data[].vua": [
+            "string"
+          ],
+          "$.data[].consentCreationData": [
+            "string"
+          ],
+          "$.data[].accounts": [
+            "array"
+          ],
+          "$.data[].accounts[]": [
+            "object"
+          ],
+          "$.data[].accounts[].fipName": [
+            "string"
+          ],
+          "$.data[].accounts[].fipId": [
+            "string"
+          ],
+          "$.data[].accounts[].accountType": [
+            "string"
+          ],
+          "$.data[].accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].fiType": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/getWebRedirectionEncryptedURLtest": [
+      {
+        "sample": "21",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.message": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].webRedirectionUrl": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/generateLoanRepaymentScheduletest": [
+      {
+        "sample": "22",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL": [
+            "array"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[]": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].flowAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].flowAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].flowAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].noOfInstalments": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].flowStartDate": [
+            "null"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].Freq": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].Key": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].Key.serial_num": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.lamodRepaymentLL[].flowDesc": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL": [
+            "array"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[]": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummPrincAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummPrincAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummPrincAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummIntAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummIntAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.cummIntAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princOutStanding": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princOutStanding.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princOutStanding.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.instlAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.instlAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.instlAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.intAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.intAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.intAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.flowDate": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princAmt": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princAmt.amountValue": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.princAmt.currencyCode": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].amortStruct.flowDesc": [
+            "string"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].Key": [
+            "object"
+          ],
+          "$.loanModellingSchOutputVO.oamortLL[].Key.serial_num": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getAccountStatementtest": [
+      {
+        "sample": "23",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.response": [
+            "string"
+          ],
+          "$.pageDetails": [
+            "object"
+          ],
+          "$.pageDetails.totalRecords": [
+            "string"
+          ],
+          "$.pageDetails.currentPageNumber": [
+            "string"
+          ],
+          "$.pageDetails.totalPages": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Summary.type": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.ifscCode": [
+            "string"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].Summary.Pending": [
+            "object"
+          ],
+          "$.data[].Summary.Pending.amount": [
+            "string"
+          ],
+          "$.data[].Summary.Pending.transactionType": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycCompliance": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].currentBalance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].balance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimeStamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionDateTime": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/generateDecryptedResponseFromFinProtest": [
+      {
+        "sample": "24",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "object"
+          ],
+          "$.data.redirect": [
+            "string"
+          ],
+          "$.data.sessionid": [
+            "string"
+          ],
+          "$.data.pan": [
+            "null"
+          ],
+          "$.data.srcref": [
+            "string"
+          ],
+          "$.data.userid": [
+            "string"
+          ],
+          "$.data.errorcode": [
+            "string"
+          ],
+          "$.data.email": [
+            "null"
+          ],
+          "$.data.status": [
+            "string"
+          ],
+          "$.data.txnid": [
+            "string"
+          ],
+          "$.message": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getAccountStatementFromFinProtest": [
+      {
+        "sample": "25",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycRegistered": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.facility": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.PendingTxns": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.amount": [
+            "number"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.transactionType": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.drawingLimit": [
+            "string"
+          ],
+          "$.data[].Summary.accountSubType": [
+            "string"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.currentODLimit": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimestamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].currentBalance": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/performCustomerMasterDedupeChecktest01": [],
+    "/Development/pushConsentNotificationtest": [
+      {
+        "sample": "27",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.message": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/requestConsentFromFinProtest": [
+      {
+        "sample": "28",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "object"
+          ],
+          "$.data.status": [
+            "string"
+          ],
+          "$.data.consent_handle": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/fetchLoanAccountLimitstest": [
+      {
+        "sample": "29",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.accountLimitDetails": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL": [
+            "array"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[]": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].applicableDate": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].drwngPower": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].drwngPower.amountValue": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].drwngPower.currencyCode": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].drwngPowerPcnt": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctDrwngPowerLimitHistMsgInq.olimitLL[].drwngPowerPcnt.value": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL": [
+            "array"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[]": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[].applicableDate": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[].expiryDate": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[].sanctLimit": [
+            "object"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[].sanctLimit.amountValue": [
+            "string"
+          ],
+          "$.accountLimitDetails.acctSanctLimitHistMsg.olimitLL[].sanctLimit.currencyCode": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getConsentListFromFinProtest01": [
+      {
+        "sample": "30",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].consentID": [
+            "string"
+          ],
+          "$.data[].status": [
+            "string"
+          ],
+          "$.data[].consent_handle": [
+            "string"
+          ],
+          "$.data[].productID": [
+            "string"
+          ],
+          "$.data[].accountID": [
+            "string"
+          ],
+          "$.data[].aaId": [
+            "string"
+          ],
+          "$.data[].vua": [
+            "string"
+          ],
+          "$.data[].consentCreationData": [
+            "string"
+          ],
+          "$.data[].accounts": [
+            "array"
+          ],
+          "$.data[].accounts[]": [
+            "object"
+          ],
+          "$.data[].accounts[].fipName": [
+            "string"
+          ],
+          "$.data[].accounts[].fipId": [
+            "string"
+          ],
+          "$.data[].accounts[].accountType": [
+            "string"
+          ],
+          "$.data[].accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].fiType": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      },
+      {
+        "sample": "31",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].consentID": [
+            "string"
+          ],
+          "$.data[].status": [
+            "string"
+          ],
+          "$.data[].consent_handle": [
+            "string"
+          ],
+          "$.data[].productID": [
+            "string"
+          ],
+          "$.data[].accountID": [
+            "string"
+          ],
+          "$.data[].aaId": [
+            "string"
+          ],
+          "$.data[].vua": [
+            "string"
+          ],
+          "$.data[].consentCreationData": [
+            "string"
+          ],
+          "$.data[].accounts": [
+            "array"
+          ],
+          "$.data[].accounts[]": [
+            "object"
+          ],
+          "$.data[].accounts[].fipName": [
+            "string"
+          ],
+          "$.data[].accounts[].fipId": [
+            "string"
+          ],
+          "$.data[].accounts[].accountType": [
+            "string"
+          ],
+          "$.data[].accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].fiType": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      },
+      {
+        "sample": "32",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].consentID": [
+            "string"
+          ],
+          "$.data[].status": [
+            "string"
+          ],
+          "$.data[].consent_handle": [
+            "string"
+          ],
+          "$.data[].productID": [
+            "string"
+          ],
+          "$.data[].accountID": [
+            "string"
+          ],
+          "$.data[].aaId": [
+            "string"
+          ],
+          "$.data[].vua": [
+            "string"
+          ],
+          "$.data[].consentCreationData": [
+            "string"
+          ],
+          "$.data[].accounts": [
+            "array"
+          ],
+          "$.data[].accounts[]": [
+            "object"
+          ],
+          "$.data[].accounts[].fipName": [
+            "string"
+          ],
+          "$.data[].accounts[].fipId": [
+            "string"
+          ],
+          "$.data[].accounts[].accountType": [
+            "string"
+          ],
+          "$.data[].accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].fiType": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      },
+      {
+        "sample": "33",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.status": [
+            "string"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].consentID": [
+            "string"
+          ],
+          "$.data[].status": [
+            "string"
+          ],
+          "$.data[].consent_handle": [
+            "string"
+          ],
+          "$.data[].productID": [
+            "string"
+          ],
+          "$.data[].accountID": [
+            "string"
+          ],
+          "$.data[].aaId": [
+            "string"
+          ],
+          "$.data[].vua": [
+            "string"
+          ],
+          "$.data[].consentCreationData": [
+            "string"
+          ],
+          "$.data[].accounts": [
+            "array"
+          ],
+          "$.data[].accounts[]": [
+            "object"
+          ],
+          "$.data[].accounts[].fipName": [
+            "string"
+          ],
+          "$.data[].accounts[].fipId": [
+            "string"
+          ],
+          "$.data[].accounts[].accountType": [
+            "string"
+          ],
+          "$.data[].accounts[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].accounts[].fiType": [
+            "string"
+          ],
+          "$.timestamp": [
+            "string"
+          ],
+          "$.errorCode": [
+            "null"
+          ],
+          "$.errorMsg": [
+            "null"
+          ],
+          "$.errors": [
+            "array"
+          ]
+        }
+      }
+    ],
+    "/Development/getAccountStatementtest01": [
+      {
+        "sample": "34",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionalBalance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimestamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.transactionType": [
+            "string"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.amount": [
+            "number"
+          ],
+          "$.data[].Summary.accountSubType": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.drawingLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currentODLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.facility": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycRegistered": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "35",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionalBalance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimestamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.transactionType": [
+            "string"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.amount": [
+            "number"
+          ],
+          "$.data[].Summary.accountSubType": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.drawingLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currentODLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.facility": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycRegistered": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "36",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionalBalance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimestamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.transactionType": [
+            "string"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.amount": [
+            "number"
+          ],
+          "$.data[].Summary.accountSubType": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.drawingLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currentODLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.facility": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycRegistered": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "37",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.ver": [
+            "string"
+          ],
+          "$.data": [
+            "array"
+          ],
+          "$.data[]": [
+            "object"
+          ],
+          "$.data[].fiType": [
+            "string"
+          ],
+          "$.data[].Transactions": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction": [
+            "array"
+          ],
+          "$.data[].Transactions.Transaction[]": [
+            "object"
+          ],
+          "$.data[].Transactions.Transaction[].mode": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].reference": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].amount": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].narration": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionalBalance": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].valueDate": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].type": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].transactionTimestamp": [
+            "string"
+          ],
+          "$.data[].Transactions.Transaction[].txnId": [
+            "string"
+          ],
+          "$.data[].Transactions.endDate": [
+            "string"
+          ],
+          "$.data[].Transactions.startDate": [
+            "string"
+          ],
+          "$.data[].bank": [
+            "string"
+          ],
+          "$.data[].linkReferenceNumber": [
+            "string"
+          ],
+          "$.data[].Summary": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn": [
+            "object"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.transactionType": [
+            "string"
+          ],
+          "$.data[].Summary.PendingTxns.PendingTxn.amount": [
+            "number"
+          ],
+          "$.data[].Summary.accountSubType": [
+            "string"
+          ],
+          "$.data[].Summary.accountType": [
+            "string"
+          ],
+          "$.data[].Summary.currentBalance": [
+            "string"
+          ],
+          "$.data[].Summary.balanceDateTime": [
+            "string"
+          ],
+          "$.data[].Summary.branch": [
+            "string"
+          ],
+          "$.data[].Summary.drawingLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currentODLimit": [
+            "string"
+          ],
+          "$.data[].Summary.currency": [
+            "string"
+          ],
+          "$.data[].Summary.ifsc": [
+            "string"
+          ],
+          "$.data[].Summary.micrCode": [
+            "string"
+          ],
+          "$.data[].Summary.facility": [
+            "string"
+          ],
+          "$.data[].Summary.openingDate": [
+            "string"
+          ],
+          "$.data[].Summary.status": [
+            "string"
+          ],
+          "$.data[].maskedAccountNumber": [
+            "string"
+          ],
+          "$.data[].Profile": [
+            "object"
+          ],
+          "$.data[].Profile.Holders": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder": [
+            "array"
+          ],
+          "$.data[].Profile.Holders.Holder[]": [
+            "object"
+          ],
+          "$.data[].Profile.Holders.Holder[].address": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].dob": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].name": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].mobile": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].nominee": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].ckycRegistered": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].landline": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].pan": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.Holder[].email": [
+            "string"
+          ],
+          "$.data[].Profile.Holders.type": [
+            "string"
+          ],
+          "$.status": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/fetchCibilScoretest": [
+      {
+        "sample": "38",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.tuVerification": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.tuVerification.isSuccess": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.memberCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.purpose": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.mfiBureau": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.DSTuNtc": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.idVerification": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.cibilBureau": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.flags.NTCProductType": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.consumerConsentForUIDAIAuthentication": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.amount": [
+            "number"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.GSTStateCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationData.scoreType": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.name": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.name.lastName": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.name.firstName": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.name.middleName": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.gender": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.dateOfBirth": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers": [
+            "array"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[]": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[].type": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.identifiers[].value": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address.stateCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address.line2": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address.line1": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address.pinCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicant.address.city": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.document": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.document.id": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.document.name": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.authentication": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.authentication.token": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.authentication.status": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.status": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.decision": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.idVision": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.idVision.errorMessage": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.idVision.errorCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.idVision.isSuccess": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.applicationId": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.responseInfo": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.responseInfo.solutionSetInstanceId": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.responseInfo.applicationId": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse.errorDescription": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse.segmentError": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse.isSuccess": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse.errorCode": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.body.dcResponse.bureauResponse.status": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.header": [
+            "object"
+          ],
+          "$.fetchCibilScoreResponse.header.apiName": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.header.transactionDate": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.header.statusCode": [
+            "number"
+          ],
+          "$.fetchCibilScoreResponse.header.apiVersion": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.header.success": [
+            "boolean"
+          ],
+          "$.fetchCibilScoreResponse.header.transactionId": [
+            "string"
+          ],
+          "$.fetchCibilScoreResponse.header.statusMessage": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getLoanOverdueDetailstest": [
+      {
+        "sample": "39",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.overdueDetails": [
+            "array"
+          ],
+          "$.overdueDetails[]": [
+            "object"
+          ],
+          "$.overdueDetails[].customerId": [
+            "string"
+          ],
+          "$.overdueDetails[].accountId": [
+            "string"
+          ],
+          "$.overdueDetails[].outstandingBal": [
+            "string"
+          ],
+          "$.overdueDetails[].overdueDate": [
+            "string"
+          ],
+          "$.overdueDetails[].dpd": [
+            "string"
+          ],
+          "$.overdueDetails[].npaStatus": [
+            "string"
+          ],
+          "$.overdueDetails[].totalOverdueAmt": [
+            "string"
+          ],
+          "$.overdueDetails[].npaDate": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getLoanOverduePositionEnquirytest": [
+      {
+        "sample": "40",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.loanOvduRec": [
+            "array"
+          ],
+          "$.loanOvduRec[]": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntColl": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntColl.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntColl.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntDmd": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntDmd.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntDmd.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntOvdu": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntOvdu.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntOvdu.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalColl": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalColl.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalColl.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalDmd": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalDmd.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalDmd.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalOvdu": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalOvdu.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalOvdu.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.acctId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctType": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.acctType.schmCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctType.schmType": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctCurr": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.bankId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.name": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.branchId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.branchName": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.recCtrlOut": [
+            "object"
+          ],
+          "$.recCtrlOut.isLastSet": [
+            "string"
+          ],
+          "$.recCtrlOut.setNum": [
+            "string"
+          ]
+        }
+      },
+      {
+        "sample": "41",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.loanOvduRec": [
+            "array"
+          ],
+          "$.loanOvduRec[]": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntColl": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntColl.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntColl.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntDmd": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntDmd.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntDmd.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntOvdu": [
+            "object"
+          ],
+          "$.loanOvduRec[].totalIntOvdu.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].totalIntOvdu.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalColl": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalColl.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalColl.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalDmd": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalDmd.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalDmd.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalOvdu": [
+            "object"
+          ],
+          "$.loanOvduRec[].pTotalOvdu.amountValue": [
+            "string"
+          ],
+          "$.loanOvduRec[].pTotalOvdu.currencyCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.acctId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctType": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.acctType.schmCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctType.schmType": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.acctCurr": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.bankId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.name": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.branchId": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.branchName": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr": [
+            "object"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr1": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr2": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addr3": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.city": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.stateProv": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.postalCode": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.country": [
+            "string"
+          ],
+          "$.loanOvduRec[].acctId.bankInfo.postAddr.addrType": [
+            "string"
+          ],
+          "$.recCtrlOut": [
+            "object"
+          ],
+          "$.recCtrlOut.isLastSet": [
+            "string"
+          ],
+          "$.recCtrlOut.setNum": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/performCustomerMasterDedupeChecktest": [
+      {
+        "sample": "42",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.allMasterRecords": [
+            "array"
+          ],
+          "$.allMasterRecords[]": [
+            "object"
+          ],
+          "$.allMasterRecords[].custTypeCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].customerCount": [
+            "string"
+          ],
+          "$.allMasterRecords[].custId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custName": [
+            "string"
+          ],
+          "$.allMasterRecords[].dateOfBirth": [
+            "string"
+          ],
+          "$.allMasterRecords[].panGirNum": [
+            "string"
+          ],
+          "$.allMasterRecords[].ckycNo": [
+            "string"
+          ],
+          "$.allMasterRecords[].emailId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPagerNo": [
+            "string"
+          ],
+          "$.allMasterRecords[].psprtNo": [
+            "string"
+          ],
+          "$.allMasterRecords[].drivingLicence": [
+            "string"
+          ],
+          "$.allMasterRecords[].voterIdCard": [
+            "string"
+          ],
+          "$.allMasterRecords[].nregaJobCard": [
+            "string"
+          ],
+          "$.allMasterRecords[].oicCard": [
+            "string"
+          ],
+          "$.allMasterRecords[].pioCard": [
+            "string"
+          ],
+          "$.allMasterRecords[].workPermit": [
+            "string"
+          ],
+          "$.allMasterRecords[].corporateIdentityNumber": [
+            "string"
+          ],
+          "$.allMasterRecords[].gstReagistration": [
+            "string"
+          ],
+          "$.allMasterRecords[].leiCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].jcciCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].tradeLicence": [
+            "string"
+          ],
+          "$.allMasterRecords[].udyogAadharNo": [
+            "null"
+          ],
+          "$.allMasterRecords[].custSex": [
+            "string"
+          ],
+          "$.allMasterRecords[].customerType": [
+            "string"
+          ],
+          "$.allMasterRecords[].nriFLag": [
+            "string"
+          ],
+          "$.allMasterRecords[].minorFlg": [
+            "string"
+          ],
+          "$.allMasterRecords[].delFlg": [
+            "string"
+          ],
+          "$.allMasterRecords[].nonCustomerFlag": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountOwnership": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountType": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountSchemeCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].account Number": [
+            "string"
+          ],
+          "$.allMasterRecords[].custTitleCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].modeOfOperation": [
+            "string"
+          ],
+          "$.allMasterRecords[].sourceSystem": [
+            "string"
+          ],
+          "$.allMasterRecords[].arKey": [
+            "string"
+          ],
+          "$.allMasterRecords[].freeText15": [
+            "string"
+          ],
+          "$.allMasterRecords[].createdDate": [
+            "string"
+          ],
+          "$.allMasterRecords[].primarySolId": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountSolId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuAddr1": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuAddr2": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuCityCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuStateCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuCntryCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuPinCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermAddr1": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermAddr2": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermCityCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermStateCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermCntryCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPermPinCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].kycDueDate": [
+            "null"
+          ],
+          "$.allMasterRecords[].npaFlag": [
+            "null"
+          ]
+        }
+      },
+      {
+        "sample": "43",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.allMasterRecords": [
+            "array"
+          ],
+          "$.allMasterRecords[]": [
+            "object"
+          ],
+          "$.allMasterRecords[].custTypeCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].customerCount": [
+            "string"
+          ],
+          "$.allMasterRecords[].custId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custName": [
+            "string"
+          ],
+          "$.allMasterRecords[].dateOfBirth": [
+            "string"
+          ],
+          "$.allMasterRecords[].panGirNum": [
+            "string"
+          ],
+          "$.allMasterRecords[].ckycNo": [
+            "string"
+          ],
+          "$.allMasterRecords[].emailId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custPagerNo": [
+            "string"
+          ],
+          "$.allMasterRecords[].udyogAadharNo": [
+            "null"
+          ],
+          "$.allMasterRecords[].custSex": [
+            "string"
+          ],
+          "$.allMasterRecords[].delFlg": [
+            "string"
+          ],
+          "$.allMasterRecords[].nonCustomerFlag": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountType": [
+            "string"
+          ],
+          "$.allMasterRecords[].account Number": [
+            "string"
+          ],
+          "$.allMasterRecords[].custTitleCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].modeOfOperation": [
+            "string"
+          ],
+          "$.allMasterRecords[].primarySolId": [
+            "string"
+          ],
+          "$.allMasterRecords[].accountSolId": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuAddr1": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuAddr2": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuCityCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuStateCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuCntryCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].custComuPinCode": [
+            "string"
+          ],
+          "$.allMasterRecords[].kycDueDate": [
+            "null"
+          ],
+          "$.allMasterRecords[].npaFlag": [
+            "null"
+          ]
+        }
+      }
+    ],
+    "/Development/getCustomerAccountsByCustIdtest01": [
+      {
+        "sample": "44",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.numOfAccounts": [
+            "string"
+          ],
+          "$.customerAccountInfo": [
+            "array"
+          ],
+          "$.customerAccountInfo[]": [
+            "object"
+          ],
+          "$.customerAccountInfo[].acctCurrCode": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctNumber": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctBalance": [
+            "object"
+          ],
+          "$.customerAccountInfo[].acctBalance.amountValue": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctBalance.currencyCode": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctType": [
+            "string"
+          ],
+          "$.acctTypeRequested": [
+            "string"
+          ],
+          "$.customData": [
+            "object"
+          ],
+          "$.customData.thb": [
+            "string"
+          ],
+          "$.cifId": [
+            "string"
+          ]
+        }
+      }
+    ],
+    "/Development/getCustomerAccountsByCustIdtest": [
+      {
+        "sample": "45",
+        "fields": {
+          "$": [
+            "object"
+          ],
+          "$.numOfAccounts": [
+            "string"
+          ],
+          "$.customerAccountInfo": [
+            "array"
+          ],
+          "$.customerAccountInfo[]": [
+            "object"
+          ],
+          "$.customerAccountInfo[].acctCurrCode": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctNumber": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctBalance": [
+            "object"
+          ],
+          "$.customerAccountInfo[].acctBalance.amountValue": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctBalance.currencyCode": [
+            "string"
+          ],
+          "$.customerAccountInfo[].acctType": [
+            "string"
+          ],
+          "$.acctTypeRequested": [
+            "string"
+          ],
+          "$.customData": [
+            "object"
+          ],
+          "$.customData.thb": [
+            "string"
+          ],
+          "$.cifId": [
+            "string"
+          ]
+        }
+      }
+    ]
+  }
+}

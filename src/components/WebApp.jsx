@@ -11,7 +11,7 @@ import WealthDashboard from './WealthDashboard.jsx';
 import DataStatus from './DataStatus.jsx';
 import Simulator from './Simulator.jsx';
 import { ScoreRing, ConcentricRings, ProjectionChart } from './charts.jsx';
-import { customer, holdings, totalWealth, spendByCategory, subscriptions } from '../data/customer.js';
+import { customer, holdings, totalWealth, spendByCategory, subscriptions, dataQuality } from '../data/customer.js';
 import {
   fmt, fmtCompact, healthScore, cashflow, allocation, drift, projectWealth,
   marketPulse, spendingAnomalies, taxGap,
@@ -84,7 +84,7 @@ function HomePanel({ riskProfile, onAsk }) {
   const brief = [
     {
       dot: mp.delta >= 0 ? 'var(--green)' : 'var(--red)',
-      label: `${mp.index} ${mp.weekChangePct >= 0 ? 'up' : 'down'} ${Math.abs(mp.weekChangePct)}% this week`,
+      label: `Synthetic scenario · ${mp.index} ${mp.weekChangePct >= 0 ? '+' : '−'}${Math.abs(mp.weekChangePct)}%`,
       value: `${mp.delta >= 0 ? '+' : '−'}${fmt(Math.abs(mp.delta))}`,
       color: mp.delta >= 0 ? 'var(--green)' : 'var(--red)',
     },
@@ -97,7 +97,7 @@ function HomePanel({ riskProfile, onAsk }) {
     {
       dot: 'var(--ink-soft)',
       label: '80C headroom left this year',
-      value: fmt(taxGap().gap),
+      value: taxGap().available && taxGap().regimeConfirmed && taxGap().eligibleRegime ? fmt(taxGap().gap) : 'Not supplied',
     },
   ].filter(Boolean);
 
@@ -150,24 +150,27 @@ function HomePanel({ riskProfile, onAsk }) {
         <div className="web-card">
           <div className="web-flag">
             <span className="web-flag-dot" />
-            <span className="web-eyebrow web-eyebrow-accent">Drift detected</span>
+            <span className="web-eyebrow web-eyebrow-accent">{dataQuality.portfolioComplete === false ? 'Data coverage' : 'Allocation comparison'}</span>
           </div>
           <div className="web-card-title">
-            {Math.abs(gap.gap).toFixed(0)}% {over ? 'over' : 'under'} target in {gap.name.toLowerCase()}
+            {dataQuality.portfolioComplete === false ? 'Only part of your portfolio is connected' : `${Math.abs(gap.gap).toFixed(0)}% ${over ? 'over' : 'under'} target in ${gap.name.toLowerCase()}`}
           </div>
           <p className="web-card-body">
-            Gradual SIP-based rebalancing fixes it without triggering tax.
+            {dataQuality.portfolioComplete === false ? 'Connect investments and liabilities before assessing allocation or investable cash.' : 'Review your confirmed portfolio and any tax implications before changing the allocation.'}
           </p>
           <button
             className="web-btn web-btn-primary"
-            onClick={() => onAsk('Rebalance my drift without a tax event')}
+            onClick={() => onAsk(dataQuality.portfolioComplete === false ? 'What data do I need?' : 'Rebalance my portfolio')}
           >
-            Rebalance with MITRA →
+            {dataQuality.portfolioComplete === false ? 'Review connected data →' : 'Review allocation with MITRA →'}
           </button>
         </div>
       </div>
 
-      <section className="web-card web-span web-machine">
+      {dataQuality.portfolioComplete === false || !cf.incomeKnown ? <section className="web-card web-span">
+        <div className="web-eyebrow">Time Machine · more data needed</div>
+        <p>A personal retirement projection needs confirmed income, expenses and portfolio coverage. Ask MITRA for a hypothetical SIP calculation to explore an amount and horizon.</p>
+      </section> : <section className="web-card web-span web-machine">
         <div className="web-machine-side">
           <div className="web-eyebrow">Time Machine® · what-if</div>
           <div className="web-eyebrow web-machine-label">Age of financial freedom</div>
@@ -209,7 +212,7 @@ function HomePanel({ riskProfile, onAsk }) {
             </button>
           </div>
         </div>
-      </section>
+      </section>}
 
       <section className="web-card">
         <div className="web-eyebrow">Allocation · concentric</div>
@@ -228,7 +231,7 @@ function HomePanel({ riskProfile, onAsk }) {
       </section>
 
       <section className="web-card web-brief">
-        <div className="web-eyebrow web-brief-head">Daily brief · computed today</div>
+        <div className="web-eyebrow web-brief-head">Data brief · includes synthetic market scenario</div>
         {brief.map((b) => (
           <div className="web-brief-row" key={b.label}>
             <span className="web-brief-dot" style={{ background: b.dot }} />
@@ -258,8 +261,8 @@ function LedgerPanel({ onAsk }) {
     <>
       <section className="web-span web-pair">
         <div className="web-card">
-          <div className="web-eyebrow">Money in · monthly average</div>
-          <div className="web-card-figure">{fmt(cf.avgIncome)}</div>
+          <div className="web-eyebrow">Identified income · monthly average</div>
+          <div className="web-card-figure">{cf.incomeKnown ? fmt(cf.avgIncome) : 'Not supplied'}</div>
         </div>
         <div className="web-card">
           <div className="web-eyebrow">Money out · monthly average</div>
@@ -268,13 +271,13 @@ function LedgerPanel({ onAsk }) {
       </section>
 
       <section className="web-card web-span">
-        <div className="web-eyebrow">This month by category · vs own 3-month baseline</div>
+        <div className="web-eyebrow">Latest observed month by category · {dataQuality.transactionMonths >= 4 ? 'vs prior 3-month baseline' : 'insufficient history for a trend'}</div>
         <div className="web-ledger">
           {rows.map((r) => (
             <div className="web-ledger-row" key={r.category}>
               <div className="web-ledger-name">
                 {r.category}
-                {!r.essential && <span className="web-tag">discretionary</span>}
+                {!r.essential && <span className="web-tag">{r.category === 'Other' ? 'unclassified' : 'discretionary'}</span>}
               </div>
               <div className="web-ledger-bar">
                 <span className="web-ledger-base" style={{ width: `${(r.avg3m / peak) * 100}%` }} />
@@ -322,7 +325,7 @@ function LedgerPanel({ onAsk }) {
 }
 
 // ── Shell ───────────────────────────────────────────────────
-export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
+export default function WebApp({ riskProfile, tab, onTab, settingsPanel, onConnect, logoutControl }) {
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [query, setQuery] = useState('');
   const [presentation, setPresentation] = useState(() => new URLSearchParams(window.location.search).get('presenter') === '1' ? { topic: 'portfolio', key: 0 } : null);
@@ -376,6 +379,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
             <Icon name="gear" size={19} />
             Settings
           </button>
+          {logoutControl}
           <span className="web-rail-avatar" title={customer.name}>{initials(customer.name)}</span>
         </div>
       </nav>
@@ -391,7 +395,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
               <span className="web-persona-ring" />
               <span>{lvl.title}</span>
             </div>
-            <ScoreRing score={hs.total} size={56} label="Health" />
+            {hs.available ? <ScoreRing score={hs.total} size={56} label="Health" /> : <span>Health score: more data needed</span>}
           </div>
           <form className="web-search" onSubmit={submitSearch}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
@@ -408,7 +412,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel }) {
         </header>
 
         <div className="web-scroll" key={active}>
-          <DataStatus />
+          <DataStatus onConnect={onConnect} />
           {presentation ? <div className="web-span web-presenter">
             <PresenterStudio key={presentation.key} embedded riskProfile={riskProfile}
               initialTopic={presentation.topic} initialScenario={presentation.scenario}

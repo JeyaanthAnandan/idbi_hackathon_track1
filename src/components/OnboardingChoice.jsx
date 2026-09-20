@@ -10,12 +10,22 @@ import { getSession } from '../engine/auth.js';
 // via the quiz. The quiz stays as a no-data-shared fallback.
 export default function OnboardingChoice({ onDone }) {
   const [mode, setMode] = useState('choice'); // 'choice' | 'connect' | 'upload' | 'quiz'
+  // A risk profile the customer stated in the quiz before connecting data.
+  // Derived-from-data risk wins on its own, but an explicit answer should not
+  // be silently discarded just because the customer went on to connect a bank.
+  const [statedRisk, setStatedRisk] = useState(null);
   const session = getSession();
   const firstName = session?.name?.trim().split(' ')[0] || 'there';
 
-  if (mode === 'quiz') return <Onboarding onDone={onDone} />;
-  if (mode === 'connect') return <ConnectAccounts onBack={() => setMode('choice')} />;
-  if (mode === 'upload') return <UploadStatements onBack={() => setMode('choice')} />;
+  if (mode === 'quiz') return (
+    <Onboarding
+      onDone={onDone}
+      onConnect={(profile) => { setStatedRisk(profile); setMode('connect'); }}
+      onUpload={(profile) => { setStatedRisk(profile); setMode('upload'); }}
+    />
+  );
+  if (mode === 'connect') return <ConnectAccounts riskProfileOverride={statedRisk} onBack={() => setMode('choice')} />;
+  if (mode === 'upload') return <UploadStatements riskProfileOverride={statedRisk} onBack={() => setMode('choice')} />;
 
   return (
     <div className="onboard">
@@ -25,17 +35,16 @@ export default function OnboardingChoice({ onDone }) {
         </div>
       </div>
 
-      <h2>How should I get to know you, {firstName}?</h2>
+      <h2>Choose data for MITRA, {firstName}</h2>
       <p className="ob-sub">
-        Upload a CSV and I'll compute from your numbers, or exercise the account-consent flow with
-        clearly labeled sandbox data. You can also answer the risk quiz without sharing data.
+        Fetch accounts and transactions from the IDBI sandbox, or upload your own CSV statement. The risk quiz is optional and does not connect financial data.
       </p>
 
       <button className="ob-option" onClick={() => setMode('connect')}>
         <div>
-          <div style={{ fontWeight: 700 }}>Connect my accounts</div>
+          <div style={{ fontWeight: 700 }}>Connect IDBI sandbox data</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 3 }}>
-            API-backed sandbox · no live credentials
+            Fetch from IDBI → review the response → use with MITRA
           </div>
         </div>
       </button>
@@ -49,9 +58,9 @@ export default function OnboardingChoice({ onDone }) {
       </button>
       <button className="ob-option" onClick={() => setMode('quiz')}>
         <div>
-          <div style={{ fontWeight: 700 }}>Answer a quick quiz instead</div>
+          <div style={{ fontWeight: 700 }}>Set my risk profile first</div>
           <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 3 }}>
-            4 questions · no data shared
+            4 questions · no data shared · MITRA still needs a statement afterwards
           </div>
         </div>
       </button>

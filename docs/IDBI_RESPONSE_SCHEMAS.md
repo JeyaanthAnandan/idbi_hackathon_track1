@@ -2,6 +2,8 @@
 
 These shapes were captured from successful sandbox calls on 19 September 2026. The downloaded OpenAPI files have empty `responses` sections, so these are observed contracts and must be rechecked against the portal when the sandbox version changes.
 
+The expanded audit now covers all 31 routes: [results and data utilisation](IDBI_SANDBOX_AUDIT.md), [observed field types for all successful scenarios](IDBI_OBSERVED_SCHEMAS.json). HTTP success alone does not validate account/consent association.
+
 ## API 394 — account discovery
 
 ```json
@@ -71,3 +73,9 @@ The top-level response includes `ver`, `status`, and `data[]`. Each data item co
 - `Transactions.startDate`, `Transactions.endDate`, and `Transactions.Transaction[]`
 
 Each transaction includes `type` (`DEBIT` or `CREDIT`), `amount`, `narration`, `txnId`, `reference`, `transactionTimestamp`, `valueDate`, and `currentBalance`.
+
+**Observed integrity failure:** the standard 591 response supplies `LRN0001`, but 739 returns a different `linkReferenceNumber`. Mitra now refuses that mismatched import. API 595 multi-account samples use `transactionalBalance` instead of `currentBalance` and include savings, current, term-deposit and salary accounts. Their published examples work individually, while fetching with the consent ID returned by multi-account 591 fails with `Data not found`.
+
+## API 593 — redirect-result decryption
+
+Returns `ver`, `status`, `message`, and a `data` object containing `redirect`, `sessionid`, `srcref`, `userid`, `errorcode`, `status`, `txnid`, and identity fields. This is callback/approval metadata, not a decrypted financial statement.

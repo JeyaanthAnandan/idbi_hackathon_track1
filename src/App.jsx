@@ -4,11 +4,13 @@ import MitraCompanion from './components/MitraCompanion.jsx';
 import WealthDashboard from './components/WealthDashboard.jsx';
 import AvatarChat from './components/AvatarChat.jsx';
 import OnboardingChoice from './components/OnboardingChoice.jsx';
+import ConnectAccounts from './components/ConnectAccounts.jsx';
 import Auth from './components/Auth.jsx';
 import Simulator from './components/Simulator.jsx';
 import WebApp from './components/WebApp.jsx';
 import DataStatus from './components/DataStatus.jsx';
 import Avatar from './components/Avatar.jsx';
+import LogoutButton from './components/LogoutButton.jsx';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
@@ -17,7 +19,7 @@ import {
   hasSarvam, getSarvamKey, setSarvamKey, clearSarvamKey, sarvamKeyFromEnv,
   SARVAM_SPEAKERS, getSarvamSpeaker, setSarvamSpeaker, verifySarvamKey,
 } from './engine/sarvam.js';
-import { getSession, logOut, isOnboarded, markOnboarded, getStoredRiskProfile, setStoredRiskProfile } from './engine/auth.js';
+import { getSession, isOnboarded, markOnboarded, getStoredRiskProfile, setStoredRiskProfile } from './engine/auth.js';
 import { PERSONA_LIST, getActivePersonaId, switchPersona, customer } from './data/customer.js';
 
 const THEME_KEY = 'mitra_theme';
@@ -103,21 +105,7 @@ function AccountSection() {
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>
         {session.demo ? 'Demo session · not saved' : session.email}
       </p>
-      <button
-        className="ghost-btn"
-        onClick={async () => {
-          if (window.confirm('Log out of MITRA?')) {
-            try {
-              await logOut();
-              window.location.reload();
-            } catch {
-              window.alert('Could not log out because the API is unavailable. Please retry.');
-            }
-          }
-        }}
-      >
-        Log out
-      </button>
+      <LogoutButton />
     </>
   );
 }
@@ -243,7 +231,7 @@ function SarvamSection() {
   );
 }
 
-function Settings() {
+function Settings({ onConnect }) {
   const [key, setKey] = useState(getDeepSeekKey());
   const [saved, setSaved] = useState(false);
   const [voices, setVoices] = useState([]);
@@ -265,6 +253,9 @@ function Settings() {
       </div>
 
       <AccountSection />
+      <label className="settings-label">Financial data</label>
+      <p className="settings-note">Fetch or refresh IDBI sandbox accounts and transactions. Review the response before using it with MITRA.</p>
+      <button className="primary-btn" onClick={onConnect}>Connect / refresh data</button>
       <ThemePicker />
       <PersonaPicker />
 
@@ -406,6 +397,7 @@ export default function App() {
   const [tab, setTab] = useState(DEMO ? DEMO_SCREEN : (INITIAL_LAND_TAB || 'home'));
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [framed, setFramed] = useState(demoParams.get('frame') === '1');
+  const [manageData, setManageData] = useState(demoParams.get('connect') === '1');
   const screenRef = useRef(null);
   const roomForWebShell = useRoomForWebShell();
 
@@ -447,6 +439,28 @@ export default function App() {
     setTab('mitra');
   };
 
+  const connectData = () => {
+    if (DEMO) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('demo');
+      url.searchParams.set('connect', '1');
+      window.location.href = url.toString();
+    } else setManageData(true);
+  };
+  const closeData = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('connect');
+    window.history.replaceState(null, '', url.toString());
+    setManageData(false);
+  };
+
+  if (manageData && session && !DEMO) return (
+    <div className="app-shell full" data-surface="night">
+      <LogoutButton className="shell-logout" compact />
+      <div className="screen"><ConnectAccounts onBack={closeData} /></div>
+    </div>
+  );
+
   if (webShell) {
     return (
       <>
@@ -459,7 +473,9 @@ export default function App() {
           riskProfile={riskProfile}
           tab={tab}
           onTab={setTab}
-          settingsPanel={<Settings />}
+          settingsPanel={<Settings onConnect={connectData} />}
+          onConnect={connectData}
+          logoutControl={!DEMO ? <LogoutButton className="web-rail-item web-rail-logout" compact /> : null}
         />
       </>
     );
@@ -477,6 +493,7 @@ export default function App() {
         className={`app-shell ${framed ? 'framed' : 'full'}`}
         data-surface={night ? 'night' : 'day'}
       >
+        {session && !onboarded && !DEMO ? <LogoutButton className="shell-logout" compact /> : null}
         {framed && (
           <>
             <div className="notch" />
@@ -522,7 +539,7 @@ export default function App() {
               />
             ) : (
               <>
-                <DataStatus />
+                <DataStatus onConnect={connectData} />
                 {tab === 'home' && (
                   <BankHome onOpenMitra={() => setTab('mitra')} onAsk={askMitra} riskProfile={riskProfile} />
                 )}
@@ -535,7 +552,7 @@ export default function App() {
                   />
                 )}
                 {tab === 'simulate' && <Simulator onAsk={askMitra} />}
-                {tab === 'settings' && <Settings />}
+                {tab === 'settings' && <Settings onConnect={connectData} />}
               </>
             )}
           </div>

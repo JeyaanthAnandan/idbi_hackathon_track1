@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initializeApi, apiLogIn, getBootstrap, saveServerState, apiLogOut } from '../src/engine/api.js';
+import { initializeApi, apiLogIn, getBootstrap, saveServerState } from '../src/engine/api.js';
 import { loadChatHistory } from '../src/engine/chatHistory.js';
-import { getSession, isOnboarded, getStoredRiskProfile } from '../src/engine/auth.js';
+import { getSession, logOut, isOnboarded, getStoredRiskProfile } from '../src/engine/auth.js';
 
 test('client auth refreshes profile and empty history never revives another account', async () => {
   const oldFetch = globalThis.fetch;
@@ -29,7 +29,7 @@ test('client auth refreshes profile and empty history never revives another acco
     assert.equal(loadChatHistory()[0].text, 'New context');
     await saveServerState({ kind: 'chat', chat: [] });
     assert.deepEqual(loadChatHistory(), []);
-    await apiLogOut();
+    await logOut();
     assert.equal(getSession(), null);
     assert.equal(getBootstrap().profile, null);
     assert.equal(memory.has('mitra_chat_history'), false);

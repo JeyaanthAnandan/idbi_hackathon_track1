@@ -8,7 +8,13 @@ import { ConcentricRings } from './charts.jsx';
 // Conversational risk profiling — MITRA "asks", customer taps.
 // Output feeds every recommendation in the app (SEBI-style suitability).
 // Runs on the night surface: this is the one screen before the bank exists.
-export default function Onboarding({ onDone }) {
+//
+// The quiz establishes *suitability*, never financial facts. On its own it
+// leaves MITRA with no balances or transactions, so the closing screen asks
+// for data rather than handing the customer an advisor that has to refuse
+// every question. `onConnect`/`onUpload` are the two paths that fix that;
+// continuing without them is still allowed, but it is named honestly.
+export default function Onboarding({ onDone, onConnect, onUpload }) {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const firstName = getSession()?.name?.trim().split(' ')[0] || customer.name.split(' ')[0];
@@ -87,9 +93,31 @@ export default function Onboarding({ onDone }) {
             </div>
           </div>
 
-          <button className="primary-btn" style={{ marginTop: 30 }} onClick={() => onDone(profile)}>
-            Meet MITRA, my advisor →
-          </button>
+          <div className="ob-handoff">
+            <p className="ob-sub" style={{ marginBottom: 0 }}>
+              That covers how much risk suits you. It does not tell me what you actually
+              earn, hold or spend — so connect data next, or MITRA will have to decline
+              every question about your money.
+            </p>
+
+            {onConnect && (
+              <button className="primary-btn" style={{ marginTop: 18 }} onClick={() => onConnect(profile)}>
+                Connect IDBI sandbox data →
+              </button>
+            )}
+            {onUpload && (
+              <button className="ghost-btn" style={{ marginTop: 10 }} onClick={() => onUpload(profile)}>
+                Upload a CSV statement
+              </button>
+            )}
+            <button
+              className="ghost-btn"
+              style={{ marginTop: 10, alignSelf: 'center' }}
+              onClick={() => onDone(profile)}
+            >
+              Skip for now · concepts and what-ifs only
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -68,6 +68,7 @@ async function createSession(db, user, res) {
 function bootstrap(user) {
   return {
     available: true,
+    connectors: { idbi: { enabled: idbiEnabled(), mode: 'SANDBOX' } },
     session: user ? publicSession(user) : null,
     profile: user?.profile || null,
     onboarded: Boolean(user?.onboarded),
@@ -184,15 +185,27 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/idbi/consent/request') {
       if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox mode is disabled', 'Set IDBI_LIVE_SANDBOX=true on the server.');
       const input = await body(req);
-      const consent = await requestIdbiConsent(input);
-      await updateStore((db) => audit(db, user.id, 'idbi.consent.requested', { consentHandle: consent.consentHandle, status: consent.status }));
+      const consent = await requestIdbiConsent();
+      await updateStore((db) => {
+        db.users[user.id].idbiConsentHandle = consent.consentHandle;
+        audit(db, user.id, 'idbi.consent.requested', { consentHandle: consent.consentHandle, status: consent.status });
+      });
       return json(res, 201, consent);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/idbi/snapshot') {
+      if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox connection is disabled', 'The server must enable the IDBI sandbox connector. No local fixture was substituted.');
+      const snapshot = await fetchIdbiDirectSnapshot();
+      snapshot.fetchedAt = new Date().toISOString();
+      await updateStore((db) => audit(db, user.id, 'idbi.snapshot.fetched', { transactionCount: snapshot.transactions.length, dataAsOf: snapshot.dataAsOf }));
+      return json(res, 200, snapshot);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/idbi/consent/snapshot') {
       if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox mode is disabled', 'Set IDBI_LIVE_SANDBOX=true on the server.');
       const input = await body(req);
-      const snapshot = await fetchIdbiConsentSnapshot(input);
+      if (!user.idbiConsentHandle || (input.consentHandle && input.consentHandle !== user.idbiConsentHandle)) return problem(res, 409, 'Start a consent request for this session before fetching data.');
+      const snapshot = await fetchIdbiConsentSnapshot({ consentHandle: user.idbiConsentHandle });
       await updateStore((db) => audit(db, user.id, 'idbi.consent.snapshot', { consentId: snapshot.consent.consentId, transactionCount: snapshot.transactions.length }));
       return json(res, 200, snapshot);
     }

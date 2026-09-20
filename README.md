@@ -8,6 +8,10 @@
 
 **Project tracker:** [open the interactive pending-task checklist](./pending_tasks.html).
 
+**IDBI sandbox flow:** run `npm run dev:sandbox`, then open `http://localhost:5173/?connect=1`. Log in or sign up, choose **Fetch IDBI sandbox data**, review the returned accounts/transactions, and select **Use this data with MITRA**. Existing users can open **Connect / refresh data** from the dashboard or Settings. No questionnaire is required. Each fetch calls IDBI’s sandbox gateway; the provider may return the same fixed test data on successive calls. Disabled connectors and API errors never silently substitute local fixtures in this flow.
+
+**Hosting:** this flow needs the Node API and a `/api` proxy; a static GitHub Pages build alone cannot provide login or bank access. `npm run dev` leaves IDBI disabled unless configured through the environment. The separate AA consent flow currently blocks mismatched fixture references. See the [complete sandbox audit](./docs/IDBI_SANDBOX_AUDIT.md).
+
 **Verified current status (7 September 2026):** [coverage, fixes, prompt behavior and remaining limits](./docs/VERIFICATION.md). The local prototype is configured for DeepSeek Flash (`deepseek-v4-flash`) for bounded routing and extraction. The inventory below includes simulations and synthetic data; it is not a claim that every feature is connected to live bank data. Account creation/persistence needs the Node API, and explicit natural-language goals currently produce simulations rather than saved goals.
 
 ---

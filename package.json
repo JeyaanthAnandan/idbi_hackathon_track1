@@ -6,12 +6,14 @@
   "description": "MITRA - Avatar-based AI Digital Wealth Advisor for IDBI Bank mobile app (Hackathon Track 1)",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:sandbox": "node scripts/dev.mjs --idbi-sandbox",
     "dev:web": "vite",
     "dev:api": "node server/index.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
-    "verify:providers": "node --env-file=.env scripts/verify-providers.mjs"
+    "verify:providers": "node --env-file=.env scripts/verify-providers.mjs",
+    "verify:idbi": "node scripts/verify-idbi-sandbox.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

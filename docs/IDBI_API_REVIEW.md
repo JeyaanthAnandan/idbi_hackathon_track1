@@ -2,6 +2,8 @@
 
 Reviewed from `API-openspec/` on 18 September 2026.
 
+Updated verification: see [the complete live audit](IDBI_SANDBOX_AUDIT.md). All 31 routes were exercised. The standard and multi-account consent/statement fixtures do not currently form a consistent end-to-end flow; strict account-reference checks now reject the mismatch.
+
 ## What is in the bundle
 
 The directory contains 34 YAML files but only 31 unique API IDs. The extra files are multi-account clones or duplicate downloads. Every operation is a `POST` under the development path, for example `/Development/getAccountStatementFromFinProtest`.
@@ -22,7 +24,7 @@ Subscribe to these first for a convincing MITRA sandbox journey:
 | API 591 `getConsentListFromFinProtest` | `(23).yaml` | Check consent state and discover linked references. |
 | API 498 `pushDataNotificationtest` | `(12).yaml` | Receive/handle the “data ready” event in the AA flow. |
 | API 739 `getAccountStatementFromFinProtest` | `(28).yaml` | Fetch the consent-backed account statement from FinPro. |
-| API 593 `generateDecryptedResponseFromFinProtest` | `(27).yaml` | Decrypt the encrypted AA response. |
+| API 593 `generateDecryptedResponseFromFinProtest` | `(27).yaml` | Decrypt the AA redirect callback result (observed response contains approval/session metadata, not transactions). |
 
 The direct account APIs (394, 365, 393) are the shortest path to a working demo. The consent APIs (590, 592, 591, 498, 739, 593) are the path we should show as the production-shaped architecture. Subscribe to both tracks if the sandbox permits it; the adapter can use direct statements as a fallback while the consent flow is being completed.
 
@@ -53,11 +55,10 @@ MITRA server
   → 591 getConsentListFromFinPro (read active consent/link references)
   → 498 pushDataNotification (data ready)
   → 739 getAccountStatementFromFinPro
-  → 593 generateDecryptedResponseFromFinPro
   → normalize transactions into MITRA
 ```
 
-API 497 is the consent-approved notification. API 498 is the data-ready notification. They should be implemented as server webhook handlers, not called from the browser.
+API 497 is a consent notification sample; API 498 is a data-ready notification sample. Both acknowledge posted synthetic events. Their role as real server callbacks, authentication, and retry behavior still need provider confirmation. API 593 separately decodes the encrypted redirect callback metadata; the observed 739 statement is already JSON.
 
 ## Important request shapes found
 
@@ -106,7 +107,7 @@ Subscribe to 394, 365, and 393. Implement one server route that discovers an acc
 
 ### Phase 2: consent-shaped integration (implemented for sandbox polling)
 
-590, 592, 591, and 739 are implemented for the sandbox. The current UI polls the consent list after the customer returns from the redirect, then fetches and normalizes the statement. APIs 497/498 (notifications) and 593 (encrypted response decryption) remain pending the provider callback and cryptographic contracts.
+590, 592, 591, and 739 are wired for the sandbox. The UI explicitly checks the consent list when the customer clicks fetch after returning from the redirect. It binds the stored handle to the authenticated user, requires a matching active consent, and verifies every statement account reference. The supplied standard fixture fails that last check, so it is currently blocked rather than silently accepted. APIs 497/498 (real notifications) and 593 (redirect-result decoding) await the callback lifecycle contract.
 
 ### Phase 3: loan intelligence
 

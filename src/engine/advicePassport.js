@@ -5,7 +5,7 @@ import { getBootstrap } from './api.js';
 
 const FORMULAS = {
   allocation: 'holding value ÷ total connected wealth',
-  spending: 'latest complete month compared with prior 3-month mean',
+  spending: 'observed statement cash movements; trend comparisons require sufficient history',
   sip: 'monthly SIP future-value formula using the displayed scenario rate',
   goals: 'target less compounded savings, funded through monthly SIPs',
   tax: 'eligible 80C gap ÷ remaining FY months; saving uses confirmed marginal rate',
@@ -24,8 +24,8 @@ function evidenceFor(response) {
   const evidenceAsOf = dataQuality.dataAsOf || (getBootstrap().profile ? 'Unknown observation date' : 'Demo fixture');
   const evidence = [
     { field: 'customer.totalWealth', value: fmt(totalWealth()), source: 'customer-360' },
-    { field: 'cashflow.monthlyIncome', value: fmt(cf.avgIncome), source: 'transaction-analytics' },
-    { field: 'cashflow.monthlySurplus', value: fmt(cf.surplus), source: 'transaction-analytics' },
+    { field: 'cashflow.monthlyIncome', value: cf.incomeKnown ? fmt(cf.avgIncome) : 'Not supplied', source: 'transaction-analytics' },
+    { field: 'cashflow.monthlySurplus', value: cf.incomeKnown ? fmt(cf.surplus) : 'Not available without identifiable income', source: 'transaction-analytics' },
   ];
   if (response.widget?.type === 'health') evidence.push({ field: 'health.score', value: `${healthScore().total}/100`, source: 'wealth-policy-engine' });
   const data = response.widget?.data || {};

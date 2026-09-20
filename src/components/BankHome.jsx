@@ -40,7 +40,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
   const brief = [
     {
       dot: mp.delta >= 0 ? 'var(--green)' : 'var(--red)',
-      label: `${mp.index} ${mp.weekChangePct >= 0 ? 'up' : 'down'} ${Math.abs(mp.weekChangePct)}% this week`,
+      label: `Synthetic scenario · ${mp.index} ${mp.weekChangePct >= 0 ? '+' : '−'}${Math.abs(mp.weekChangePct)}%`,
       value: `${mp.delta >= 0 ? '+' : '−'}${fmt(Math.abs(mp.delta))}`,
       color: mp.delta >= 0 ? 'var(--green)' : 'var(--red)',
     },
@@ -53,7 +53,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
     {
       dot: 'var(--ink-soft)',
       label: '80C headroom left this year',
-      value: fmt(taxGap().gap),
+      value: taxGap().available && taxGap().regimeConfirmed && taxGap().eligibleRegime ? fmt(taxGap().gap) : 'Not supplied',
     },
   ].filter(Boolean);
 
@@ -77,7 +77,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
             <div className="balance-greet">Welcome · {customer.city}</div>
             <div className="bank-name">{customer.name}</div>
           </div>
-          <ScoreRing score={hs.total} size={66} label="Health" onNight />
+          {hs.available ? <ScoreRing score={hs.total} size={66} label="Health" onNight /> : <span>Health score: more data needed</span>}
         </div>
         <div className="balance-body">
           <div className="balance-label">Reported savings balance</div>
@@ -111,7 +111,9 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
           <Avatar size={54} mood="happy" />
         </Ring>
         <div>
-          <div className="mb-eyebrow">MITRA found something</div>
+          {/* Don't announce a finding when the line below it is a request for
+              data. The banner is the same either way; only the claim changes. */}
+          <div className="mb-eyebrow">{cf.incomeKnown ? 'MITRA found something' : 'MITRA needs one more thing'}</div>
           <div className="mb-title">{cf.incomeKnown ? `${fmt(cf.surplus)} average monthly cashflow left` : 'Income needed for a surplus estimate'}</div>
           <div className="mb-sub">{cf.incomeKnown ? 'Let me put it to work for your goals →' : 'I can still analyse supplied transactions and balances →'}</div>
         </div>
@@ -145,7 +147,10 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
         <span>{getBootstrap().session ? 'Recent activity' : 'Illustrative demo activity'}</span>
       </div>
       <div className="list-card">
-        {!recentTxns.length && <p style={{ padding: 16 }}>Individual transactions are not retained in this view. Open the Ledger to review imported spending totals.</p>}
+        {/* The Ledger this used to point at only exists in the desktop shell,
+            and the phone nav has no route to it. Point at Wealth, which is on
+            the bottom nav here and carries the same imported totals. */}
+        {!recentTxns.length && <p style={{ padding: 16 }}>Individual transactions are not retained in this view. Open <strong>Wealth</strong> for imported spending totals, or ask MITRA to analyse your spending.</p>}
         {recentTxns.map((t) => (
           <div className="txn" key={t.name}>
             <div className="txn-ic">

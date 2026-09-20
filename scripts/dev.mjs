@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process';
 
+const env = { ...process.env, ...(process.argv.includes('--idbi-sandbox') ? { IDBI_LIVE_SANDBOX: 'true' } : {}) };
+
 const children = [
-  spawn(process.execPath, ['server/index.mjs'], { stdio: 'inherit' }),
-  spawn(process.platform === 'win32' ? 'node_modules\\.bin\\vite.cmd' : 'node_modules/.bin/vite', [], { stdio: 'inherit' }),
+  spawn(process.execPath, ['server/index.mjs'], { stdio: 'inherit', env }),
+  spawn(process.platform === 'win32' ? 'node_modules\\.bin\\vite.cmd' : 'node_modules/.bin/vite', [], { stdio: 'inherit', env }),
 ];
 
 let stopping = false;

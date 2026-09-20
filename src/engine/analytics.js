@@ -157,12 +157,15 @@ export function healthScore() {
         ? (goals.reduce((s, g) => s + Math.min(g.target > 0 ? g.saved / g.target : 0, 1), 0) / goals.length) * 25
         : 0,
       max: 25,
-      note: 'Weighted progress across your 4 goals',
+      note: goals.length
+        ? `Weighted progress across your ${goals.length} goal${goals.length === 1 ? '' : 's'}`
+        : 'No goals recorded yet',
     },
   ];
   const total = Math.round(parts.reduce((s, p) => s + p.score, 0));
   const grade = total >= 75 ? 'Excellent' : total >= 55 ? 'Good' : total >= 35 ? 'Fair' : 'Needs Work';
-  return { total, grade, parts, emergencyMonths };
+  const available = cf.incomeKnown && dataQuality.transactionMonths >= POLICY.confidence.minimumMonthsForTrend && dataQuality.portfolioComplete !== false;
+  return { total, grade, parts, emergencyMonths, available };
 }
 
 // ---- SIP math ------------------------------------------------
@@ -304,7 +307,17 @@ export function drift(riskProfile = 'Balanced') {
 // annual expenses, expenses inflating 4%/yr). `events` are life events:
 // { age, oneTime, monthlyDelta } — a cost at that age and/or a lasting
 // change to monthly investing capacity.
-export function projectWealth({ extraMonthly = 0, annualRatePct = returnScenario('Balanced').base, events = [] } = {}) {
+// `expenseBaselineKnown: false` projects wealth without a freedom age. The
+// freedom target is 25× annual expenses, so it is only meaningful when the
+// spend figure is a real monthly baseline. On a bank-only snapshot avgSpend
+// is one part-month of uncategorised debits — enough to compound a balance
+// against, nowhere near enough to price a retirement.
+export function projectWealth({
+  extraMonthly = 0,
+  annualRatePct = returnScenario('Balanced').base,
+  events = [],
+  expenseBaselineKnown = true,
+} = {}) {
   const startAge = customer.age;
   const endAge = 60;
   const cf = cashflow();
@@ -313,7 +326,8 @@ export function projectWealth({ extraMonthly = 0, annualRatePct = returnScenario
   let wealth = totalWealth();
   let annualExpense = cf.avgSpend * 12;
   let monthlyDelta = 0;
-  const series = [{ age: startAge, wealth, invested: wealth, freedomTarget: annualExpense * 25 }];
+  const target = (expense) => (expenseBaselineKnown ? expense * 25 : null);
+  const series = [{ age: startAge, wealth, invested: wealth, freedomTarget: target(annualExpense) }];
   let invested = wealth;
   let fireAge = null;
 
@@ -330,11 +344,11 @@ export function projectWealth({ extraMonthly = 0, annualRatePct = returnScenario
       invested += monthly;
     }
     annualExpense *= 1.04;
-    const freedomTarget = annualExpense * 25;
-    if (fireAge === null && wealth >= freedomTarget) fireAge = age + 1;
+    const freedomTarget = target(annualExpense);
+    if (expenseBaselineKnown && fireAge === null && wealth >= freedomTarget) fireAge = age + 1;
     series.push({ age: age + 1, wealth, invested, freedomTarget });
   }
-  return { series, fireAge, wealthAt60: wealth, invested };
+  return { series, fireAge, wealthAt60: wealth, invested, freedomAvailable: expenseBaselineKnown };
 }
 
 // ---- Portfolio X-Ray: hidden fees + overlap ------------------
@@ -490,7 +504,7 @@ export function topNudges(riskProfile = 'Balanced') {
   const dr = drift(riskProfile);
   const nudges = [];
 
-  if (totalWealth() > 0 && Math.abs(dr.biggestGap.gap) > 10 && !hasAction('sip', 'rebalance'))
+  if (dataQuality.portfolioComplete !== false && totalWealth() > 0 && Math.abs(dr.biggestGap.gap) > 10 && !hasAction('sip', 'rebalance'))
     nudges.push({
       id: 'drift',
       icon: 'scale',
@@ -499,7 +513,7 @@ export function topNudges(riskProfile = 'Balanced') {
       action: 'Rebalance my portfolio',
     });
 
-  if (cf.surplus > 5000)
+  if (hs.available && cf.surplus > 5000)
     nudges.push({
       id: 'surplus',
       icon: 'bulb',
@@ -548,7 +562,7 @@ export function topNudges(riskProfile = 'Balanced') {
     });
 
   const emergencyTarget = emergencyFundTarget();
-  if (emergencyTarget > 0 && hs.emergencyMonths < POLICY.emergency.targetMonths)
+  if (hs.available && emergencyTarget > 0 && hs.emergencyMonths < POLICY.emergency.targetMonths)
     nudges.push({
       id: 'emergency',
       icon: 'shield',

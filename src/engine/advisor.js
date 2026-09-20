@@ -50,6 +50,11 @@ import { POLICY, returnScenario } from '../data/policy.js';
 const INTENTS = [
   { id: 'greeting', kw: ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening'] },
   { id: 'portfolio', kw: ['portfolio', 'holdings', 'net worth', 'wealth', 'my investments', 'where is my money', 'asset'] },
+  // A single bank snapshot cannot support a trend, but it does carry a
+  // verified balance breakdown. That is the most useful thing one month of
+  // connected data can say, so it gets its own intent instead of being
+  // buried inside the data-coverage answer.
+  { id: 'balances', kw: ['balance', 'balances', 'available balance', 'lien', 'lien amount', 'how much do i have', 'how much can i spend', 'what is usable', 'usable', 'spendable', 'withdrawable', 'usable cash', 'clear balance'] },
   { id: 'spending', kw: ['spend', 'spending', 'expense', 'expenses', 'where did my money', 'analyse my spending', 'analyze'] },
   { id: 'surplus', kw: ['surplus', 'invest my surplus', 'idle', 'extra money', 'start sip', 'start a sip', 'invest more', 'where should i invest'] },
   { id: 'goals', kw: ['goal', 'goals', 'europe', 'trip', 'house', 'home', 'down payment', 'retirement', 'retire'] },
@@ -74,6 +79,16 @@ const INTENTS = [
   { id: 'persona', kw: ['persona', 'money personality', 'kind of spender', 'my money style', 'money dna', 'what am i like with money'] },
   { id: 'collision', kw: ['collision', 'conflict', 'competing goals', 'goal priority', 'prioritise my goals', 'prioritize my goals', 'enough for all my goals', 'afford all my goals'] },
 ];
+
+// Intents whose answer is arithmetic over connected balances or transactions.
+// With nothing connected these either hit the trend gate (whose policy-version
+// wording presumes a statement) or compute over zeros and report ₹0 as a fact.
+// Intents with their own specific "not connected" answer — portfolio, tax,
+// insurance, goals, peers, xray, harvest, prepay — are deliberately excluded.
+const NO_DATA_INTENTS = new Set([
+  'greeting', 'spending', 'surplus', 'health', 'persona',
+  'collision', 'emergency', 'recommend', 'rebalance', 'roundup',
+]);
 
 // Hindi keyword hints (STT in hi-IN returns Devanagari)
 const HI_KW = {
@@ -188,6 +203,9 @@ export function respond(text, riskProfile = 'Balanced', lang = 'en') {
   if (!modelPortfolios[riskProfile]) riskProfile = 'Balanced';
   const base = respondCore(text, riskProfile);
   if (!base || lang !== 'hi') return base;
+  // The static Hindi templates assume a complete demo profile. Preserve the
+  // qualified observed-data response; the translation layer may translate it.
+  if (dataQuality.connections?.some(s => s.mode?.startsWith('IDBI_'))) return base;
   if (base.widget?.type?.endsWith('-unavailable')) return base;
   const intent = detectIntent(text);
   const hi = HI_TEXT[intent]?.(riskProfile);
@@ -198,11 +216,94 @@ function respondCore(text, riskProfile = 'Balanced') {
   const intent = detectIntent(text);
   const cf = cashflow();
   const hs = healthScore();
+  const movement = dataQuality.observedCashMovement;
+  const bankSnapshots = (dataQuality.connections || []).filter(s => s.mode?.startsWith('IDBI_'));
+  const snapshotDate = dataQuality.dataAsOf;
+  const snapshotNote = bankSnapshots.length ? ` This is sandbox data observed through ${snapshotDate || 'an unspecified date'}, not a current balance check.` : '';
+
+  // Nothing connected at all (the risk-quiz path stops here). The policy-gate
+  // wording below assumes a statement exists and reads as a malfunction when
+  // there is no data to gate — say what is actually missing, and what still works.
+  const nothingConnected = !holdings.length && !(movement?.transactionCount > 0);
+  if (nothingConnected && NO_DATA_INTENTS.has(intent)) {
+    return {
+      mood: 'happy',
+      text: intent === 'greeting'
+        ? `Hi ${firstName}. Your ${riskProfile} risk profile is saved, but no account or statement is connected yet, so I have no balances or transactions to work from. Use “Connect / refresh data” above to fetch your IDBI sandbox accounts or upload a CSV statement. Until then I can still explain any investment concept, run a SIP or goal what-if on an amount you give me, and check a suspicious offer for scam signals.`
+        : `I have no connected accounts or transactions yet, so there is nothing for me to calculate that from — I will not estimate it. Use “Connect / refresh data” above to fetch your IDBI sandbox accounts or upload a CSV statement. In the meantime, give me an amount and a timeframe and I will run the projection on your numbers instead.`,
+      widget: { type: 'data-quality-unavailable', data: { reason: 'No financial data connected' } },
+      chips: ['Calculate ₹5,000 for 10 years', 'What is a SIP?', 'Check an offer'],
+    };
+  }
+
+  // Everything a single verified snapshot supports, named up front, so the
+  // customer is steered at the four answers that work instead of discovering
+  // the eight that cannot by hitting each one.
+  const BANK_SNAPSHOT_CHIPS = ['What is usable right now?', 'Analyse my spending', 'Show my portfolio', 'What data do I need?'];
+  if (intent === 'greeting' && bankSnapshots.length && movement) {
+    return { mood: 'happy', text: `Hi ${firstName}, your IDBI sandbox snapshot contains ${movement.transactionCount} transactions and ${holdings.length} holding(s), with reported balances totalling ${fmt(totalWealth())}. From one statement period I can break down what is actually usable, explain the recorded cash movements, and show exactly which data is still missing. I will not score your finances or propose an amount to invest on this much history.${snapshotNote}`, chips: BANK_SNAPSHOT_CHIPS };
+  }
+
+  // Balance composition — reported vs available vs effective vs lien. Every
+  // figure here is returned by the account-enquiry API; nothing is derived.
+  if (intent === 'balances') {
+    const accounts = (dataQuality.connections || []).flatMap(s => s.accounts || []);
+    const withBalances = accounts.filter(a => Number.isFinite(a.availableBalance) || Number.isFinite(a.lienBalance) || Number.isFinite(a.balance));
+    if (!withBalances.length) {
+      return { mood: 'thinking', text: 'No connected account has reported a balance breakdown, so I cannot tell you what is usable. Connect an IDBI sandbox account and the reported, available, effective-available and lien amounts will all be shown here.', chips: ['What data do I need?', 'Show my portfolio'] };
+    }
+    const lines = withBalances.map((a) => [
+      Number.isFinite(a.balance) ? `a reported balance of ${fmt(a.balance)}` : null,
+      Number.isFinite(a.availableBalance) ? `available ${fmt(a.availableBalance)}` : null,
+      Number.isFinite(a.effectiveAvailableBalance) ? `effective available ${fmt(a.effectiveAvailableBalance)}` : null,
+      Number.isFinite(a.lienBalance) && a.lienBalance > 0 ? `${fmt(a.lienBalance)} under lien` : null,
+    ].filter(Boolean).join(', ')).filter(Boolean);
+    const lien = withBalances.reduce((sum, a) => sum + (Number.isFinite(a.lienBalance) ? a.lienBalance : 0), 0);
+    const spendable = withBalances.reduce((sum, a) => sum + (Number.isFinite(a.effectiveAvailableBalance) ? a.effectiveAvailableBalance : Number.isFinite(a.availableBalance) ? a.availableBalance : 0), 0);
+    return {
+      mood: 'happy',
+      text: `The bank reports ${lines.join('; ')}. Treat ${fmt(spendable)} as the usable figure, not the headline balance${lien > 0 ? ` — ${fmt(lien)} is held under lien and cannot be withdrawn` : ''}. These are the bank's own reported amounts, not a figure I derived.${snapshotNote}`,
+      why: [
+        'Source: IDBI account-enquiry API (365), reported balance types',
+        'Effective available balance is used as usable cash where the bank supplies it',
+        'No income, spending or investment assumption is applied to these figures',
+      ],
+      chips: ['Analyse my spending', 'Show my portfolio', 'What data do I need?'],
+    };
+  }
+  if (/what data|data coverage|data quality|connected data|data missing/i.test(text)) {
+    const accounts = bankSnapshots.flatMap(s => s.accounts || []);
+    const balances = accounts.map(a => [Number.isFinite(a.availableBalance) ? `available balance ${fmt(a.availableBalance)}` : null, Number.isFinite(a.effectiveAvailableBalance) ? `effective available balance ${fmt(a.effectiveAvailableBalance)}` : null, Number.isFinite(a.lienBalance) ? `lien amount ${fmt(a.lienBalance)}` : null].filter(Boolean).join(', ')).filter(Boolean);
+    return { mood: 'thinking', text: `I have ${holdings.length} connected holding(s) and ${movement?.transactionCount || 0} transactions across ${dataQuality.transactionMonths} observed months. ${cf.incomeKnown ? 'Income-labelled credits are present.' : 'Identifiable income is missing; credits alone do not establish salary.'} ${balances.length ? `The bank reports ${balances.join('; ')}. ` : ''}Tax, insurance and full loan details require separate verified sources. ${bankSnapshots.flatMap(s => s.warnings || []).join(' ')}${snapshotNote}`, chips: bankSnapshots.length ? ['What is usable right now?', 'Analyse my spending', 'Show my portfolio'] : ['Show my portfolio', 'Analyse my spending'] };
+  }
+  if (intent === 'spending' && movement && (!cf.incomeKnown || dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend || bankSnapshots.length)) {
+    // The running balance carried on each transaction and the balance the
+    // account-enquiry API reports can be on entirely different scales in this
+    // sandbox. Narrating both as fact without saying so is the contradiction
+    // a reader notices first, so the answer owns it.
+    const reconciliation = bankSnapshots.flatMap(s => s.warnings || []).filter(w => /reconcil/i.test(w));
+    const uncategorised = spendByCategory.length === 1 && spendByCategory[0].category === 'Other';
+    return { mood: 'thinking', text: `Across ${movement.transactionCount} supplied transactions from ${movement.fromDate || 'an unknown start date'} to ${movement.toDate || 'an unknown end date'}, credits total ${fmt(movement.totalCredits)} and debits total ${fmt(movement.totalDebits)}: a net ${movement.net >= 0 ? 'inflow' : 'outflow'} of ${fmt(Math.abs(movement.net))}. This describes cash movement; transfers and unclear narrations can prevent identifying income or consumption. ${cf.incomeKnown ? 'Income-labelled credits are available, but this sample alone does not establish investable surplus.' : 'I cannot estimate salary or investable surplus from unlabelled credits.'}${uncategorised ? ' Every narration in this statement is unlabelled, so all of it sits in one uncategorised bucket — no merchant or category breakdown is possible from it.' : ''}${reconciliation.length ? ' Note that these debits are not reconciled against the reported account balance: the running balances on these transactions and the balance the bank reports are on different scales, so do not read the two together.' : ''}${snapshotNote}`, widget: { type: 'spending', data: { categories: spendByCategory, months: monthlySummary } }, chips: ['What is usable right now?', 'What data do I need?', 'Show my portfolio'] };
+  }
+  if ((['health', 'persona', 'collision'].includes(intent) && !hs.available) || (['recommend', 'rebalance', 'surplus', 'emergency'].includes(intent) && bankSnapshots.length && (dataQuality.portfolioComplete === false || !cf.incomeKnown))) {
+    // Name the specific missing input rather than the generic set, and hand
+    // back the answers this data *can* support instead of a dead end.
+    const missing = [
+      !cf.incomeKnown ? 'an identifiable income credit' : null,
+      dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend
+        ? `${POLICY.confidence.minimumMonthsForTrend} months of history (I have ${dataQuality.transactionMonths})` : null,
+      dataQuality.portfolioComplete === false ? 'your investments outside this bank' : null,
+    ].filter(Boolean);
+    const missingPhrase = missing.length > 1
+      ? `${missing.slice(0, -1).join(', ')} and ${missing.at(-1)}`
+      : missing[0] || 'more complete financial coverage';
+    return { mood: 'thinking', text: `I can't answer that from what's connected. This needs ${missingPhrase} — and I won't extrapolate it from a single statement period. What this snapshot does support: the usable-balance breakdown, the recorded cash movements, and your bank-side holdings.${snapshotNote}`, widget: { type: 'data-quality-unavailable', data: { reason: 'Incomplete financial coverage', missing } }, chips: BANK_SNAPSHOT_CHIPS };
+  }
   const trendIntents = new Set(['greeting', 'spending', 'surplus', 'health', 'persona', 'collision', 'emergency']);
   if (trendIntents.has(intent) && dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend) {
     return {
       mood: 'thinking',
-      text: `I have only ${dataQuality.transactionMonths} complete transaction month${dataQuality.transactionMonths === 1 ? '' : 's'}. Policy ${POLICY.version} requires ${POLICY.confidence.minimumMonthsForTrend} before personalized trend advice, so I will not extrapolate yet.`,
+      text: `I have only ${dataQuality.transactionMonths} observed transaction month${dataQuality.transactionMonths === 1 ? '' : 's'}. Policy ${POLICY.version} requires ${POLICY.confidence.minimumMonthsForTrend} before personalized trend advice, so I will not extrapolate yet.`,
       widget: { type: 'data-quality-unavailable', data: { observedMonths: dataQuality.transactionMonths, requiredMonths: POLICY.confidence.minimumMonthsForTrend } },
       chips: ['Show my portfolio', 'Talk to a human advisor'],
     };
@@ -231,10 +332,14 @@ function respondCore(text, riskProfile = 'Balanced') {
       return {
         mood: 'proud',
         text: totalWealth() > 0
-          ? `Your connected wealth is ${fmtCompact(totalWealth())}. ${lowGrowthPct.toFixed(0)}% sits in savings and FDs while ${equityExposure().toFixed(0)}% is in growth assets. I would compare this mix with your ${riskProfile} target before proposing a change.`
+          ? `Your connected balances total ${fmtCompact(totalWealth())}. ${lowGrowthPct.toFixed(0)}% sits in savings and FDs while ${equityExposure().toFixed(0)}% is in growth assets.${dataQuality.portfolioComplete === false ? ' This is a partial portfolio; unconnected investments and liabilities are not included, so this is not net worth or a basis for rebalancing.' : ` I would compare this mix with your ${riskProfile} target before proposing a change.`}${snapshotNote}`
           : 'I do not have a connected holding balance yet, so I will not infer an allocation. Connect holdings or upload a supported CSV to run the review.',
         widget: { type: 'allocation', data: { alloc, holdings, total: totalWealth() } },
-        chips: ['What should my ideal portfolio be?', 'Invest my surplus', 'Show my goals'],
+        // On a bank-only snapshot the usual follow-ups (surplus, goals, target
+        // mix) all refuse, so offer the ones this data actually answers.
+        chips: dataQuality.portfolioComplete === false
+          ? BANK_SNAPSHOT_CHIPS.filter((chip) => chip !== 'Show my portfolio')
+          : ['What should my ideal portfolio be?', 'Invest my surplus', 'Show my goals'],
       };
     }
 

@@ -228,7 +228,11 @@ export function Sparkline({ series, height = 54, stroke = 'var(--ink)' }) {
 // Wealth Time Machine projection: wealth curve + freedom threshold line.
 // The freedom crossing is marked with the ring-and-dot, not a label.
 export function ProjectionChart({ series, fireAge, events = [], height = 158 }) {
-  const maxV = Math.max(...series.map((p) => Math.max(p.wealth, p.freedomTarget))) * 1.05;
+  // Without a credible expense baseline there is no 25×-expenses line to draw.
+  // Null would plot as a flat line along the axis, which reads as a real
+  // target of zero — so the series and its legend entry are both dropped.
+  const hasFreedomTarget = series.every((p) => Number.isFinite(p.freedomTarget));
+  const maxV = Math.max(...series.map((p) => Math.max(p.wealth, hasFreedomTarget ? p.freedomTarget : 0))) * 1.05;
   const a0 = series[0].age;
   const a1 = series[series.length - 1].age;
   const svgH = height - 16;
@@ -248,7 +252,7 @@ export function ProjectionChart({ series, fireAge, events = [], height = 158 }) 
         <path d={`${line('wealth')} L100,${height - 18} L0,${height - 18} Z`} fill="rgba(15,140,126,0.18)" />
         <path d={line('wealth')} fill="none" stroke="var(--ink)" strokeWidth="2.4" />
         <path d={line('invested')} fill="none" stroke="var(--ink-soft)" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.7" />
-        <path d={line('freedomTarget')} fill="none" stroke="var(--orange)" strokeWidth="1.4" strokeDasharray="5 4" />
+        {hasFreedomTarget && <path d={line('freedomTarget')} fill="none" stroke="var(--orange)" strokeWidth="1.4" strokeDasharray="5 4" />}
         {events.map((ev) => {
           const pt = series.find((p) => p.age === ev.age);
           if (!pt) return null;
@@ -295,7 +299,7 @@ export function ProjectionChart({ series, fireAge, events = [], height = 158 }) 
       <div style={{ position: 'absolute', left: 0, top: svgH - 6, display: 'flex', gap: 14, color: 'var(--ink-soft)', ...legend }}>
         <span style={{ color: 'var(--ink)' }}>— wealth</span>
         <span>--- invested</span>
-        <span style={{ color: 'var(--orange)' }}>--- 25× expenses</span>
+        {hasFreedomTarget && <span style={{ color: 'var(--orange)' }}>--- 25× expenses</span>}
       </div>
     </div>
   );

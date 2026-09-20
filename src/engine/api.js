@@ -62,6 +62,7 @@ export async function apiLogOut() {
 }
 export const analyseStatements = (input) => request('/statements/analyse', { method: 'POST', body: JSON.stringify(input) });
 export const connectSandbox = (providerId) => request('/sandbox/connect', { method: 'POST', body: JSON.stringify({ providerId }) });
+export const fetchIdbiSnapshot = () => request('/idbi/snapshot', { method: 'POST', body: '{}' });
 export const requestIdbiConsent = (input = {}) => request('/idbi/consent/request', { method: 'POST', body: JSON.stringify(input) });
 export const fetchIdbiConsentSnapshot = (input = {}) => request('/idbi/consent/snapshot', { method: 'POST', body: JSON.stringify(input) });
 export const saveServerProfile = (input) => request('/profile', { method: 'PUT', body: JSON.stringify(input) });

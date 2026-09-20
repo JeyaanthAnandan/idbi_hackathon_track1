@@ -20,7 +20,7 @@ function isCSV(file) {
   return /\.csv$/i.test(file.name) || file.type === 'text/csv';
 }
 
-export default function UploadStatements({ onBack }) {
+export default function UploadStatements({ onBack, riskProfileOverride = null }) {
   const session = getSession();
   const [bankFile, setBankFile] = useState(null);
   const [holdingsFile, setHoldingsFile] = useState(null);
@@ -64,7 +64,8 @@ export default function UploadStatements({ onBack }) {
       sources: [bankFile?.name, holdingsFile?.name].filter(Boolean),
     });
     try {
-      await saveCustomPersonaAndActivate(persona, riskProfile, [bankFile?.name, holdingsFile?.name].filter(Boolean));
+      // An explicitly answered quiz outranks a profile derived from the file.
+      await saveCustomPersonaAndActivate(persona, riskProfileOverride || riskProfile, [bankFile?.name, holdingsFile?.name].filter(Boolean));
       sessionStorage.setItem('mitra_land_tab', 'mitra');
       window.location.reload();
     } catch (err) {

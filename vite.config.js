@@ -21,7 +21,8 @@ export default defineConfig(({ command }) => ({
     },
   },
   server: {
-    port: 5173,
-    proxy: { '/api': 'http://127.0.0.1:8787' },
+    port: Number(process.env.MITRA_WEB_PORT || 5173),
+    strictPort: true,
+    proxy: { '/api': `http://127.0.0.1:${process.env.MITRA_API_PORT || 8787}` },
   },
 }));

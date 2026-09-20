@@ -33,19 +33,19 @@ export default function ChatWidget({ widget, onChip }) {
   if (type === 'spending') {
     return (
       <div className="widget-card">
-        <h4>June Spending by Category</h4>
+        <h4>{data.months?.at(-1)?.month || 'Observed'} debits by category</h4>
         <Bars
           height={130}
           data={data.categories.map((c) => ({
             label: c.category.split(' ')[0].slice(0, 7),
             value: c.amount,
-            over: c.amount > c.avg3m * 1.15 && !c.essential,
+            over: data.months?.length >= 4 && c.amount > c.avg3m * 1.15 && !c.essential,
           }))}
           format={(v) => fmtCompact(v)}
           highlight={(d) => d.over}
         />
         <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontWeight: 600, marginTop: 6 }}>
-          <span style={{ color: 'var(--amber)' }}>■</span> above your 3-month average
+          {data.months?.length >= 4 ? '■ Above the prior 3-month average' : 'Insufficient history for a 3-month comparison. Other means unclassified.'}
         </div>
       </div>
     );

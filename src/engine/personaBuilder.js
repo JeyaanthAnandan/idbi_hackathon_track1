@@ -6,7 +6,7 @@
 // points guarded below), so gaps are filled with honest, clearly-neutral
 // placeholders rather than fabricated numbers.
 // ─────────────────────────────────────────────────────────────
-import { buildMonthlySummary, buildSpendByCategory, detectSubscriptions, latestTransactionDate, totalIncome } from './statementImport.js';
+import { buildMonthlySummary, buildSpendByCategory, detectSubscriptions, latestTransactionDate, totalIncome, selectIncomeCredits } from './statementImport.js';
 import { deriveRiskProfile } from './riskDerivation.js';
 import { POLICY } from '../data/policy.js';
 
@@ -25,13 +25,16 @@ function defaultGoals({ monthlyIncome, savingsBalance, age }) {
 
 // `sources` name which providers/files fed this persona — shown in the UI
 // so the customer can see what MITRA actually looked at.
-export function buildCustomPersona({ name, age, city, holdings = [], transactions = [], sources = [] }) {
+export function buildCustomPersona({ name, age, city, holdings = [], transactions = [], sources = [], snapshots = [] }) {
   const monthlySummary = transactions.length ? buildMonthlySummary(transactions) : FALLBACK_MONTHLY_SUMMARY;
   const spendByCategory = transactions.length ? buildSpendByCategory(transactions) : [];
   const subscriptions = transactions.length ? detectSubscriptions(transactions) : [];
   const monthlyIncome = transactions.length ? totalIncome(transactions) : 0;
-  const incomeAvailable = transactions.some((t) => /salary|payroll|pension|wages|professional fee|business receipt|invoice|client payment/i.test(t.description || ''));
-  const savingsBalance = holdings.find((h) => h.type === 'Savings Account')?.value ?? 0;
+  const incomeAvailable = selectIncomeCredits(transactions).length > 0;
+  const savingsBalance = holdings.filter((h) => h.type === 'Savings Account').reduce((sum, h) => sum + h.value, 0);
+  const totalCredits = Math.round(transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
+  const totalDebits = Math.round(transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
+  const connections = snapshots.map(s => ({ mode: s.mode, fetchedAt: s.fetchedAt, dataAsOf: s.dataAsOf, consent: s.consent, provenance: s.provenance, coverage: s.coverage, warnings: s.warnings || [], accounts: s.accounts || (s.account ? [{ balance: s.account.balance, availableBalance: s.account.availableBalance, effectiveAvailableBalance: s.account.effectiveAvailableBalance, lienBalance: s.account.lienBalance }] : []) }));
   const finalHoldings = holdings;
 
   const riskProfile = deriveRiskProfile({ holdings: finalHoldings, monthlySummary, age });
@@ -44,10 +47,10 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
       segment: 'Self-directed Investor',
       city: city?.trim() || 'India',
       relationshipSince: new Date().getFullYear(),
-      kycRisk: 'Low',
+      kycRisk: 'Unknown',
       monthlyIncome,
       savingsBalance,
-      panLinked: true,
+      panLinked: null,
     },
     holdings: finalHoldings,
     fundFacts: null,
@@ -67,6 +70,9 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
     dataQuality: {
       transactionMonths: transactions.length ? monthlySummary.length : 0,
       incomeAvailable,
+      connections,
+      portfolioComplete: snapshots.length ? snapshots.every(s => s.coverage?.portfolioComplete === true) : undefined,
+      observedCashMovement: { transactionCount: transactions.length, totalCredits, totalDebits, net: Math.round((totalCredits - totalDebits) * 100) / 100, fromDate: transactions.map(t => t.date).sort()[0] || null, toDate: latestTransactionDate(transactions) },
       hasHoldings: holdings.length > 0,
       hasTax: false,
       hasInsurance: false,

@@ -11,7 +11,7 @@ test('API account, data and persistence journey', async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), 'mitra-api-test-'));
   let server, base;
   const start = async () => {
-    server = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, MITRA_DATA_DIR: dir, MITRA_API_PORT: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, IDBI_LIVE_SANDBOX: 'false', MITRA_DATA_DIR: dir, MITRA_API_PORT: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
     base = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('API startup timed out')), 5000);
       server.stdout.on('data', (chunk) => { const url = String(chunk).match(/http:\/\/127\.0\.0\.1:\d+/)?.[0]; if (url) { clearTimeout(timer); resolve(`${url}/api`); } });
@@ -29,6 +29,7 @@ test('API account, data and persistence journey', async (t) => {
   let cookieA, cookieB, persona;
   await t.test('unauthenticated access is rejected, invalid signup does not create a user', async () => {
     assert.equal((await call('/state', { method: 'PUT', body: {} })).status, 401);
+    assert.equal((await call('/idbi/snapshot', { method: 'POST', body: {} })).status, 401);
     assert.equal((await call('/auth/signup', { method: 'POST', body: { ...a, password: 'short' } })).status, 422);
     assert.equal((await call('/auth/signup', { method: 'POST', body: null })).status, 400);
     assert.equal((await call('/auth/signup', { method: 'POST', body: { ...a, name: 123 } })).status, 422);
@@ -43,11 +44,15 @@ test('API account, data and persistence journey', async (t) => {
     assert.equal((await call('/auth/signup', { method: 'POST', body: { ...a, email: 'audit-a@example.test' } })).status, 409);
     const boot = (await call('/bootstrap', { cookie: cookieA })).data;
     assert.equal(boot.profile, null); assert.equal(boot.onboarded, false);
+    assert.equal(boot.connectors.idbi.enabled, false);
     const db = JSON.parse(await readFile(path.join(dir, 'mitra.json'), 'utf8'));
     assert.ok(Object.values(db.users)[0].passwordHash);
     assert.ok(!JSON.stringify(db).includes(a.password));
   });
   await t.test('sandbox data is labelled and import rejects PDF, empty or malformed content', async () => {
+    const gateway = await call('/idbi/snapshot', { method: 'POST', cookie: cookieA, body: {} });
+    assert.equal(gateway.status, 409);
+    assert.match(gateway.data.detail, /No local fixture was substituted/);
     const sandbox = await call('/sandbox/connect', { method: 'POST', cookie: cookieA, body: { providerId: 'bank' } });
     assert.equal(sandbox.data.mode, 'SANDBOX_FIXTURE');
     assert.equal(sandbox.data.transactions.length, 15);

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { holdings, totalWealth, monthlySummary, peers } from '../data/customer.js';
+import { holdings, totalWealth, monthlySummary, peers, spendByCategory } from '../data/customer.js';
 import {
   fmt, fmtCompact, healthScore, cashflow, allocation, allGoalPlans, topNudges, marketPulse,
+  emergencyFundTarget,
 } from '../engine/analytics.js';
+import { POLICY } from '../data/policy.js';
 import { ConcentricRings, ScoreRing, Bars, Sparkline } from './charts.jsx';
 import { awardXP } from '../engine/xp.js';
 import { getRules, toggleRule } from '../engine/portfolioState.js';
@@ -26,14 +28,38 @@ const DETECTED_LABEL = {
 // IFTTT-for-money: standing instructions MITRA executes automatically.
 // Each one reads live state (portfolioState) so flipping it actually moves
 // the numbers elsewhere on this dashboard — not just a decorative switch.
-const RULE_DEFS = [
-  { id: 'salary', when: 'Salary lands (1st)', then: 'Auto-invest ₹8,000 before I can spend it' },
-  { id: 'sweep', when: 'Balance crosses ₹2,00,000', then: 'Sweep excess into FD @ 7%' },
-  { id: 'dining', when: 'Dining crosses ₹10,000/mo', then: 'Alert me + pause food-app cards' },
-  { id: 'stepup', when: 'Salary increment detected', then: 'Step up all SIPs by 10%' },
-];
+//
+// The thresholds are derived, never written in. They used to be Priya's
+// figures (₹8,000 / ₹2,00,000 / ₹10,000), which a customer holding ₹56,780
+// would see as a sweep rule that can never fire.
+function ruleDefs() {
+  const cf = cashflow();
+  const dining = spendByCategory.find((c) => c.category.startsWith('Dining'));
+  const sweepAt = emergencyFundTarget();
+  return [
+    {
+      id: 'salary',
+      when: 'Salary lands',
+      then: cf.avgInvested > 0
+        ? `Auto-invest ${fmt(Math.round(cf.avgInvested))} before I can spend it`
+        : 'Auto-invest my recurring SIP before I can spend it',
+    },
+    {
+      id: 'sweep',
+      when: sweepAt > 0 ? `Balance crosses ${fmt(sweepAt)}` : 'Balance exceeds my emergency target',
+      then: `Sweep excess into FD @ ${POLICY.returns.fixedDeposit}%`,
+    },
+    {
+      id: 'dining',
+      when: dining?.avg3m > 0 ? `Dining crosses ${fmt(dining.avg3m)}/mo` : 'Dining exceeds its own baseline',
+      then: 'Alert me + pause food-app cards',
+    },
+    { id: 'stepup', when: 'Salary increment detected', then: 'Step up all SIPs by 10%' },
+  ];
+}
 
 function MoneyRules({ onChange }) {
+  const RULE_DEFS = ruleDefs();
   const [rules, setRules] = useState(getRules());
   const toggle = (id) => {
     setRules(toggleRule(id).rules);
@@ -178,7 +204,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
         <h3>
           Financial health <span>AI-computed monthly</span>
         </h3>
-        <div className="score-ring-wrap">
+        {!hs.available ? <p>More income, history and portfolio data are needed to calculate a financial health score.</p> : <div className="score-ring-wrap">
           <ScoreRing score={hs.total} size={96} thickness={7} />
           <div className="score-detail">
             {hs.parts.map((p) => (
@@ -190,7 +216,7 @@ export default function WealthDashboard({ onAsk, riskProfile = 'Balanced' }) {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
 
       <div className="card" data-guide-target="wealth-allocation">

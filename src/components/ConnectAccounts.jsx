@@ -4,7 +4,7 @@ import { PROVIDERS } from '../engine/mockProviderData.js';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
 import { getSession } from '../engine/auth.js';
-import { connectSandbox, fetchIdbiConsentSnapshot, requestIdbiConsent } from '../engine/api.js';
+import { connectSandbox, fetchIdbiConsentSnapshot, requestIdbiConsent, fetchIdbiSnapshot, getBootstrap } from '../engine/api.js';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
 const BADGE_COLOR = { zerodha: '#387ed1', upstox: '#7e3ff2', groww: '#00d09c', indmoney: '#3643ba', bank: 'var(--teal)' };
@@ -22,19 +22,39 @@ function ProviderBadge({ id }) {
   );
 }
 
-export default function ConnectAccounts({ onBack }) {
+export default function ConnectAccounts({ onBack, riskProfileOverride = null }) {
   const session = getSession();
+  const boot = getBootstrap();
+  const idbiEnabled = Boolean(boot.connectors?.idbi?.enabled);
   const [connected, setConnected] = useState({}); // providerId -> { holdings?, transactions? }
   const [phase, setPhase] = useState('list'); // list | consent | consent-pending | connecting | details
   const [activeId, setActiveId] = useState(null);
   const [error, setError] = useState('');
   const [consent, setConsent] = useState(null);
-  const [name, setName] = useState(session?.name || '');
-  const [age, setAge] = useState('');
-  const [city, setCity] = useState('');
+  const [saving, setSaving] = useState(false);
+  const name = session?.name || '';
 
   const provider = activeId ? PROVIDERS[activeId] : null;
   const connectedCount = Object.keys(connected).length;
+  const snapshots = Object.values(connected);
+  const transactions = snapshots.flatMap(s => s.transactions || []);
+  const holdings = snapshots.flatMap(s => s.holdings || []);
+  const bank = connected.bank;
+  const money = (value) => Number.isFinite(value) ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value) : 'Not supplied';
+
+  const fetchDirect = async () => {
+    setActiveId('bank');
+    setError('');
+    setPhase('connecting');
+    try {
+      const result = await fetchIdbiSnapshot();
+      setConnected(c => ({ ...c, bank: result }));
+      setPhase('details');
+    } catch (err) {
+      setError(err.message);
+      setPhase('list');
+    }
+  };
 
   const startConnect = (id) => {
     setActiveId(id);
@@ -47,17 +67,10 @@ export default function ConnectAccounts({ onBack }) {
     try {
       let result;
       if (activeId === 'bank') {
-        try {
-          const requested = await requestIdbiConsent();
-          setConsent(requested);
-          setPhase('consent-pending');
-          return;
-        } catch (err) {
-          // Local development without IDBI_LIVE_SANDBOX keeps the existing
-          // deterministic fixture journey available.
-          if (!/sandbox mode is disabled/i.test(err.message)) throw err;
-          result = await connectSandbox(activeId);
-        }
+        const requested = await requestIdbiConsent();
+        setConsent(requested);
+        setPhase('consent-pending');
+        return;
       } else result = await connectSandbox(activeId);
       setConnected((c) => ({ ...c, [activeId]: result }));
       setPhase('list');
@@ -71,9 +84,9 @@ export default function ConnectAccounts({ onBack }) {
   const loadConsentData = async () => {
     setPhase('connecting');
     try {
-      const result = await fetchIdbiConsentSnapshot();
+      const result = await fetchIdbiConsentSnapshot({ consentHandle: consent?.consentHandle });
       setConnected((c) => ({ ...c, bank: result }));
-      setPhase('list');
+      setPhase('details');
       setActiveId(null);
       setConsent(null);
     } catch (err) {
@@ -83,18 +96,24 @@ export default function ConnectAccounts({ onBack }) {
   };
 
   const finish = async () => {
-    const holdings = Object.values(connected).flatMap((d) => d.holdings || []);
-    const transactions = Object.values(connected).flatMap((d) => d.transactions || []);
+    setSaving(true);
+    setError('');
     const sources = Object.keys(connected).map((id) => PROVIDERS[id].label);
     const { persona, riskProfile } = buildCustomPersona({
-      name, age: age ? parseInt(age, 10) : undefined, city, holdings, transactions, sources,
+      name, age: boot.profile?.persona.customer.age, city: boot.profile?.persona.customer.city, holdings, transactions, sources, snapshots,
     });
     try {
-      await saveCustomPersonaAndActivate(persona, riskProfile, sources.map((source) => `sandbox:${source}`));
+      // An explicitly answered quiz outranks a profile derived from a bank-only
+      // snapshot, which cannot see horizon or loss tolerance at all.
+      await saveCustomPersonaAndActivate(persona, riskProfileOverride || riskProfile, sources.map((source) => `sandbox:${source}`));
       sessionStorage.setItem('mitra_land_tab', 'mitra');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('connect');
+      window.history.replaceState(null, '', url.toString());
       window.location.reload();
     } catch (err) {
       setError(err.message);
+      setSaving(false);
     }
   };
 
@@ -108,11 +127,10 @@ export default function ConnectAccounts({ onBack }) {
           {provider.kind === 'bank' ? 'Try the Account Aggregator sandbox' : `Try the ${provider.label} sandbox`}
         </h2>
         <p className="ob-sub">
-          This creates a recorded sandbox consent and fetches a deterministic test fixture through the MITRA API.
-          It does not contact {provider.label} or request any real credential.
+          {provider.kind === 'bank' ? 'This starts the IDBI sandbox consent flow when configured. Approval happens on the Account Aggregator page; MITRA receives test account data.' : `This loads a recorded ${provider.label} sandbox fixture through MITRA.`}
         </p>
         <button className="primary-btn" style={{ marginTop: 18 }} onClick={submitConsent}>
-          Approve sandbox consent
+          Start sandbox connection
         </button>
         <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={() => setPhase('list')}>
           Cancel
@@ -128,7 +146,7 @@ export default function ConnectAccounts({ onBack }) {
           <Avatar size={96} mood="thinking" />
         </div>
         <h2 style={{ fontSize: 22 }}>Connecting to {provider?.label}…</h2>
-        <p className="ob-sub">Calling the local connector API and recording consent.</p>
+        <p className="ob-sub">Fetching the response through the MITRA server. Your profile changes only after you review it.</p>
       </div>
     );
   }
@@ -154,6 +172,7 @@ export default function ConnectAccounts({ onBack }) {
           Fetch approved data
         </button>
         {error && <div className="auth-error">{error}</div>}
+        <button className="ghost-btn" style={{ marginTop: 12 }} onClick={fetchDirect}>Use direct sandbox test data instead</button>
         <button className="ghost-btn" style={{ marginTop: 12, alignSelf: 'center' }} onClick={() => setPhase('list')}>
           Cancel
         </button>
@@ -169,20 +188,23 @@ export default function ConnectAccounts({ onBack }) {
             <Avatar size={96} mood="excited" />
           </div>
         </div>
-        <h2 style={{ fontSize: 24 }}>Almost there</h2>
-        <p className="ob-sub">A couple of details so I can personalize this further.</p>
-        <div className="settings-row">
-          <input type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+        <h2 style={{ fontSize: 24 }}>Review fetched data</h2>
+        <p className="ob-sub">{bank?.mode === 'IDBI_SANDBOX_DIRECT' ? 'Fetched from the IDBI sandbox gateway. This is bank-provided test data; it does not represent your personal bank account or an approved AA consent.' : bank?.mode === 'IDBI_SANDBOX_CONSENT' ? 'Fetched from the IDBI sandbox through the matched consent.' : 'Local demonstration fixtures.'}</p>
+        <div role="status" style={{ lineHeight: 1.8 }}>
+          <div><strong>{transactions.length} transactions · {holdings.length} holdings</strong></div>
+          {bank?.fetchedAt && <div>Fetched: {new Date(bank.fetchedAt).toLocaleString()}</div>}
+          {bank?.dataAsOf && <div>Latest transaction: {bank.dataAsOf}</div>}
+          {bank?.account && <><div>Reported balance: {money(bank.account.balance)}</div><div>Available balance: {money(bank.account.availableBalance)}</div><div>Lien: {money(bank.account.lienBalance)}</div></>}
         </div>
-        <div className="settings-row">
-          <input type="number" placeholder="Age" value={age} onChange={(e) => setAge(e.target.value)} />
-        </div>
-        <div className="settings-row">
-          <input type="text" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-        </div>
-        <button className="primary-btn" style={{ marginTop: 18 }} onClick={finish}>
-          Build my profile →
+        {transactions.length > 0 && <div style={{ overflowX: 'auto', marginTop: 16 }}><table style={{ width: '100%', fontSize: 12, textAlign: 'left' }}><caption>First five returned transactions</caption><thead><tr><th>Date</th><th>Description</th><th>Amount</th></tr></thead><tbody>{transactions.slice(0, 5).map((t, index) => <tr key={`${t.sourceId}-${index}`}><td>{t.date}</td><td>{t.description}</td><td>{t.type === 'debit' ? '−' : '+'}{money(t.amount)}</td></tr>)}</tbody></table></div>}
+        {bank?.provenance?.apis && <p className="ob-sub" style={{ fontSize: 11 }}>Source: {bank.provenance.apis.join(' · ')}</p>}
+        {snapshots.flatMap(s => s.warnings || []).map((warning, index) => <p key={index} style={{ fontSize: 12, color: 'var(--orange)' }}>{warning}</p>)}
+        {boot.profile && <p className="ob-sub">Using this snapshot replaces your current financial profile and starts a new chat.</p>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
+        <button className="primary-btn" style={{ marginTop: 18 }} onClick={finish} disabled={saving}>
+          {saving ? 'Saving…' : 'Use this data with MITRA →'}
         </button>
+        <button className="ghost-btn" style={{ marginTop: 12 }} onClick={() => setPhase('list')} disabled={saving}>Back to connections</button>
       </div>
     );
   }
@@ -194,16 +216,39 @@ export default function ConnectAccounts({ onBack }) {
           <Avatar size={96} mood="happy" />
         </div>
       </div>
-      <h2 style={{ fontSize: 26 }}>Connect your accounts</h2>
+      <h2 style={{ fontSize: 26 }}>Connect / refresh data</h2>
       <p className="ob-sub">
-        Exercise the real consent and API flow with deterministic sandbox data. For your own numbers, use statement upload.
+        Fetch bank-provided sandbox accounts and transactions, review the response, then let MITRA explain the data. No risk questionnaire is required.
       </p>
 
       <div style={{ fontSize: 11, color: 'var(--orange)', textAlign: 'center', marginBottom: 8, fontWeight: 700 }}>
-        SANDBOX · no live provider connection
+        SANDBOX · test data only
       </div>
 
-      {PROVIDER_LIST.map((p) => {
+      <div role="status" style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
+        {!boot.available ? 'The account service is unavailable on this site. A running MITRA server is required to connect.' : idbiEnabled ? 'IDBI sandbox connector is enabled. Each fetch calls the gateway.' : 'The IDBI sandbox connector is disabled on this server. Local demo data will not be substituted.'}
+      </div>
+      <button className="primary-btn" onClick={fetchDirect} disabled={!idbiEnabled}>Fetch IDBI sandbox data</button>
+      <p className="ob-sub" style={{ fontSize: 12 }}>Direct sandbox test data · account discovery, balance and statement APIs · no personal bank login</p>
+      {/* The AA consent request and redirect legs (APIs 590/592) return 200 and
+          a live OneMoney redirect URL. The statement leg (739) then returns a
+          link reference that does not match the one the consent granted, so the
+          import fails closed every time — a provider fixture defect, recorded as
+          finding 4 in docs/IDBI_SANDBOX_AUDIT.md. Offering the button anyway
+          just walks the customer into that wall, so it stays disabled until the
+          references reconcile. */}
+      <button className="ghost-btn" onClick={() => startConnect('bank')} disabled title="Blocked by a provider fixture defect">
+        Account Aggregator consent · unavailable
+      </button>
+      <p className="ob-sub" style={{ fontSize: 12 }}>
+        Disabled upstream, not here. IDBI's sandbox grants consent for one account reference and then
+        returns a statement for a different one, so MITRA refuses the import rather than attaching
+        someone else's transactions to your profile. The consent request and redirect steps themselves
+        are verified in the sandbox audit. Use direct sandbox data above in the meantime.
+      </p>
+
+      <details style={{ marginTop: 16 }}><summary>Other providers · local demo fixtures</summary>
+      {PROVIDER_LIST.filter(p => p.id !== 'bank').map((p) => {
         const isConnected = !!connected[p.id];
         return (
           <button
@@ -223,7 +268,7 @@ export default function ConnectAccounts({ onBack }) {
             )}
           </button>
         );
-      })}
+      })}</details>
 
       <button
         className="primary-btn"

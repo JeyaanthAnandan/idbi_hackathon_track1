@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MITRA — Where We Stand</title>
+  <style>
+    :root { --teal:#0f8c7e; --teal-dark:#075f57; --orange:#f2761d; --ink:#17332f; --muted:#61736f; --line:#dce9e5; --soft:#f3faf8; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#f7fbfa; font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.5; }
+    .wrap { max-width:1050px; margin:auto; padding:34px 22px 60px; }
+    .hero { background:linear-gradient(135deg,#075f57 0%,#0f8c7e 58%,#4eb5a4 100%); color:white; border-radius:28px; padding:42px; box-shadow:0 16px 42px #0b675b25; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.08em; font-size:13px; text-transform:uppercase; }
+    .brand-mark { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:#ffffff22; font-size:21px; }
+    h1 { margin:34px 0 12px; max-width:720px; font-size:clamp(34px,6vw,63px); line-height:1.02; letter-spacing:-.055em; }
+    .hero p { max-width:740px; margin:0; color:#e4f5f1; font-size:17px; }
+    .eyebrow { color:var(--orange); font-weight:800; text-transform:uppercase; letter-spacing:.12em; font-size:11px; }
+    section { margin-top:34px; }
+    h2 { margin:7px 0 17px; font-size:27px; letter-spacing:-.035em; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; }
+    .card { background:var(--white); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 5px 18px #17463a08; }
+    .metric { font-size:43px; line-height:1; font-weight:850; letter-spacing:-.06em; color:var(--teal-dark); }
+    .metric.orange { color:var(--orange); }
+    .metric-label { margin-top:10px; font-weight:750; }
+    .muted { color:var(--muted); font-size:14px; }
+    .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .status { display:flex; justify-content:space-between; gap:14px; padding:13px 0; border-bottom:1px solid var(--line); font-size:14px; }
+    .pill { flex:none; align-self:start; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:800; background:#e4f5ee; color:#147456; }
+    .pill.warn { background:#fff0df; color:#a6510c; }
+    .pill.no { background:#fbe8e5; color:#a44236; }
+    .callout { background:var(--soft); border-left:4px solid var(--teal); padding:21px 23px; border-radius:0 16px 16px 0; font-size:18px; }
+    .callout strong { color:var(--teal-dark); }
+    ul { margin:10px 0 0; padding-left:20px; color:var(--muted); font-size:14px; }
+    li { margin:8px 0; }
+    .gap { border-top:4px solid var(--orange); }
+    .footer { margin-top:38px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+    @media (max-width:760px) { .hero { padding:28px 24px; border-radius:22px; } .grid,.status-grid { grid-template-columns:1fr; } h1 { font-size:43px; } }
+    @media print { body { background:white; } .hero { box-shadow:none; } .card { box-shadow:none; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div class="brand"><span class="brand-mark">✦</span> MITRA · IDBI Digital Wealth Advisory</div>
+      <h1>Where we stand today.</h1>
+      <p>An evidence-based snapshot of how close the MITRA prototype is to the problem statement and expected outcome.</p>
+    </header>
+
+    <section>
+      <div class="eyebrow">Executive view</div>
+      <h2>Strong prototype. Integration is the next frontier.</h2>
+      <div class="callout"><strong>MITRA is ready for a credible hackathon or sandbox demonstration.</strong> The core advisory experience, avatar interface, behavioural analytics, simulations, and safety boundaries are largely in place. Live bank connectivity, production security, compliance, and transaction execution remain ahead.</div>
+    </section>
+
+    <section class="grid">
+      <div class="card"><div class="metric">85–90%</div><div class="metric-label">Hackathon demonstration readiness</div><div class="muted">End-to-end story and working product experience.</div></div>
+      <div class="card"><div class="metric">75–80%</div><div class="metric-label">Expected outcome as a prototype</div><div class="muted">Most requested advisory capabilities are demonstrated.</div></div>
+      <div class="card"><div class="metric orange">25–35%</div><div class="metric-label">Production bank readiness</div><div class="muted">The remaining work is mainly integration, controls, and infrastructure.</div></div>
+    </section>
+
+    <section>
+      <div class="eyebrow">Capability check</div>
+      <h2>Where the product is strong</h2>
+      <div class="card status-grid">
+        <div class="status"><span>Avatar advisor with voice, animation, captions and charts</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Personalized spending and investment insights</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Financial health score, goals and SIP planning</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Portfolio drift, diversification and market scenarios</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Indian-language voice and conversational guidance</span><span class="pill warn">Promising</span></div>
+        <div class="status"><span>Advice Passport and tamper-evident receipts</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Fraud Shield, protection gap and explainability</span><span class="pill">Strong</span></div>
+        <div class="status"><span>Authentication, profile isolation and persistence</span><span class="pill warn">Prototype</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="eyebrow">Alignment with the problem</div>
+      <h2>Does it address the stated need?</h2>
+      <div class="card">
+        <div class="status"><span>Fragmented and inaccessible advisory</span><span class="pill">Addressed</span></div>
+        <div class="status"><span>Limited use of customer spending behaviour</span><span class="pill">Addressed</span></div>
+        <div class="status"><span>Generic rather than timely guidance</span><span class="pill">Addressed</span></div>
+        <div class="status"><span>Scalable advisory through a digital interface</span><span class="pill warn">Demonstrated</span></div>
+        <div class="status"><span>Real integration into a bank mobile application</span><span class="pill no">Gap</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="eyebrow">What is still missing</div>
+      <h2>Priority gaps before a bank deployment</h2>
+      <div class="grid">
+        <div class="card gap"><h3>1. Real data integration</h3><ul><li>IDBI core-banking and Account Aggregator connectivity</li><li>Broker, AMC, insurance, tax and loan data feeds</li><li>Live market and fund data instead of synthetic scenarios</li></ul></div>
+        <div class="card gap"><h3>2. Production platform</h3><ul><li>Secure server-side AI keys and calculation authority</li><li>Durable transactional database and scalable services</li><li>Monitoring, rate limits, recovery, retention and deletion controls</li></ul></div>
+        <div class="card gap"><h3>3. Regulated execution</h3><ul><li>Consent lifecycle and auditable customer permissions</li><li>Approved risk profiling and periodic review</li><li>Live SIP, MF, FD or RM workflows with human oversight</li></ul></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="eyebrow">Recommended positioning</div>
+      <h2>How to describe MITRA today</h2>
+      <div class="callout"><strong>“An end-to-end avatar-based digital wealth advisory prototype for IDBI.”</strong><br>It proves the customer experience and intelligence layer today; the next phase connects that layer securely to real bank data, regulated workflows, and execution systems.</div>
+    </section>
+
+    <div class="footer">Prepared from the current MITRA repository status. Local verification: 82 tests passing and production build passing. Figures shown are assessment estimates, not formal delivery commitments.</div>
+  </main>
+</body>
+</html>

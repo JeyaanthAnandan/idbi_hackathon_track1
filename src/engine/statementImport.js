@@ -90,7 +90,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 const EXCLUDED_CREDIT = /refund|reversal|cashback|interest credit|self transfer|own account|fd maturity|redemption/i;
 const LIKELY_INCOME = /salary|payroll|pension|wages|professional fee|business receipt|invoice|client payment/i;
 
-function selectIncomeCredits(transactions) {
+export function selectIncomeCredits(transactions) {
   const allCredits = transactions.filter((t) => t.type === 'credit' && !EXCLUDED_CREDIT.test(t.description || ''));
   const byMonth = allCredits.reduce((groups, t) => {
     const d = parseDate(t.date);
@@ -102,7 +102,7 @@ function selectIncomeCredits(transactions) {
   }, new Map());
   return Array.from(byMonth.values()).flatMap((credits) => {
     const labelled = credits.filter((t) => LIKELY_INCOME.test(t.description || ''));
-    return labelled.length ? labelled : [credits.reduce((largest, item) => item.amount > largest.amount ? item : largest)];
+    return labelled;
   });
 }
 
@@ -197,9 +197,7 @@ export function detectSubscriptions(transactions) {
 }
 
 export function totalIncome(transactions) {
-  // Prefer explicitly income-like credits. For exports without useful
-  // narration, fall back to the largest credit in each month rather than
-  // treating every transfer and refund as salary.
+  // Unlabelled credits can be transfers or loan disbursements, not income.
   const credits = selectIncomeCredits(transactions);
   if (!credits.length) return 0;
   return Math.round(credits.reduce((s, t) => s + t.amount, 0) / new Set(credits.map((t) => {

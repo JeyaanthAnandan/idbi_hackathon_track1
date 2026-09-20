@@ -94,9 +94,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   position: relative;
 }
+.web-rail-logout { color: var(--ink-soft); }
+.web-rail-logout:hover { color: var(--orange); }
+.web-rail-logout:disabled { cursor: wait; opacity: 0.65; }
 .web-rail-avatar {
   width: 38px;
   height: 38px;

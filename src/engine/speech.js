@@ -63,6 +63,41 @@ function voiceForLang(langCode) {
 export const getPreferredVoiceName = () => localStorage.getItem(VOICE_PREF) || '';
 export const setPreferredVoiceName = (name) => localStorage.setItem(VOICE_PREF, name);
 
+// ── speaking speed ───────────────────────────────────────────
+// One setting for both engines: Bulbul takes it as `pace`, the browser voice
+// as `rate`. Bulbul accepts 0.3–3.0, but MITRA reads out rupee figures, so the
+// range is kept to where numbers stay easy to follow.
+const PACE_PREF = 'mitra_speech_pace';
+const MIN_PACE = 0.7;
+const MAX_PACE = 1.5;
+export const DEFAULT_PACE = 1;
+export const SPEECH_PACES = [
+  { id: 'slow', label: 'Slow', pace: 0.85 },
+  { id: 'normal', label: 'Normal', pace: DEFAULT_PACE },
+  { id: 'brisk', label: 'Brisk', pace: 1.15 },
+  { id: 'fast', label: 'Fast', pace: 1.3 },
+];
+
+export function clampPace(value) {
+  const n = Number(value);
+  if (value == null || value === '' || !Number.isFinite(n)) return DEFAULT_PACE;
+  return Math.min(MAX_PACE, Math.max(MIN_PACE, n));
+}
+
+export function getSpeechPace() {
+  try {
+    return clampPace(localStorage.getItem(PACE_PREF));
+  } catch {
+    return DEFAULT_PACE;
+  }
+}
+
+export function setSpeechPace(value) {
+  try {
+    localStorage.setItem(PACE_PREF, String(clampPace(value)));
+  } catch { /* storage blocked — the choice just won't persist */ }
+}
+
 function currentVoice() {
   refreshVoices();
   const pref = getPreferredVoiceName();
@@ -92,7 +127,7 @@ function stopAudio() {
 // Long answers arrive batch by batch, so playback starts on the first batch
 // while the rest are still being synthesized. `done()` says no more are
 // coming, which is what lets the player know when the reply has truly ended.
-function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken, motionText = () => '' }) {
+function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken, motionText = () => '', motionRate = 1 }) {
   const urls = [];
   let i = 0;
   let playing = false;
@@ -136,7 +171,7 @@ function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken, moti
       .then(() => {
         if (myToken !== token) { el.pause(); return; }
         if (advanced) return;
-        if (!tracked) beginTextSpeechMotion(motionText());
+        if (!tracked) beginTextSpeechMotion(motionText(), motionRate);
         if (!playbackStarted) {
           playbackStarted = true;
           onPlaybackStart?.();
@@ -160,7 +195,7 @@ function createPlayer({ onEnd, onPlaybackStart, onPlaybackFailure, myToken, moti
   };
 }
 
-function speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful = false }) {
+function speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful = false, pace = DEFAULT_PACE }) {
   if (!window.speechSynthesis) {
     onEnd?.();
     return false;
@@ -181,7 +216,7 @@ function speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful = fal
   }
   if (v) u.voice = v;
   u.lang = SPEECH_LANG[lang] || 'en-IN';
-  u.rate = 0.98;
+  u.rate = 0.98 * pace;
   u.pitch = playful ? 1.15 : voiceGender === 'boy' ? 1 : 1.04;
   const speechToken = token;
   let boundary;
@@ -213,7 +248,7 @@ function speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful = fal
  * rather than letting MITRA silently turn robotic, which reads to the
  * customer as the product breaking.
  */
-export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, voiceGender, playful = false } = {}) {
+export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, voiceGender, playful = false, pace } = {}) {
   stopSpeaking();
   prepareSpeechMotion();
   const myToken = ++token;
@@ -221,17 +256,20 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, 
     onEnd?.();
     return false;
   }
+  // an explicit pace wins; otherwise the customer's saved speed applies
+  const speed = pace == null ? getSpeechPace() : clampPace(pace);
 
   if (hasSarvam()) {
     const fallbackToDevice = () => {
       onFallback?.();
-      speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful });
+      speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful, pace: speed });
     };
     let started = false;
     const player = createPlayer({
       onEnd,
       myToken,
       motionText: () => text,
+      motionRate: speed,
       onPlaybackStart: () => {
         started = true;
         onStart?.('sarvam');
@@ -242,6 +280,7 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, 
     synthesize(text, {
       lang,
       speaker: speaker || getSarvamSpeaker(),
+      pace: speed,
       onBatch: (urls) => {
         if (myToken !== token) {
           urls.forEach(URL.revokeObjectURL);
@@ -272,7 +311,7 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, 
     return true;
   }
 
-  return speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful });
+  return speakWebSpeech(text, { onStart, onEnd, lang, voiceGender, playful, pace: speed });
 }
 
 /**
@@ -280,24 +319,26 @@ export function speak(text, { onStart, onEnd, onFallback, lang = 'en', speaker, 
  * LLM streams them; each is synthesized in order and queued, so MITRA starts
  * talking while she is still composing rather than after.
  */
-export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
+export function speakStream({ lang = 'en', onStart, onEnd, onFallback, pace } = {}) {
   stopSpeaking();
   prepareSpeechMotion();
   const myToken = ++token;
+  // read once, so every sentence of one reply is spoken at the same speed
+  const speed = pace == null ? getSpeechPace() : clampPace(pace);
 
   if (!hasSarvam()) {
     // browser voice can't stream — buffer and speak once at the end
     let buffered = '';
     return {
       push: (t) => { buffered += (buffered ? ' ' : '') + t; },
-      end: () => speakWebSpeech(buffered, { onStart, onEnd, lang }),
+      end: () => speakWebSpeech(buffered, { onStart, onEnd, lang, pace: speed }),
     };
   }
 
   let started = false;
   let chain = Promise.resolve(); // serialises synthesis so audio stays in order
   let all = '';
-  const player = createPlayer({ onEnd, myToken, motionText: () => all,
+  const player = createPlayer({ onEnd, myToken, motionText: () => all, motionRate: speed,
     onPlaybackStart: () => onStart?.('sarvam'),
   });
 
@@ -308,7 +349,7 @@ export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
       chain = chain.then(async () => {
         if (myToken !== token) return;
         try {
-          const urls = await synthesize(sentence, { lang, speaker: getSarvamSpeaker() });
+          const urls = await synthesize(sentence, { lang, speaker: getSarvamSpeaker(), pace: speed });
           if (myToken !== token) {
             urls.forEach(URL.revokeObjectURL);
             return;
@@ -331,7 +372,7 @@ export function speakStream({ lang = 'en', onStart, onEnd, onFallback } = {}) {
         }
         // nothing ever synthesized — say the whole thing in the browser voice
         onFallback?.();
-        speakWebSpeech(all, { onStart, onEnd, lang });
+        speakWebSpeech(all, { onStart, onEnd, lang, pace: speed });
       });
     },
   };

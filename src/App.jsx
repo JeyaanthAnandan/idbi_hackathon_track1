@@ -11,7 +11,10 @@ import WebApp from './components/WebApp.jsx';
 import DataStatus from './components/DataStatus.jsx';
 import Avatar from './components/Avatar.jsx';
 import LogoutButton from './components/LogoutButton.jsx';
-import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
+import {
+  listVoices, getPreferredVoiceName, setPreferredVoiceName, speak,
+  SPEECH_PACES, getSpeechPace, setSpeechPace,
+} from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
 import { getDeepSeekKey, setDeepSeekKey, LANGUAGES } from './engine/deepseek.js';
@@ -110,6 +113,34 @@ function AccountSection() {
   );
 }
 
+// How fast MITRA talks. Applies to the Sarvam voice and the browser fallback
+// alike, and to every place she speaks (chat, calls, tours, presenter).
+function SpeedPicker() {
+  const [pace, setPace] = useState(getSpeechPace());
+  return (
+    <>
+      <label className="settings-label">Speaking speed</label>
+      <div className="settings-row" role="radiogroup" aria-label="Speaking speed" style={{ gap: 8 }}>
+        {SPEECH_PACES.map((p) => (
+          <button
+            key={p.id}
+            className="ghost-btn"
+            role="radio"
+            aria-checked={pace === p.pace}
+            style={pace === p.pace ? { background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)' } : undefined}
+            onClick={() => {
+              setSpeechPace(p.pace);
+              setPace(p.pace);
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // Sarvam is MITRA's voice. It ships configured from .env, so this panel is
 // about *choosing how she sounds* rather than about pasting a key — the key
 // field is only there so a judge can swap in their own on a hosted build.
@@ -161,6 +192,7 @@ function SarvamSection() {
           ))}
         </select>
       </div>
+      <SpeedPicker />
       <div className="settings-row">
         <select value={previewLang} onChange={(e) => setPreviewLang(e.target.value)}>
           {LANGUAGES.map((l) => (

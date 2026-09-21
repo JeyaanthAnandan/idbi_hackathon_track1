@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import Ring from './Ring.jsx';
 import { riskQuestions, riskProfileFromScore, modelPortfolios, customer } from '../data/customer.js';
 import { getSession } from '../engine/auth.js';
@@ -39,7 +39,7 @@ export default function Onboarding({ onDone, onConnect, onUpload }) {
 
       <div className="ob-intro">
         <Ring size={58} dot={6}>
-          <Avatar size={46} mood={finished ? 'excited' : 'happy'} />
+          <TalkingHeadAvatar size={46} mood={finished ? 'excited' : 'happy'} />
         </Ring>
         <p>
           {finished

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
 import { getSession } from '../engine/auth.js';
@@ -77,7 +77,7 @@ export default function UploadStatements({ onBack, riskProfileOverride = null })
     return (
       <div className="onboard" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="thinking" />
+          <TalkingHeadAvatar size={96} mood="thinking" />
         </div>
         <h2 style={{ fontSize: 22 }}>Analysing your statement…</h2>
         <p className="ob-sub">{ANALYSE_STEPS[stepIdx]}</p>
@@ -94,7 +94,7 @@ export default function UploadStatements({ onBack, riskProfileOverride = null })
       <div className="onboard">
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-            <Avatar size={96} mood="excited" />
+            <TalkingHeadAvatar size={96} mood="excited" />
           </div>
         </div>
         <h2 style={{ fontSize: 24 }}>Here's what I found</h2>
@@ -171,7 +171,7 @@ export default function UploadStatements({ onBack, riskProfileOverride = null })
     <div className="onboard">
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="happy" />
+          <TalkingHeadAvatar size={96} mood="happy" />
         </div>
       </div>
       <h2 style={{ fontSize: 26 }}>Upload your statements</h2>

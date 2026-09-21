@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 
 const COPY = {
   result: {
@@ -25,7 +25,7 @@ const AvatarGuide = memo(function AvatarGuide({ targets, active, speaking, mood,
   return (
     <aside className="mitra-guide" aria-label="MITRA guided explanation">
       <div className="mitra-guide-avatar" aria-hidden="true">
-        <Avatar size={82} speaking={speaking} mood={mood} gesture="point-right" gaze="right" />
+        <TalkingHeadAvatar size={82} speaking={speaking} mood={mood} gesture="point-right" gaze="right" />
       </div>
       <div className="mitra-guide-content">
         <div className="mitra-guide-kicker">MITRA is pointing here</div>

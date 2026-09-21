@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import { PROVIDERS } from '../engine/mockProviderData.js';
 import { buildCustomPersona } from '../engine/personaBuilder.js';
 import { saveCustomPersonaAndActivate } from '../data/personas.js';
@@ -189,7 +189,7 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
     return (
       <div className="onboard" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="thinking" />
+          <TalkingHeadAvatar size={96} mood="thinking" />
         </div>
         <h2 style={{ fontSize: 22 }}>Connecting to {provider?.label}…</h2>
         <p className="ob-sub">Fetching the response through the MITRA server. Your profile changes only after you review it.</p>
@@ -231,7 +231,7 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
       <div className="onboard">
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-            <Avatar size={96} mood="excited" />
+            <TalkingHeadAvatar size={96} mood="excited" />
           </div>
         </div>
         <h2 style={{ fontSize: 24 }}>Review fetched data</h2>
@@ -260,7 +260,7 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
     <div className="onboard">
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="happy" />
+          <TalkingHeadAvatar size={96} mood="happy" />
         </div>
       </div>
       <h2 style={{ fontSize: 26 }}>Connect / refresh data</h2>

@@ -647,6 +647,13 @@ body {
 .icon-btn:hover { border-color: var(--blue); color: var(--blue); }
 .icon-btn:active { transform: scale(0.92); }
 .icon-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.chat-header-avatar {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  border-radius: 50%; flex-shrink: 0; transition: transform 0.3s var(--ease);
+}
+.chat-header-avatar:hover { transform: scale(1.05); }
+.chat-header-avatar:active { transform: scale(0.95); }
+.chat-header-avatar:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .chat-body { flex: 1; overflow-y: auto; padding: 18px 20px 8px; scrollbar-width: none; }
 .chat-body::-webkit-scrollbar { display: none; }

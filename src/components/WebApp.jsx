@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import Ring from './Ring.jsx';
 import Icon from './Icons.jsx';
 import Counter from './Counter.jsx';
@@ -138,7 +138,7 @@ function HomePanel({ riskProfile, onAsk }) {
       <div className="web-span web-pair">
         <button className="web-card web-mitra" onClick={() => onAsk(cf.incomeKnown ? `Put my ${fmt(cf.surplus)} monthly surplus to work` : 'Analyse my spending')}>
           <Ring size={66} dot={8} color="rgba(15,140,126,0.45)">
-            <Avatar size={54} mood="happy" />
+            <TalkingHeadAvatar size={54} mood="happy" />
           </Ring>
           <span>
             <span className="web-eyebrow web-eyebrow-accent">MITRA found something</span>

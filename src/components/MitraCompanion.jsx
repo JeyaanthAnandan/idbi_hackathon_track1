@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import { CHARACTERS, getCharacter, savedCharacter, saveCharacter } from '../engine/characters.js';
 import { UI_TARGETS, planAvatarDirection } from '../engine/avatarDirector.js';
 import { hasSarvam, selectSarvamAdvisorTool } from '../engine/sarvam.js';
@@ -72,9 +72,14 @@ export default function MitraCompanion({ onNavigate, onAsk, enabled = true, busy
   const dismiss = () => { cancel(); setOpen(false); setTarget(null); setTour(-1); try { sessionStorage.setItem('mitra-companion-dismissed', '1'); } catch { /* optional preference */ } };
   if (!visible) return null;
   return <aside className={`mitra-companion ${open ? 'is-open' : 'is-collapsed'}`} aria-label="MITRA screen guide">
-    <button ref={avatarRef} type="button" className="mitra-pet" aria-label={open ? 'Say hello to MITRA' : 'Open MITRA guide'} aria-expanded={open} disabled={busy} onClick={() => { setOpen(true); setTarget(null); setGesture('wave'); say(`Hi, I’m ${person.name}, your MITRA. What would you like to do today?`); }}>
-      <Avatar size={110} stage speaking={speaking} gesture={line ? left ? 'point-left' : 'point-right' : gesture} gaze={line ? left ? 'left' : 'right' : 'center'} elevation={elevation} mood="happy" />
-      {!open && <span>Need a hand?</span>}
+    <button ref={avatarRef} type="button" className="mitra-pet" aria-label={open ? 'Say hello to MITRA' : 'Open MITRA guide'} aria-expanded={open} disabled={busy} onClick={() => { setOpen(true); setTarget(null); setGesture('wave'); say(`Hi, I’m ${person.name}. What would you like to do today?`); }}>
+      {/* gesture === 'wave' wins over a stale pointing `line` — clicking to
+          greet also clears `target`, but useGuideTarget's own line state can
+          take one extra render to catch up, and a leftover point gesture
+          would otherwise silently swallow the namaste greeting. Falls back to
+          an open-hand "explaining" pose while actively speaking with nothing
+          more specific going on, rather than sitting still. */}
+      <TalkingHeadAvatar size={110} stage speaking={speaking} gesture={gesture === 'wave' ? 'wave' : line ? left ? 'point-left' : 'point-right' : gesture === 'idle' && speaking ? 'explain' : gesture} gaze={line ? left ? 'left' : 'right' : 'center'} elevation={elevation} mood="happy" />
     </button>
     {open && <div className="mitra-companion-bubble"><div className="mitra-companion-title"><strong>Hi, I’m {person.name} <span>✦</span></strong><button type="button" aria-label="Minimise MITRA guide" onClick={dismiss}>×</button></div><p aria-live="polite">{planning ? 'Finding the right place for you…' : copy}</p>
       {tour >= 0 ? <div className="mitra-companion-actions"><small>{tour + 1} / {TOUR.length}</small>{tour > 0 && <button type="button" disabled={busy} onClick={() => tourStep(tour - 1)}>Back</button>}<button type="button" disabled={busy} onClick={() => tour < TOUR.length - 1 ? tourStep(tour + 1) : finish()}>{tour < TOUR.length - 1 ? 'Next stop →' : 'Got it! 👍'}</button></div>

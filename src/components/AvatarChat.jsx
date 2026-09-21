@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import Ring from './Ring.jsx';
 import ChatWidget from './ChatWidgets.jsx';
 import AdvicePassport from './AdvicePassport.jsx';
@@ -313,14 +313,13 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setSpeaking(false);
     setTimeout(async () => {
       if (!inCallRef.current || session !== callSessionRef.current || msgId > startBoundary) return;
-      const first = customer.name.split(' ')[0];
       // hand-written Hindi stays; every other language is localised live
       const greeting =
         langRef.current === 'hi'
-          ? { mood: 'happy', text: `हाँ ${first} जी, मैं सुन रही हूँ। पैसों की कोई भी बात — बेझिझक पूछिए।` }
+          ? { mood: 'happy', text: 'नमस्ते, मैं मित्रा हूँ। पैसों की कोई भी बात — बेझिझक पूछिए, मैं सुन रही हूँ।' }
           : await localise({
               mood: 'happy',
-              text: `Hi ${first}, you're on a secure line with me. Ask me anything about your money — I'm listening.`,
+              text: `Hi, I'm MITRA. Ask me anything about your money — I'm listening.`,
             });
       if (!inCallRef.current || session !== callSessionRef.current || msgId > startBoundary) return;
       pushMitra(greeting, session);
@@ -664,9 +663,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   return (
     <div className="chat-wrap" ref={wrapRef}>
       <div className="chat-header" data-guide-target="nav-mitra">
-        <Ring size={52} dot={6} color="rgba(15,140,126,0.5)">
-          <Avatar size={42} speaking={speaking} mood={typing ? 'thinking' : mood} />
-        </Ring>
+        <button type="button" className="chat-header-avatar" aria-label="Open full-screen MITRA" onClick={startCall} disabled={inCall}>
+          <Ring size={52} dot={6} color="rgba(15,140,126,0.5)">
+            {/* Skipped while inCall: the full-screen call's own avatar is already
+                showing (and visually covers this one), and multiple simultaneous
+                3D avatars can exhaust the browser's WebGL context budget — that's
+                what was causing the call avatar to sometimes render blank. */}
+            {!inCall && <TalkingHeadAvatar size={42} speaking={speaking} mood={typing ? 'thinking' : mood} />}
+          </Ring>
+        </button>
         <div style={{ flex: 1 }}>
           <div className="ch-name">MITRA<sup>®</sup></div>
           <div className="ch-status">
@@ -803,7 +808,12 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   </button>
                 </div>
               )}
-              {m.id === last?.id && (m.widget || m.passport || m.cta) && (
+              {/* Skipped during a call: the chat body is fully covered by the call
+                  overlay then anyway, and AvatarGuide remounts a fresh 3D instance
+                  every time `last` moves to a new message — which was creating a
+                  burst of extra WebGL contexts, invisibly, right as a call question
+                  landed a reply, evicting the call's own (visible) avatar. */}
+              {!inCall && m.id === last?.id && (m.widget || m.passport || m.cta) && (
                 <AvatarGuide
                   targets={guideTargetsFor(m)}
                   active={activeGuideTargetFor(m)}

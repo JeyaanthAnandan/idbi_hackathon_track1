@@ -2,7 +2,7 @@ import React from 'react';
 import { customer, holdings } from '../data/customer.js';
 import { fmt, healthScore, cashflow, marketPulse, spendingAnomalies, taxGap, topNudges } from '../engine/analytics.js';
 import { levelInfo } from '../engine/xp.js';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import Ring from './Ring.jsx';
 import Counter from './Counter.jsx';
 import Icon from './Icons.jsx';
@@ -108,7 +108,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
       {/* THE integration point — avatar advisor embedded in the bank app */}
       <button className="mitra-banner" onClick={onOpenMitra}>
         <Ring size={66} dot={8} color="rgba(15,140,126,0.45)">
-          <Avatar size={54} mood="happy" />
+          <TalkingHeadAvatar size={54} mood="happy" />
         </Ring>
         <div>
           {/* Don't announce a finding when the line below it is a request for

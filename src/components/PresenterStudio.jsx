@@ -5,7 +5,16 @@ import { holdings, spendByCategory, dataQuality } from '../data/customer.js';
 import { speak, stopSpeaking, listen } from '../engine/speech.js';
 import { returnScenario } from '../data/policy.js';
 import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
+import { supportsTalkingHead } from '../engine/talkingHeadMotion.js';
 import { CHARACTERS, getCharacter, savedCharacter, saveCharacter } from '../engine/characters.js';
+
+// Only one 3D avatar exists today (see talkingHeadMotion.js) — on a device that
+// can render it, the stage always shows that single character regardless of
+// which of the 4 SVG characters is selected, so the "change character" picker
+// (which only affects the 2D SVG) would be misleading there. It still applies
+// normally on devices where TalkingHeadAvatar falls back to the SVG avatar.
+const hideCharacterPicker = supportsTalkingHead();
 import '../presenter.css';
 import '../presenter-integrated.css';
 
@@ -85,7 +94,7 @@ export default function PresenterStudio({ onClose, riskProfile = 'Balanced', dem
   const scene = useMemo(() => buildPresenterScene({ topic, holdings, spending: initialSpending || spendByCategory, monthly, years, rate, series }), [topic, monthly, years, rate, series, initialSpending]);
   const current = scene.steps[Math.min(step, scene.steps.length - 1)];
   const right = (step > scene.steps.length / 2) !== flipped;
-  const gesture = completed ? 'thumbs-up' : listening ? 'listen' : previewGesture || (current.target ? right ? 'point-left' : 'point-right' : 'idle');
+  const gesture = completed ? 'thumbs-up' : listening ? 'listen' : previewGesture || (current.target ? right ? 'point-left' : 'point-right' : speaking ? 'explain' : 'idle');
 
   useEffect(() => {
     actionTimer.current = setTimeout(() => setPreviewGesture(null), 2600);
@@ -269,20 +278,20 @@ export default function PresenterStudio({ onClose, riskProfile = 'Balanced', dem
       <nav aria-label="Presentation topic">{TOPICS.map(([id, label], i) => <button key={id} type="button" aria-pressed={topic === id} onClick={() => selectTopic(id)} className={topic === id ? 'active' : ''}><span>0{i + 1}</span>{label}</button>)}</nav>
       <div className="presenter-stage-tools"><button type="button" onClick={() => setFlipped((v) => !v)}>⇄ Switch sides</button><button type="button" aria-pressed={voice} onClick={() => { interrupt(); setVoice((v) => !v); }}>Voice {voice ? 'on' : 'off'}</button></div>
     </div>
-    {embedded && <button className="integrated-character-toggle" type="button" aria-expanded={chooseOpen} onClick={() => setChooseOpen((value) => !value)}><Avatar character={character} size={32} /><span>Your guide: <strong>{person.name}</strong></span><span>{chooseOpen ? 'Done' : 'Change character'}⌄</span></button>}
-    <section className="presenter-character-picker" aria-label="Choose your animated guide" hidden={!chooseOpen}>
+    {embedded && !hideCharacterPicker && <button className="integrated-character-toggle" type="button" aria-expanded={chooseOpen} onClick={() => setChooseOpen((value) => !value)}><Avatar character={character} size={32} /><span>Your guide: <strong>{person.name}</strong></span><span>{chooseOpen ? 'Done' : 'Change character'}⌄</span></button>}
+    {!hideCharacterPicker && <section className="presenter-character-picker" aria-label="Choose your animated guide" hidden={!chooseOpen}>
       <div><strong>Pick your money buddy</strong><span>A little personality. The same clear numbers.</span></div>
       <div className="presenter-character-options">{CHARACTERS.map((choice) => <button type="button" key={choice.id} aria-pressed={character === choice.id} className={character === choice.id ? 'chosen' : ''} onClick={() => {
         interrupt(); setCharacter(choice.id); saveCharacter(choice.id); setPreviewGesture('wave');
         actionTimer.current = setTimeout(() => setPreviewGesture(null), 2600);
       }}><Avatar character={choice.id} size={46} /><span><strong>{choice.name}</strong><small>{choice.label}</small></span>{character === choice.id && <i aria-hidden="true">✓</i>}</button>)}</div>
-    </section>
+    </section>}
     <div className={`presenter-stage ${right ? 'presenter-on-right' : ''}`}>
       <section className={`presenter-person ${speaking ? 'is-talking' : ''} ${completed ? 'is-celebrating' : ''}`} aria-label={`${person.name}, animated presenter`}>
         <div className="presenter-person-heading"><span className={`presenter-live-dot ${speaking || listening ? 'active' : ''}`} /><span>{listening ? 'Listening to you' : speaking ? 'Explaining your numbers' : 'Meet your money guide'}</span></div>
         <div className="presenter-character-bubble" aria-live="polite">{completed ? 'You’ve got this! ✨' : listening ? 'I’m all ears…' : sample ? `Hey! I’m ${person.name} 👋` : current.target ? 'Let’s look right here.' : 'Big numbers, small steps.'}</div>
         <div className="presenter-avatar-wrap">
-          <Avatar character={character} size={330} stage speaking={speaking} mood={completed ? 'excited' : listening ? 'thinking' : 'happy'} gesture={gesture} gaze={current.target && !completed ? right ? 'left' : 'right' : 'center'} elevation={elevation} />
+          <TalkingHeadAvatar character={character} size={330} stage speaking={speaking} mood={completed ? 'excited' : listening ? 'thinking' : 'happy'} gesture={gesture} gaze={current.target && !completed ? right ? 'left' : 'right' : 'center'} elevation={elevation} />
           {completed && <div className="presenter-celebration" aria-hidden="true"><span>✦</span><span>✧</span><span>✦</span></div>}
         </div>
         <div className="presenter-person-name"><strong>{person.name}<span>●</span></strong><span>{person.style === 'playful' ? 'Your curious money buddy' : 'Your friendly wealth guide'}</span></div>

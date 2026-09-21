@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import { signUp, logIn } from '../engine/auth.js';
 import { customer } from '../data/customer.js';
 
@@ -43,7 +43,7 @@ export default function Auth({ onAuthed }) {
     <div className="onboard auth-screen">
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="happy" />
+          <TalkingHeadAvatar size={96} mood="happy" />
         </div>
       </div>
 

@@ -9,7 +9,7 @@ import Auth from './components/Auth.jsx';
 import Simulator from './components/Simulator.jsx';
 import WebApp from './components/WebApp.jsx';
 import DataStatus from './components/DataStatus.jsx';
-import Avatar from './components/Avatar.jsx';
+import TalkingHeadAvatar from './components/TalkingHeadAvatar.jsx';
 import LogoutButton from './components/LogoutButton.jsx';
 import { listVoices, getPreferredVoiceName, setPreferredVoiceName, speak } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
@@ -21,6 +21,7 @@ import {
 } from './engine/sarvam.js';
 import { getSession, isOnboarded, markOnboarded, getStoredRiskProfile, setStoredRiskProfile } from './engine/auth.js';
 import { PERSONA_LIST, getActivePersonaId, switchPersona, customer } from './data/customer.js';
+import { getAvatarMode, setAvatarMode } from './engine/avatarMode.js';
 
 const THEME_KEY = 'mitra_theme';
 const getTheme = () => localStorage.getItem(THEME_KEY) || 'system';
@@ -53,6 +54,37 @@ function ThemePicker() {
               applyTheme(id);
               setTheme(id);
             }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AvatarModePicker() {
+  const [mode, setMode] = useState(getAvatarMode());
+  const options = [
+    ['3d', '3D (animated)'],
+    ['2d', '2D (classic)'],
+  ];
+  return (
+    <>
+      <label className="settings-label">MITRA's avatar</label>
+      <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6, marginBottom: 6 }}>
+        3D is a real-time lip-synced avatar. 2D is the original hand-drawn guide — with its own
+        pointing gestures and on-screen guide line — and is the safer choice on older devices.
+      </p>
+      <div className="settings-row" role="radiogroup" aria-label="MITRA's avatar" style={{ gap: 8 }}>
+        {options.map(([id, label]) => (
+          <button
+            key={id}
+            className="ghost-btn"
+            role="radio"
+            aria-checked={mode === id}
+            style={mode === id ? { background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)' } : undefined}
+            onClick={() => { setAvatarMode(id); setMode(id); }}
           >
             {label}
           </button>
@@ -257,6 +289,7 @@ function Settings({ onConnect }) {
       <p className="settings-note">Fetch or refresh IDBI sandbox accounts and transactions. Review the response before using it with MITRA.</p>
       <button className="primary-btn" onClick={onConnect}>Connect / refresh data</button>
       <ThemePicker />
+      <AvatarModePicker />
       <PersonaPicker />
 
       <SarvamSection />
@@ -577,7 +610,7 @@ export default function App() {
                   aria-label={label}
                 >
                   <span className="orb-ring">
-                    <Avatar size={36} mood="happy" />
+                    <TalkingHeadAvatar size={36} mood="happy" />
                   </span>
                 </button>
               ) : (

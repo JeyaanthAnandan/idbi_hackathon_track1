@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Avatar from './Avatar.jsx';
+import TalkingHeadAvatar from './TalkingHeadAvatar.jsx';
 import Onboarding from './Onboarding.jsx';
 import ConnectAccounts from './ConnectAccounts.jsx';
 import UploadStatements from './UploadStatements.jsx';
@@ -31,7 +31,7 @@ export default function OnboardingChoice({ onDone }) {
     <div className="onboard">
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div className="avatar-svg-wrap" style={{ width: 96, height: 96 }}>
-          <Avatar size={96} mood="happy" />
+          <TalkingHeadAvatar size={96} mood="happy" />
         </div>
       </div>
 

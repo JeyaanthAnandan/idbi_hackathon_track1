@@ -1,5 +1,5 @@
 export const CHARACTERS = [
-  { id: 'asha', name: 'Asha', label: 'Professional woman', style: 'professional', gender: 'girl', color: '#087d70', skin: '#dca17b', skinLight: '#eab58e', hair: '#32231f' },
+  { id: 'asha', name: 'MITRA', label: 'Professional woman', style: 'professional', gender: 'girl', color: '#087d70', skin: '#dca17b', skinLight: '#eab58e', hair: '#32231f' },
   { id: 'aarav', name: 'Aarav', label: 'Professional man', style: 'professional', gender: 'boy', color: '#4163ab', skin: '#bc805c', skinLight: '#d29a73', hair: '#251e1c' },
   { id: 'tara', name: 'Tara', label: 'Playful girl', style: 'playful', gender: 'girl', color: '#c46843', skin: '#d49b6e', skinLight: '#e6b185', hair: '#382620' },
   { id: 'kabir', name: 'Kabir', label: 'Playful boy', style: 'playful', gender: 'boy', color: '#8770ba', skin: '#cb8c60', skinLight: '#dea176', hair: '#29211e' },

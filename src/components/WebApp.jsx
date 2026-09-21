@@ -156,7 +156,7 @@ function HomePanel({ riskProfile, onAsk }) {
             {dataQuality.portfolioComplete === false ? 'Only part of your portfolio is connected' : `${Math.abs(gap.gap).toFixed(0)}% ${over ? 'over' : 'under'} target in ${gap.name.toLowerCase()}`}
           </div>
           <p className="web-card-body">
-            {dataQuality.portfolioComplete === false ? 'Connect investments and liabilities before assessing allocation or investable cash.' : 'Review your confirmed portfolio and any tax implications before changing the allocation.'}
+            {dataQuality.portfolioComplete === false ? (dataQuality.hasLiabilities ? 'Your IDBI loans are connected. Connect your investments before assessing allocation or investable cash.' : 'Connect investments and liabilities before assessing allocation or investable cash.') : 'Review your confirmed portfolio and any tax implications before changing the allocation.'}
           </p>
           <button
             className="web-btn web-btn-primary"
@@ -412,7 +412,7 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel, onConne
         </header>
 
         <div className="web-scroll" key={active}>
-          <DataStatus onConnect={onConnect} />
+          <DataStatus onConnect={onConnect} onAsk={ask} />
           {presentation ? <div className="web-span web-presenter">
             <PresenterStudio key={presentation.key} embedded riskProfile={riskProfile}
               initialTopic={presentation.topic} initialScenario={presentation.scenario}

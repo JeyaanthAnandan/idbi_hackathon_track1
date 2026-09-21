@@ -3,7 +3,7 @@ import { parseBankStatementCSV, parseHoldingsCSV } from '../src/engine/statement
 import { buildCustomPersona } from '../src/engine/personaBuilder.js';
 import { validPersona, validRisk, validState } from './validation.mjs';
 import { issueAdviceReceipt, normalizeAdvicePassport, verifyAdviceReceiptChain } from './adviceReceipts.mjs';
-import { fetchIdbiConsentSnapshot, fetchIdbiDirectSnapshot, idbiEnabled, requestIdbiConsent } from './idbi.mjs';
+import { DEFAULT_SANDBOX_CUSTOMER, fetchIdbiConsentSnapshot, fetchIdbiDirectSnapshot, idbiEnabled, listSandboxCustomers, requestIdbiConsent, resolveSandboxCustomer } from './idbi.mjs';
 import {
   audit, hashPassword, newId, newToken, passwordMatches, publicSession,
   readStore, tokenHash, updateStore,
@@ -68,7 +68,7 @@ async function createSession(db, user, res) {
 function bootstrap(user) {
   return {
     available: true,
-    connectors: { idbi: { enabled: idbiEnabled(), mode: 'SANDBOX' } },
+    connectors: { idbi: { enabled: idbiEnabled(), mode: 'SANDBOX', customers: listSandboxCustomers(), defaultCustomer: DEFAULT_SANDBOX_CUSTOMER } },
     session: user ? publicSession(user) : null,
     profile: user?.profile || null,
     onboarded: Boolean(user?.onboarded),
@@ -195,9 +195,13 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/idbi/snapshot') {
       if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox connection is disabled', 'The server must enable the IDBI sandbox connector. No local fixture was substituted.');
-      const snapshot = await fetchIdbiDirectSnapshot();
+      const input = await body(req);
+      const customer = input.customer ?? DEFAULT_SANDBOX_CUSTOMER;
+      try { resolveSandboxCustomer(customer); } catch { return problem(res, 422, 'Unknown sandbox customer', 'Choose one of the listed IDBI sandbox customers.'); }
+      const snapshot = await fetchIdbiDirectSnapshot({ customer });
       snapshot.fetchedAt = new Date().toISOString();
-      await updateStore((db) => audit(db, user.id, 'idbi.snapshot.fetched', { transactionCount: snapshot.transactions.length, dataAsOf: snapshot.dataAsOf }));
+      snapshot.customer = customer;
+      await updateStore((db) => audit(db, user.id, 'idbi.snapshot.fetched', { customer, transactionCount: snapshot.transactions.length, loanCount: snapshot.liabilities?.loans.length ?? null, dataAsOf: snapshot.dataAsOf }));
       return json(res, 200, snapshot);
     }
 

@@ -13,6 +13,9 @@ export function validPersona(p) {
     && p.spendByCategory.every((c) => record(c) && typeof c.category === 'string' && amount(c.amount) && amount(c.avg3m))
     && p.subscriptions.every((s) => record(s) && typeof s.lastUsed === 'string' && amount(s.amount))
     && p.loans.every((l) => record(l) && amount(l.balance) && amount(l.rate) && amount(l.emi))
+    && (p.liabilities === undefined || p.liabilities === null || (record(p.liabilities) && Array.isArray(p.liabilities.loans)
+      && p.liabilities.loans.every((l) => record(l) && amount(l.outstanding) && amount(l.dpd) && amount(l.overdueAmount))
+      && amount(p.liabilities.totalOutstanding)))
     && ['tax', 'insurance', 'peers', 'roundupStats'].every((key) => record(p[key]));
 }
 

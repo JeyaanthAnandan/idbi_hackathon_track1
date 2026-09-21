@@ -571,7 +571,7 @@ export default function App() {
               />
             ) : (
               <>
-                <DataStatus onConnect={connectData} />
+                <DataStatus onConnect={connectData} onAsk={askMitra} />
                 {tab === 'home' && (
                   <BankHome onOpenMitra={() => setTab('mitra')} onAsk={askMitra} riskProfile={riskProfile} />
                 )}

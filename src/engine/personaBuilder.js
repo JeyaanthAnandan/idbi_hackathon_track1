@@ -23,6 +23,39 @@ function defaultGoals({ monthlyIncome, savingsBalance, age }) {
   ];
 }
 
+// Months to clear a loan at a fixed EMI, or null when the EMI does not even
+// cover the interest (then the balance never falls and there is nothing to model).
+export function monthsToClear(balance, annualRate, emi) {
+  const r = annualRate / 1200;
+  if (!(balance > 0) || !(emi > 0) || !(r >= 0)) return null;
+  if (r === 0) return Math.ceil(balance / emi);
+  const ratio = 1 - (balance * r) / emi;
+  return ratio > 0 ? Math.ceil(-Math.log(ratio) / Math.log(1 + r)) : null;
+}
+
+// What the bank says the customer owes. Every itemised loan is kept for display
+// and Q&A, but only loans whose own numbers can describe a loan being repaid
+// become `persona.loans` — the field prepay-vs-invest amortises. Reported
+// liabilities are never netted against holdings: the sandbox loan figures do
+// not reconcile with each other, and a net-worth number built on them would
+// be stated with more confidence than the data earns.
+function buildLiabilities(snapshots) {
+  const snapshot = snapshots.find((s) => s?.liabilities?.status === 'reported');
+  if (!snapshot) return { liabilities: null, loans: [] };
+  const { liabilities } = snapshot;
+  const loans = liabilities.loans
+    .filter((loan) => loan.modellable && loan.terms)
+    .map((loan) => ({
+      name: `IDBI loan ${loan.maskedAccountNumber}`,
+      balance: loan.outstanding,
+      rate: loan.terms.rate,
+      emi: loan.terms.emi,
+      monthsLeft: monthsToClear(loan.outstanding, loan.terms.rate, loan.terms.emi),
+    }))
+    .filter((loan) => loan.monthsLeft !== null);
+  return { liabilities: { ...liabilities, fetchedAt: snapshot.fetchedAt || null, dataAsOf: snapshot.dataAsOf || null }, loans };
+}
+
 // `sources` name which providers/files fed this persona — shown in the UI
 // so the customer can see what MITRA actually looked at.
 export function buildCustomPersona({ name, age, city, holdings = [], transactions = [], sources = [], snapshots = [] }) {
@@ -34,8 +67,9 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
   const savingsBalance = holdings.filter((h) => h.type === 'Savings Account').reduce((sum, h) => sum + h.value, 0);
   const totalCredits = Math.round(transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
   const totalDebits = Math.round(transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0) * 100) / 100;
-  const connections = snapshots.map(s => ({ mode: s.mode, fetchedAt: s.fetchedAt, dataAsOf: s.dataAsOf, consent: s.consent, provenance: s.provenance, coverage: s.coverage, warnings: s.warnings || [], accounts: s.accounts || (s.account ? [{ balance: s.account.balance, availableBalance: s.account.availableBalance, effectiveAvailableBalance: s.account.effectiveAvailableBalance, lienBalance: s.account.lienBalance }] : []) }));
+  const connections = snapshots.map(s => ({ mode: s.mode, fetchedAt: s.fetchedAt, dataAsOf: s.dataAsOf, consent: s.consent, provenance: s.provenance, coverage: s.coverage, warnings: s.warnings || [], accounts: s.accounts || (s.account ? [{ balance: s.account.balance, availableBalance: s.account.availableBalance, effectiveAvailableBalance: s.account.effectiveAvailableBalance, lienBalance: s.account.lienBalance, lien: s.account.lien || null }] : []) }));
   const finalHoldings = holdings;
+  const { liabilities, loans } = buildLiabilities(snapshots);
 
   const riskProfile = deriveRiskProfile({ holdings: finalHoldings, monthlySummary, age });
 
@@ -54,7 +88,8 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
     },
     holdings: finalHoldings,
     fundFacts: null,
-    loans: [],
+    loans,
+    liabilities,
     monthlySummary,
     spendByCategory,
     subscriptions,
@@ -74,6 +109,7 @@ export function buildCustomPersona({ name, age, city, holdings = [], transaction
       portfolioComplete: snapshots.length ? snapshots.every(s => s.coverage?.portfolioComplete === true) : undefined,
       observedCashMovement: { transactionCount: transactions.length, totalCredits, totalDebits, net: Math.round((totalCredits - totalDebits) * 100) / 100, fromDate: transactions.map(t => t.date).sort()[0] || null, toDate: latestTransactionDate(transactions) },
       hasHoldings: holdings.length > 0,
+      hasLiabilities: Boolean(liabilities),
       hasTax: false,
       hasInsurance: false,
       confidence: Math.min(0.45 + (transactions.length ? monthlySummary.length : 0) * 0.08 + (holdings.length ? 0.15 : 0), 0.9),

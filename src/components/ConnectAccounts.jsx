@@ -22,10 +22,56 @@ function ProviderBadge({ id }) {
   );
 }
 
+const rupees = (value) => Number.isFinite(value) ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value) : 'Not supplied';
+const dateLabel = (iso) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+};
+
+// What IDBI lists as owed. Shown for review before anything is saved, with the
+// reconciliation problems in plain view — these figures are reported, not verified.
+export function LiabilitiesSummary({ liabilities }) {
+  if (!liabilities?.loans) return null;
+  return (
+    <div role="region" aria-label="Loans reported by IDBI" style={{ marginTop: 16, lineHeight: 1.7 }}>
+      <div style={{ fontWeight: 700 }}>Loans reported by IDBI · {liabilities.loans.length} account{liabilities.loans.length === 1 ? '' : 's'}</div>
+      <div style={{ fontSize: 12.5 }}>
+        {rupees(liabilities.totalOutstanding)} outstanding
+        {liabilities.allStandard ? ' · all standard, none overdue' : ' · some overdue or non-standard'}
+      </div>
+      <div style={{ overflowX: 'auto', marginTop: 6 }}>
+        <table style={{ width: '100%', fontSize: 12, textAlign: 'left' }}>
+          <caption style={{ textAlign: 'left', color: 'var(--ink-soft)' }}>Itemised by IDBI's loan list</caption>
+          <thead><tr><th>Account</th><th>Outstanding</th><th>Days past due</th><th>Status</th><th>Contract</th></tr></thead>
+          <tbody>
+            {liabilities.loans.map((loan) => (
+              <tr key={loan.accountId}>
+                <td>{loan.maskedAccountNumber}</td>
+                <td>{rupees(loan.outstanding)}</td>
+                <td>{loan.dpd}</td>
+                <td>{loan.npaStatus === 'SA' ? 'Standard' : loan.npaStatus || '—'}</td>
+                <td>{loan.terms ? `${loan.terms.rate}% · EMI ${rupees(loan.terms.emi)}` : 'No terms'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {liabilities.exposure?.totalOutstanding != null && (
+        <div style={{ fontSize: 12, marginTop: 6 }}>
+          IDBI's exposure summary: {rupees(liabilities.exposure.totalOutstanding)} outstanding of {rupees(liabilities.exposure.totalLimit)} sanctioned across all facilities.
+        </div>
+      )}
+      {(liabilities.warnings || []).map((warning, index) => <p key={index} style={{ fontSize: 12, color: 'var(--orange)', margin: '6px 0 0' }}>{warning}</p>)}
+    </div>
+  );
+}
+
 export default function ConnectAccounts({ onBack, riskProfileOverride = null }) {
   const session = getSession();
   const boot = getBootstrap();
   const idbiEnabled = Boolean(boot.connectors?.idbi?.enabled);
+  const sandboxCustomers = boot.connectors?.idbi?.customers || [];
+  const [customerId, setCustomerId] = useState(boot.connectors?.idbi?.defaultCustomer || sandboxCustomers[0]?.id || '');
   const [connected, setConnected] = useState({}); // providerId -> { holdings?, transactions? }
   const [phase, setPhase] = useState('list'); // list | consent | consent-pending | connecting | details
   const [activeId, setActiveId] = useState(null);
@@ -47,7 +93,7 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
     setError('');
     setPhase('connecting');
     try {
-      const result = await fetchIdbiSnapshot();
+      const result = await fetchIdbiSnapshot(customerId || undefined);
       setConnected(c => ({ ...c, bank: result }));
       setPhase('details');
     } catch (err) {
@@ -194,8 +240,9 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
           <div><strong>{transactions.length} transactions · {holdings.length} holdings</strong></div>
           {bank?.fetchedAt && <div>Fetched: {new Date(bank.fetchedAt).toLocaleString()}</div>}
           {bank?.dataAsOf && <div>Latest transaction: {bank.dataAsOf}</div>}
-          {bank?.account && <><div>Reported balance: {money(bank.account.balance)}</div><div>Available balance: {money(bank.account.availableBalance)}</div><div>Lien: {money(bank.account.lienBalance)}</div></>}
+          {bank?.account && <><div>Reported balance: {money(bank.account.balance)}</div><div>Available balance: {money(bank.account.availableBalance)}</div><div>Lien: {money(bank.account.lienBalance)}{bank.account.lien?.endDate ? ` · held until ${dateLabel(bank.account.lien.endDate)}` : ''}</div></>}
         </div>
+        <LiabilitiesSummary liabilities={bank?.liabilities} />
         {transactions.length > 0 && <div style={{ overflowX: 'auto', marginTop: 16 }}><table style={{ width: '100%', fontSize: 12, textAlign: 'left' }}><caption>First five returned transactions</caption><thead><tr><th>Date</th><th>Description</th><th>Amount</th></tr></thead><tbody>{transactions.slice(0, 5).map((t, index) => <tr key={`${t.sourceId}-${index}`}><td>{t.date}</td><td>{t.description}</td><td>{t.type === 'debit' ? '−' : '+'}{money(t.amount)}</td></tr>)}</tbody></table></div>}
         {bank?.provenance?.apis && <p className="ob-sub" style={{ fontSize: 11 }}>Source: {bank.provenance.apis.join(' · ')}</p>}
         {snapshots.flatMap(s => s.warnings || []).map((warning, index) => <p key={index} style={{ fontSize: 12, color: 'var(--orange)' }}>{warning}</p>)}
@@ -228,8 +275,28 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
       <div role="status" style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
         {!boot.available ? 'The account service is unavailable on this site. A running MITRA server is required to connect.' : idbiEnabled ? 'IDBI sandbox connector is enabled. Each fetch calls the gateway.' : 'The IDBI sandbox connector is disabled on this server. Local demo data will not be substituted.'}
       </div>
+      {sandboxCustomers.length > 1 && (
+        <>
+          <label className="settings-label">Sandbox customer</label>
+          <div className="settings-row" role="radiogroup" aria-label="Sandbox customer" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {sandboxCustomers.map((c) => (
+              <button
+                key={c.id}
+                className="ghost-btn"
+                role="radio"
+                aria-checked={customerId === c.id}
+                disabled={!idbiEnabled}
+                style={customerId === c.id ? { background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)' } : undefined}
+                onClick={() => setCustomerId(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <button className="primary-btn" onClick={fetchDirect} disabled={!idbiEnabled}>Fetch IDBI sandbox data</button>
-      <p className="ob-sub" style={{ fontSize: 12 }}>Direct sandbox test data · account discovery, balance and statement APIs · no personal bank login</p>
+      <p className="ob-sub" style={{ fontSize: 12 }}>Direct sandbox test data · accounts, balances, lien, statement, loans and credit exposure · no personal bank login</p>
       {/* The AA consent request and redirect legs (APIs 590/592) return 200 and
           a live OneMoney redirect URL. The statement leg (739) then returns a
           link reference that does not match the one the consent granted, so the

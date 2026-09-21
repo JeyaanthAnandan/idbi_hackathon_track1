@@ -15,6 +15,7 @@ import {
   modelPortfolios,
   totalWealth,
   dataQuality,
+  liabilities,
 } from '../data/customer.js';
 import {
   fmt,
@@ -47,6 +48,12 @@ import { goals } from '../data/customer.js';
 import { sumAction } from './portfolioState.js';
 import { POLICY, returnScenario } from '../data/policy.js';
 
+// ISO date → "8 Jul 2027". UTC so a date-only string never slips a day.
+const fmtDate = (iso) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+};
+
 const INTENTS = [
   { id: 'greeting', kw: ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening'] },
   { id: 'portfolio', kw: ['portfolio', 'holdings', 'net worth', 'wealth', 'my investments', 'where is my money', 'asset'] },
@@ -75,6 +82,9 @@ const INTENTS = [
   { id: 'human', kw: ['human', 'real person', 'relationship manager', 'talk to rm', 'talk to someone', 'branch', 'call me', 'speak to advisor', 'human advisor'] },
   { id: 'xray', kw: ['x-ray my portfolio', 'xray my portfolio', 'x-ray', 'xray', 'fund fees', 'expense ratio', 'overlap', 'portfolio doctor', 'hidden fees', 'regular plan', 'direct plan'] },
   { id: 'harvest', kw: ['harvest', 'ltcg', 'capital gains', 'tax harvest', 'harvesting'] },
+  // What the bank reports the customer owes — distinct from prepay, which needs
+  // loan terms that actually reconcile before it will model anything.
+  { id: 'liabilities', kw: ['what do i owe', 'do i owe', 'my loans', 'my loan', 'my debt', 'my debts', 'liabilities', 'overdue', 'past due', 'days past due', 'outstanding', 'loan balance', 'loan status', 'credit exposure', 'any loans', 'any loan', 'emi'] },
   { id: 'prepay', kw: ['prepay', 'pre-pay', 'foreclose', 'pay off my loan', 'loan or invest', 'prepay or invest', 'education loan', 'close my loan'] },
   { id: 'persona', kw: ['persona', 'money personality', 'kind of spender', 'my money style', 'money dna', 'what am i like with money'] },
   { id: 'collision', kw: ['collision', 'conflict', 'competing goals', 'goal priority', 'prioritise my goals', 'prioritize my goals', 'enough for all my goals', 'afford all my goals'] },
@@ -239,9 +249,48 @@ function respondCore(text, riskProfile = 'Balanced') {
   // Everything a single verified snapshot supports, named up front, so the
   // customer is steered at the four answers that work instead of discovering
   // the eight that cannot by hitting each one.
-  const BANK_SNAPSHOT_CHIPS = ['What is usable right now?', 'Analyse my spending', 'Show my portfolio', 'What data do I need?'];
+  const BANK_SNAPSHOT_CHIPS = ['What is usable right now?', 'Analyse my spending', 'Show my portfolio', ...(liabilities?.loans?.length ? ['What do I owe?'] : []), 'What data do I need?'];
   if (intent === 'greeting' && bankSnapshots.length && movement) {
     return { mood: 'happy', text: `Hi ${firstName}, your IDBI sandbox snapshot contains ${movement.transactionCount} transactions and ${holdings.length} holding(s), with reported balances totalling ${fmt(totalWealth())}. From one statement period I can break down what is actually usable, explain the recorded cash movements, and show exactly which data is still missing. I will not score your finances or propose an amount to invest on this much history.${snapshotNote}`, chips: BANK_SNAPSHOT_CHIPS };
+  }
+
+  // What the bank says the customer owes. Facts only — outstanding, days past
+  // due and asset class come from IDBI's loan-list API. Nothing is netted
+  // against holdings and no repayment plan is inferred, because the sandbox's
+  // own loan figures do not reconcile (see the assessment in server/idbi.mjs).
+  if (intent === 'liabilities') {
+    if (!liabilities?.loans?.length) {
+      return {
+        mood: 'thinking',
+        text: liabilities
+          ? 'IDBI returned no loan accounts for this customer, so there is no debt for me to report.'
+          : 'No loan or credit data is connected, so I cannot say what you owe. Use “Connect / refresh data” to fetch it from the IDBI sandbox.',
+        chips: ['What data do I need?', 'What is usable right now?'],
+      };
+    }
+    const loans = liabilities.loans;
+    const troubled = loans.filter((l) => l.dpd > 0 || l.overdueAmount > 0 || l.npaStatus !== 'SA');
+    const standing = troubled.length
+      ? `${troubled.length} of them ${troubled.length === 1 ? 'shows' : 'show'} an overdue amount or a non-standard status: ${troubled.map((l) => `${l.maskedAccountNumber} (${l.dpd} days past due, ${fmt(l.overdueAmount)} overdue, status ${l.npaStatus || 'unknown'})`).join('; ')}.`
+      : `${loans.length === 1 ? 'It is' : 'All of them are'} classed standard, with nothing overdue and 0 days past due.`;
+    const gap = liabilities.unitemisedOutstanding
+      ? ` IDBI's exposure summary shows ${fmt(liabilities.exposure.totalOutstanding)} outstanding in total, so ${fmt(liabilities.unitemisedOutstanding)} is not itemised in the loan list and I cannot attribute it to a loan.`
+      : '';
+    const modelling = loans.some((l) => !l.modellable)
+      ? ' The contract terms I can see do not reconcile with these balances, so I will not model repayment or prepayment from them.'
+      : '';
+    const fetched = liabilities.fetchedAt ? ` These are IDBI sandbox figures fetched ${fmtDate(liabilities.fetchedAt)}, not a live loan statement.` : '';
+    return {
+      mood: 'thinking',
+      text: `IDBI reports ${loans.length} loan account${loans.length === 1 ? '' : 's'} with ${fmt(liabilities.totalOutstanding)} outstanding. ${standing}${gap}${modelling}${fetched}`,
+      why: [
+        'Source: IDBI loan-overdue API (402) — outstanding balance, days past due and asset classification',
+        liabilities.exposure ? 'Source: IDBI customer-limit API (442) — total exposure across all facilities' : null,
+        loans.some((l) => l.terms) ? 'Source: IDBI loan-account API (391) — contract rate, EMI and tenure' : null,
+        'Liabilities are not netted against your holdings, and no repayment plan is inferred from them',
+      ].filter(Boolean),
+      chips: ['Should I prepay or invest?', 'What is usable right now?', 'What data do I need?'],
+    };
   }
 
   // Balance composition — reported vs available vs effective vs lien. Every
@@ -259,10 +308,11 @@ function respondCore(text, riskProfile = 'Balanced') {
       Number.isFinite(a.lienBalance) && a.lienBalance > 0 ? `${fmt(a.lienBalance)} under lien` : null,
     ].filter(Boolean).join(', ')).filter(Boolean);
     const lien = withBalances.reduce((sum, a) => sum + (Number.isFinite(a.lienBalance) ? a.lienBalance : 0), 0);
+    const lienEnds = withBalances.map((a) => a.lien?.endDate).filter(Boolean).sort().at(-1) || null;
     const spendable = withBalances.reduce((sum, a) => sum + (Number.isFinite(a.effectiveAvailableBalance) ? a.effectiveAvailableBalance : Number.isFinite(a.availableBalance) ? a.availableBalance : 0), 0);
     return {
       mood: 'happy',
-      text: `The bank reports ${lines.join('; ')}. Treat ${fmt(spendable)} as the usable figure, not the headline balance${lien > 0 ? ` — ${fmt(lien)} is held under lien and cannot be withdrawn` : ''}. These are the bank's own reported amounts, not a figure I derived.${snapshotNote}`,
+      text: `The bank reports ${lines.join('; ')}. Treat ${fmt(spendable)} as the usable figure, not the headline balance${lien > 0 ? ` — ${fmt(lien)} is held under lien and cannot be withdrawn${lienEnds ? ` until ${fmtDate(lienEnds)}` : ''}` : ''}. These are the bank's own reported amounts, not a figure I derived.${snapshotNote}`,
       why: [
         'Source: IDBI account-enquiry API (365), reported balance types',
         'Effective available balance is used as usable cash where the bank supplies it',
@@ -274,7 +324,7 @@ function respondCore(text, riskProfile = 'Balanced') {
   if (/what data|data coverage|data quality|connected data|data missing/i.test(text)) {
     const accounts = bankSnapshots.flatMap(s => s.accounts || []);
     const balances = accounts.map(a => [Number.isFinite(a.availableBalance) ? `available balance ${fmt(a.availableBalance)}` : null, Number.isFinite(a.effectiveAvailableBalance) ? `effective available balance ${fmt(a.effectiveAvailableBalance)}` : null, Number.isFinite(a.lienBalance) ? `lien amount ${fmt(a.lienBalance)}` : null].filter(Boolean).join(', ')).filter(Boolean);
-    return { mood: 'thinking', text: `I have ${holdings.length} connected holding(s) and ${movement?.transactionCount || 0} transactions across ${dataQuality.transactionMonths} observed months. ${cf.incomeKnown ? 'Income-labelled credits are present.' : 'Identifiable income is missing; credits alone do not establish salary.'} ${balances.length ? `The bank reports ${balances.join('; ')}. ` : ''}Tax, insurance and full loan details require separate verified sources. ${bankSnapshots.flatMap(s => s.warnings || []).join(' ')}${snapshotNote}`, chips: bankSnapshots.length ? ['What is usable right now?', 'Analyse my spending', 'Show my portfolio'] : ['Show my portfolio', 'Analyse my spending'] };
+    return { mood: 'thinking', text: `I have ${holdings.length} connected holding(s) and ${movement?.transactionCount || 0} transactions across ${dataQuality.transactionMonths} observed months. ${cf.incomeKnown ? 'Income-labelled credits are present.' : 'Identifiable income is missing; credits alone do not establish salary.'} ${balances.length ? `The bank reports ${balances.join('; ')}. ` : ''}${liabilities?.loans?.length ? `IDBI's loan records are connected (${liabilities.loans.length} loan account${liabilities.loans.length === 1 ? '' : 's'}; ask “What do I owe?”). Tax, insurance and investments outside IDBI still require separate verified sources.` : 'Tax, insurance and full loan details require separate verified sources.'} ${bankSnapshots.flatMap(s => s.warnings || []).join(' ')}${snapshotNote}`, chips: bankSnapshots.length ? ['What is usable right now?', 'Analyse my spending', 'Show my portfolio'] : ['Show my portfolio', 'Analyse my spending'] };
   }
   if (intent === 'spending' && movement && (!cf.incomeKnown || dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend || bankSnapshots.length)) {
     // The running balance carried on each transaction and the balance the
@@ -754,6 +804,13 @@ function respondCore(text, riskProfile = 'Balanced') {
     case 'prepay': {
       const pv = prepayVsInvest(50000, riskProfile);
       if (!pv.available) {
+        if (liabilities?.loans?.length) {
+          return {
+            mood: 'thinking',
+            text: `IDBI reports ${liabilities.loans.length} loan account${liabilities.loans.length === 1 ? '' : 's'} (${fmt(liabilities.totalOutstanding)} outstanding), but their own figures do not add up — the reported balance is larger than what was disbursed, or the EMI is smaller than a month's interest. I would rather tell you that than model a repayment that cannot be true. Ask “What do I owe?” for the loan details.`,
+            chips: ['What do I owe?', 'Talk to a human advisor'],
+          };
+        }
         return { mood: 'thinking', text: 'No verified active-loan data is connected, so I cannot compare prepayment with investing.', chips: ['Show my portfolio', 'Talk to a human advisor'] };
       }
       if (pv.loan.balance <= 0) {

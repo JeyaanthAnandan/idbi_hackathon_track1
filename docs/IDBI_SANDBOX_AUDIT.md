@@ -8,7 +8,7 @@ Checked 2026-09-19T17:20:13.597Z. Reproduce with `node scripts/verify-idbi-sandb
 - 41 scenarios returned HTTP 200 and parseable JSON; 4 returned HTTP 400.
 - 30 routes have at least one HTTP 200 sample; the multi-account deduplication route has none.
 - HTTP 200 proves sample response availability, not correct cross-API identity, live consent, authentication enforcement, or production readiness.
-- Seven routes are wired into the application. Other routes were tested and assessed; they are not all used for insights.
+- Seven routes were wired at the time of this audit; eleven are now (see **Update — 21 September 2026** at the end, which supersedes the loan/lien findings below). Other routes were tested and assessed; they are not all used for insights.
 
 ## Every route
 
@@ -103,3 +103,54 @@ The working direct-data route is now exposed through the UI. Run `npm run dev:sa
 Browser verification used the actual controls with an isolated account: signup → gateway fetch → 20-transaction preview → profile save → avatar greeting based on the fetched snapshot. Re-entering from the dashboard and fetching again updated the timestamp from 00:38:06 to 00:39:14 IST. Applying the second snapshot persisted that timestamp and started a fresh chat. No profile was injected through developer tools for this pass. The optional risk questionnaire was never entered. All 94 regression tests and the build pass.
 
 The local app was restarted with sandbox mode enabled at port 5173 using its usual persistent store. Static hosting still needs a deployed Node API and proxy before this connection flow can work there.
+
+## Update — 21 September 2026: the remaining APIs, and what MITRA Connect now uses
+
+Explored with read-only calls using only identifiers IDBI itself publishes in the samples and responses. Raw captures stay in ignored `.data/idbi-explore/`. This corrects three earlier conclusions: the 400s on APIs 362 and 391 were request-shape problems, not API limits; the customer/loan join *can* be verified; and a wider statement window matters.
+
+### The sandbox holds three customers, and answers per identity
+
+| Customer | Direct-API identity | What the direct APIs return |
+|---|---|---|
+| Priya Patil | CIF `98655854` → customer `68453002`, account `…0003`, branch 105 | 20 statement rows, 1–20 May 2025; balance ₹56,780; lien ₹5,000 to 8 Jul 2027; 3 loan accounts |
+| Arjun Mehta | CIF `77123456` → customer `77712345`, account `…0004`, branch 106 | 20 statement rows, 1–20 Jun 2025; balance ₹89,500; lien ₹3,000; 1 loan account |
+| Neha Singh | accounts `…0006`–`…0009` (four-account AA fixtures) | `Data not found` on every direct route; reachable only through the FinPro fixtures, whose consent-to-statement chain fails (finding 5 above) |
+
+- The date filter works: Priya's account is empty in June and Arjun's in May. A statement window pinned to May 2025 silently hid Arjun's whole history, so the connector now defaults to the last two years.
+- **Every statement narration is a placeholder** (`S1 TXN 1…20`, `S2 TXN 1…20`) and amounts are random. There are no merchants, categories or salary credits anywhere in the direct statement API, so richer *transactions* do not exist in this sandbox. The richer material is on the liability side.
+
+### Verified joins
+
+The account-enquiry response carries the loan-side customer id (`custId`) and the registered address and scheme that APIs 362 and 391 validate. Requests rebuilt from it return 200 for both customers; copied sample bodies only match the one customer they were written for. API 442 links the CIF to the same customer id, and API 402 (queried by CIF) returns rows carrying that id. The connector requires every loan row to carry the enquiry's customer id and refuses the whole list otherwise.
+
+### Loan figures do not reconcile, so they are reported, not modelled
+
+| | Priya (`…0003`) | Arjun (`…0004`) |
+|---|---|---|
+| Outstanding (402) | ₹37,54,903 (+ two more loans, ₹6,74,624 and ₹2,41,960) | ₹48,50,200 |
+| Disbursed (391) | ₹15,00,000 | ₹25,00,000 |
+| Contract EMI / rate (391) | ₹16,800 / 8.75 % | ₹30,500 / 9.25 % |
+| Monthly interest on the outstanding | ≈ ₹27,380 | ≈ ₹37,387 |
+| Exposure summary outstanding (442) vs itemised | ₹72,49,563 vs ₹46,71,487 | ₹98,00,000 vs ₹48,50,200 |
+
+Both customers owe more than was ever disbursed and carry an EMI below one month's interest, so amortising them never terminates. Days past due is 0 and asset class is `SA` (standard) on every listed loan. The other two of Priya's loans answer `Data not found` on every account-level route, so they have balances only.
+
+### What MITRA Connect now does
+
+- Fetches, in addition to accounts, balance and statement: **362** lien (amount, start, end date), **402** loan list with days past due and asset class, **442** customer credit exposure, **391** contract terms for the loan that is the fetched account. A customer chooser selects Priya or Arjun.
+- The statement stays fail-closed. Each enrichment degrades to a stated gap on failure. Loan-side warnings live on `liabilities.warnings`, not `snapshot.warnings`.
+- `persona.liabilities` holds every reported loan for display and Q&A ("What do I owe?"). `persona.loans`, which prepay-vs-invest amortises, receives only loans that pass `assessLoan` (terms present, outstanding not above disbursed, EMI above monthly interest). Neither sandbox customer currently passes, so prepayment stays unavailable and MITRA now says why instead of "no loan data".
+- Liabilities are not netted against holdings, and no health score or net worth is derived from them.
+
+### Explored and deliberately not used
+
+| API | Why not |
+|---|---|
+| 408 CIBIL | The 200 wraps a bureau rejection (`Missing Required Field`) and no score; the applicant block only echoes the request |
+| 508 HRMS | An employee directory (grade, supervisor, department), not customer data; no income |
+| 415 CKYC / 456 dedupe | Identity documents; would require collecting PAN and add nothing to a wealth answer |
+| 428 lead / 497 / 498 notifications | Writes; not part of a read-only connect |
+| 538 payoff, 473 schedule, 433 rates | Payoff principal (₹4,00,000 / ₹6,00,000) contradicts the outstanding again; the schedule is a ₹1,00,000 what-if; 433 returns a composite blob mixing other customers' fixtures |
+
+Also noted: `API-openspec/Open API Specifications (4).yaml` (the CIBIL spec) is tracked in git and contains a UAT username and password in its sample request. It is IDBI's published sandbox credential, but it should be removed before the repository is made public.
+

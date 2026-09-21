@@ -6,7 +6,7 @@ const TOOL_NAMES = new Set([
   'tax_guidance', 'protection_review', 'loan_comparison', 'check_offer',
   'escalate_to_human', 'explain_concept', 'decline_high_risk',
   'review_fees', 'review_harvesting', 'review_allocation', 'review_emergency',
-  'review_subscriptions', 'review_goal_conflicts', 'review_health', 'review_peers', 'review_market', 'clarify_request',
+  'review_subscriptions', 'review_goal_conflicts', 'review_health', 'review_peers', 'review_market', 'review_liabilities', 'clarify_request',
 ]);
 
 const CONCEPTS = new Set(['sip', 'mutual_fund', 'fixed_deposit', 'diversification', 'risk', 'emergency_fund', 'general']);
@@ -36,6 +36,7 @@ export const ADVISOR_TOOL_DEFINITIONS = [
   ['review_health', 'Review financial health score.'],
   ['review_peers', 'Compare with available synthetic peer benchmarks.'],
   ['review_market', 'Show the synthetic market scenario, not live prices.'],
+  ['review_liabilities', 'Report the loans and overdue status the bank lists for the customer.'],
   ['clarify_request', 'Ask for clarification when a request is ambiguous or unsupported.'],
 ].map(([name, description]) => ({
   type: 'function',
@@ -77,6 +78,7 @@ const PROMPTS = {
   review_allocation: 'rebalance my portfolio', review_emergency: 'emergency fund',
   review_subscriptions: 'unused subscriptions', review_goal_conflicts: 'afford all my goals',
   review_health: 'financial health score', review_peers: 'compare me with peers', review_market: 'market pulse',
+  review_liabilities: 'what do i owe',
 };
 
 const EDUCATION = {

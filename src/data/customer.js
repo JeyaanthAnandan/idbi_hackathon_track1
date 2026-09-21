@@ -20,6 +20,10 @@ export const customer = persona.customer;
 export const holdings = persona.holdings;
 export const fundFacts = persona.fundFacts;
 export const loans = persona.loans;
+// What the bank reports the customer owes (null for demo personas and for
+// customers whose liabilities were never fetched). Distinct from `loans`, which
+// only holds loans consistent enough to model repayment on.
+export const liabilities = persona.liabilities || null;
 export const monthlySummary = persona.monthlySummary;
 export const spendByCategory = persona.spendByCategory;
 export const subscriptions = persona.subscriptions;

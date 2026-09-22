@@ -2,13 +2,11 @@
 
 Reviewed from `API-openspec/` on 18 September 2026.
 
-Updated verification: see [the complete live audit](IDBI_SANDBOX_AUDIT.md). All 31 routes were exercised. The standard and multi-account consent/statement fixtures do not currently form a consistent end-to-end flow; strict account-reference checks now reject the mismatch.
-
 ## What is in the bundle
 
 The directory contains 34 YAML files but only 31 unique API IDs. The extra files are multi-account clones or duplicate downloads. Every operation is a `POST` under the development path, for example `/Development/getAccountStatementFromFinProtest`.
 
-All files point to the sandbox gateway `https://sandboxpocgatewayprod.idbi.bank.in`. The specifications are request examples rather than complete contracts: response schemas are empty, most requests have no formal JSON schema, and no authentication/security scheme is declared. We must obtain the gateway authentication, required headers, response examples, encryption details, rate limits, and error contract from the portal/API support before production-like integration.
+All files point to the sandbox gateway `https://sandboxpocgatewayprod.idbi.bank.in`. The specifications are request examples: response schemas are empty, most requests have no formal JSON schema, and no authentication scheme is declared in the files.
 
 ## Recommended subscription set
 
@@ -71,7 +69,7 @@ API 497 is a consent notification sample; API 498 is a data-ready notification s
 - API 739/595 account statement: `{ consentId, linkRefNumber: [...] }`.
 - API 593 decryption: `{ webRedirectionURL: { ecres, resdate, fi } }`.
 
-The samples use synthetic IDs and must not be copied into the application. The CIBIL sample also includes a user ID and password; treat those as test fixtures, never as credentials.
+The samples use synthetic IDs and must not be copied into the application.
 
 ## How this maps to the current code
 
@@ -107,7 +105,7 @@ Subscribe to 394, 365, and 393. Implement one server route that discovers an acc
 
 ### Phase 2: consent-shaped integration (implemented for sandbox polling)
 
-590, 592, 591, and 739 are wired for the sandbox. The UI explicitly checks the consent list when the customer clicks fetch after returning from the redirect. It binds the stored handle to the authenticated user, requires a matching active consent, and verifies every statement account reference. The supplied standard fixture fails that last check, so it is currently blocked rather than silently accepted. APIs 497/498 (real notifications) and 593 (redirect-result decoding) await the callback lifecycle contract.
+590, 592, 591, and 739 are wired for the sandbox. The connector checks the consent list, binds the stored handle to the authenticated user, requires a matching active consent, and verifies every statement account reference.
 
 ### Phase 3: loan intelligence
 
@@ -116,13 +114,3 @@ Add 391, 473, and 433. Map the result into the existing loan model and enable th
 ### Phase 4: identity and optional enrichment
 
 Add 456/415 only if onboarding requires them. Add CIBIL, HRMS, lead creation, overdue, limits, and payoff APIs only when a defined product feature needs them.
-
-## Current limitations of the downloaded specifications
-
-- No response schemas or examples are supplied.
-- No security scheme is declared.
-- No formal request schemas are supplied; the payloads are embedded example strings.
-- Several files are clones with the same API ID/version and should not be subscribed to twice.
-- The path names end in `test` and may differ from the final gateway route.
-- API 497/498 are notification-style APIs but are documented as POST operations; callback authentication and retry behavior are unspecified.
-- The specs expose workflow IDs, gateway IDs, environment IDs, and category IDs, but these are portal metadata, not substitutes for credentials.

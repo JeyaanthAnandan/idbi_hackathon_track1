@@ -2,9 +2,8 @@
 // Assembles a full persona object (same shape as data/personas.js's priya /
 // arjun) out of whatever a customer actually gave us — an uploaded
 // statement or a connected account. Every downstream engine (advisor.js,
-// analytics.js) reads specific fields unconditionally (see the two crash
-// points guarded below), so gaps are filled with honest, clearly-neutral
-// placeholders rather than fabricated numbers.
+// analytics.js) reads specific fields unconditionally, so gaps are filled
+// with neutral placeholders rather than fabricated numbers.
 // ─────────────────────────────────────────────────────────────
 import { buildMonthlySummary, buildSpendByCategory, detectSubscriptions, latestTransactionDate, totalIncome, selectIncomeCredits } from './statementImport.js';
 import { deriveRiskProfile } from './riskDerivation.js';

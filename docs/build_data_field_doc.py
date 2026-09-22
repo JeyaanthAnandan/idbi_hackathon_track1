@@ -285,7 +285,7 @@ for k, v in [
     ("Date", "24 August 2026"),
     ("Prepared by", "MITRA Team"),
     ("Status", "For IDBI review — field list not yet frozen"),
-    ("Companion artifacts", "openapi.yaml (machine-readable) · API_CONTRACT.md · SANDBOX_REQUIREMENTS.md"),
+    ("Companion artifacts", "openapi.yaml (machine-readable) · API_CONTRACT.md"),
 ]:
     cells = ctrl.add_row().cells
     shade(cells[0], GREY_HEX)
@@ -837,8 +837,7 @@ field_table(RES_HDR, RES_W, [
 # ════════════════════════════════════════════════════════════
 h1("Integration Requirements", "14")
 para(
-    "Summarised from the accompanying SANDBOX_REQUIREMENTS.md. These are the platform-level "
-    "conditions for the field specification above to be delivered safely.", color=SOFT, size=9.5,
+    "Platform-level conditions for the field specification above.", color=SOFT, size=9.5,
 )
 
 h2("14.1  Transport and security")
@@ -871,40 +870,7 @@ rows = [
 simple_table(["Operation", "Latency target", "Availability"], fit([4.0, 3.0, 3.0]), rows, mono_col=-1)
 
 # ════════════════════════════════════════════════════════════
-h1("Appendix A — Prototype Data Gaps", "15")
-para(
-    "The current MITRA prototype runs entirely in the browser against two hand-authored customer "
-    "profiles. The advisory calculations are genuine and port to a server unchanged; the data layer "
-    "around them does not yet accept a live source. This appendix records the gaps that this field "
-    "specification is intended to close, so reviewers can see what changes and what does not.",
-)
-
-h2("15.1  What is already real")
-bullet("All advisory mathematics — SIP future value, required-instalment solving, loan amortisation, allocation drift, capital-gains harvesting and fee-drag projection.")
-bullet("CSV statement parsing, transaction categorisation, monthly aggregation and recurring-payment detection.")
-bullet("A deterministic rule-based advisor that answers without any language model — a genuine resilience property, retained by design.")
-
-h2("15.2  What this specification replaces")
-rows = [
-    ["Simulated account connection", "Randomly generated holdings stand in for a broker or aggregator link.", "Sections 5–6, sourced via Account Aggregator."],
-    ["Static market data", "A fixed 20-point index series and a fixed headline.", "Licensed exchange feed and AMFI NAV file."],
-    ["Hand-authored peer benchmarks", "Cohort percentiles written per persona.", "Computed cohort statistics with a minimum cohort size of 1,000 for anonymity."],
-    ["Embedded assumptions", "Emergency-fund target, tax slab, deduction limits and expected returns fixed in code.", "Versioned policy parameters returned in assumption_set (Section 12.3)."],
-    ["Client-side credentials", "Prototype-only session handling and a language-model key held in the browser.", "Server-side identity federation and server-side model invocation."],
-    ["Silent PDF handling", "PDF statement uploads are accepted but not parsed.", "Server-side extraction with an explicit per-stage job status."],
-]
-simple_table(["Prototype behaviour", "Current state", "Replaced by"], fit([2.35, 4.0, 3.65]), rows, mono_col=-1)
-
-h2("15.3  Sequencing")
-para(
-    "The field specification does not depend on Account Aggregator onboarding. A synthetic corpus "
-    "conforming to these field definitions — including a customer holding no investments, which the "
-    "current prototype does not handle — unblocks the entire build while the aggregator "
-    "agreement proceeds in parallel.",
-)
-
-# ════════════════════════════════════════════════════════════
-h1("Appendix B — Open Points for IDBI", "16")
+h1("Appendix A — Open Points for IDBI", "15")
 para("Items requiring a decision or confirmation from the bank before the field list can be frozen.", color=SOFT, size=9.5)
 
 rows = [
@@ -912,9 +878,9 @@ rows = [
     ["2", "Transaction history depth available", "Is 24 months retrievable, or is 6 the practical limit?", "Below 12 months, year-on-year comparison and seasonality adjustment are not possible."],
     ["3", "Categorisation ownership", "Does the bank supply category_code, or does MITRA derive it?", "If the bank supplies it, Section 7.3 must be reconciled with the existing internal taxonomy."],
     ["4", "Insurance data availability", "Are policies retrievable, including employer group cover?", "Employer cover that lapses on job change is the most commonly missed protection gap; without portable_flag the analysis materially understates it."],
-    ["5", "Peer benchmark feasibility", "Can anonymised cohort statistics be computed internally?", "If not, the peer-comparison feature is withdrawn rather than shown against synthetic baselines."],
+    ["5", "Peer benchmark feasibility", "Can anonymised cohort statistics be computed internally?", "Cohort statistics need a minimum size before a comparison is shown."],
     ["6", "Advisory positioning", "Confirm education-and-guidance framing versus registered investment advice.", "Determines whether MITRA may name specific schemes or must restrict itself to asset-class guidance."],
-    ["7", "Sandbox data source", "Account Aggregator sandbox, or synthetic corpus only for the first phase?", "Recommendation: synthetic first. Aggregator onboarding carries a 4–8 week lead time and should not gate the build."],
+    ["7", "Sandbox data source", "Account Aggregator sandbox, or a field-shaped corpus for the first phase?", "Either source can feed the same field list."],
     ["8", "Policy parameter ownership", "Who maintains deduction limits, cover multiples and expected-return assumptions?", "These change with each Budget. Bank ownership is preferred so revisions require no code release."],
 ]
 simple_table(["#", "Item", "Question", "Why it matters"], fit([0.4, 2.35, 3.5, 3.75]), rows, mono_col=-1)

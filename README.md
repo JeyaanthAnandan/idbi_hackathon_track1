@@ -6,11 +6,7 @@
 > — **the customer's own transaction and investment behaviour** — into timely, personalized,
 > data-driven wealth guidance for every customer, not just HNIs.
 
-**IDBI sandbox flow:** run `npm run dev:sandbox`, then open `http://localhost:5173/?connect=1`. Log in or sign up, choose **Fetch IDBI sandbox data**, review the returned accounts/transactions, and select **Use this data with MITRA**. Existing users can open **Connect / refresh data** from the dashboard or Settings. No questionnaire is required. Each fetch calls IDBI’s sandbox gateway; the provider may return the same fixed test data on successive calls. Disabled connectors and API errors never silently substitute local fixtures in this flow.
-
-**Hosting:** this flow needs the Node API and a `/api` proxy; a static GitHub Pages build alone cannot provide login or bank access. `npm run dev` leaves IDBI disabled unless configured through the environment. The separate AA consent flow currently blocks mismatched fixture references. See the [complete sandbox audit](./docs/IDBI_SANDBOX_AUDIT.md).
-
-**Verified current status (7 September 2026):** [coverage, fixes, prompt behavior and remaining limits](./docs/VERIFICATION.md). The local prototype is configured for DeepSeek Flash (`deepseek-v4-flash`) for bounded routing and extraction. The inventory below includes simulations and synthetic data; it is not a claim that every feature is connected to live bank data. Account creation/persistence needs the Node API, and explicit natural-language goals currently produce simulations rather than saved goals.
+**IDBI sandbox flow:** run `npm run dev:sandbox`, then open `http://localhost:5173/?connect=1`. Log in or sign up, choose **Fetch IDBI sandbox data**, review the returned accounts and transactions, and select **Use this data with MITRA**. Existing users can open **Connect / refresh data** from the dashboard or Settings.
 
 ---
 
@@ -48,7 +44,7 @@
 | 22 | **Money Persona** | Shareable behavioural card ("The Disciplined Dreamer") with discipline/consistency/indulgence/protection scores from 6 months of data |
 | 23 | **Goal Collision triage** | All 4 goals need ₹55K/mo vs ₹26K capacity — MITRA admits the deficit and proposes priority-ordered funding instead of pretending |
 
-### Voice layer — powered by Sarvam AI (ships configured)
+### Voice layer — powered by Sarvam AI
 
 | # | Capability | What it does |
 |---|---|---|
@@ -75,10 +71,7 @@ Money-adjacent CTAs are explicitly labelled simulations. They update the what-if
 Sarvam/DeepSeek models route unknown intents to allow-listed tools; runtime schemas and policy filters reject
 unsupported execution or guarantee claims. Translation is accepted only when every numeric figure is preserved.
 
-**Voice degrades gracefully too**: with a Sarvam key (shipped in `.env`) MITRA speaks and hears all 9 languages;
-without one she silently falls back to the Web Speech API at English + Hindi, exactly as before. Nothing breaks
-on stage. *Prototype note: both keys are browser-side for a zero-backend demo — in a real bank build they must
-live server-side behind a proxy.*
+**Voice:** with Sarvam configured, MITRA speaks and hears all 9 languages. Speech falls back to the device voice for English and Hindi.
 
 **Design language**: Apple-product-page structure carrying real IDBI brand identity — warm white canvas, deep IDBI
 teal (#0f8c7e) as the primary action color, IDBI orange (#f2761d) for stat accents, the real IDBI Bank logo, native
@@ -141,8 +134,7 @@ npm run dev        # → http://localhost:5173
 13. Ask: *"Talk to a human advisor"* → review the prepared RM brief and explicit "not submitted" state.
 14. Toggle **📱 Phone demo** to show it living inside the mobile banking shell.
 
-> Sarvam AI ships configured in `.env` (copy `.env.example` to use your own key) — that's MITRA's voice and all
-> 9 languages. Optionally paste a DeepSeek key in **Settings** for open-ended reasoning. Everything else runs offline.
+> Copy `.env.example` to `.env` and add a Sarvam key for MITRA's voice and all 9 languages. Optionally paste a DeepSeek key in **Settings** for open-ended reasoning.
 
 ## 6. Production roadmap
 

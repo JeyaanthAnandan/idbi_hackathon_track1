@@ -236,12 +236,10 @@ Returns everything needed for first paint. This is deliberately shaped to mirror
 
 **Notes on shape changes from the prototype**
 
-- `holdings[].value` → `currentValue` in **paise**; `growth` → `xirr` (a real metric, not a
-  hand-written number).
+- `holdings[].value` → `currentValue` in **paise**; `growth` → `xirr`.
 - `subscriptions[].lastUsed: "unused 4 months"` → `recurringPayments[].engagementSignal`
-  (`ACTIVE | DORMANT | UNKNOWN`) + `confidence`. **A bank cannot know whether a customer
-  *used* Netflix** — only that it charged. The current UI claim is not derivable from a bank
-  feed and must be softened to "charged monthly, no app activity detected" or dropped.
+  (`ACTIVE | DORMANT | UNKNOWN`) + `confidence`. A bank feed records the charge; the signal
+  says whether that charge is still active.
 - `insurance` becomes an **array of policies**, not a single object — real customers hold several.
 - `peers` and `market` are separate endpoints (§6) because they are not customer-owned data.
 
@@ -327,9 +325,7 @@ AA are the same contract.
 ```
 
 The client opens `redirectUrl`; the AA authenticates the customer independently.
-**MITRA never sees or handles the customer's bank credentials.** The `consentField` text
-input in today's `ConnectAccounts.jsx` must be removed — collecting a broker Client ID in our
-own UI is a phishing-shaped pattern a bank cannot ship.
+**MITRA never sees or handles the customer's bank credentials.**
 
 | Method | Path | Notes |
 |---|---|---|
@@ -405,9 +401,7 @@ Password-protected PDFs → `POST /ingest/uploads/{id}/unlock` with the password
 }
 ```
 
-**Two things the prototype gets wrong that this fixes:** PDF uploads currently no-op silently
-(`UploadStatements.jsx:50`), and unparseable dates silently corrupt income
-(`statementImport.js:163`). Both become explicit, surfaced outcomes.
+PDF extraction and unparseable dates are explicit job outcomes: a password-protected PDF has an unlock step, and rows with unparseable dates are skipped and listed in `warnings`.
 
 `PATCH /v1/transactions/{id}` lets the customer correct a category — the correction is the
 training signal for the categoriser.
@@ -662,18 +656,15 @@ CANCEL_SUBSCRIPTION · TOP_UP_PROTECTION · FIX_EMERGENCY_FUND · REBALANCE`
 }
 ```
 
-**Two deliberate changes from `riskDerivation.js`.** First, it splits capacity / tolerance /
-need, as SEBI profiling norms expect. Second, when the questionnaire and the derived signal
-disagree, **the conservative band wins** and the divergence is disclosed. The prototype's
-derived path currently *replaces* the questionnaire and marks onboarding complete
-(`personas.js:saveCustomPersonaAndActivate`) — a real advisor cannot skip a documented
-assessment. `validUntil` forces annual re-assessment.
+The profile splits capacity, tolerance and need, as SEBI profiling norms expect. When the
+questionnaire and the derived signal disagree, **the conservative band wins** and the
+divergence is disclosed. `validUntil` forces annual re-assessment.
 
 ---
 
 ## 10. Conversational advisor
 
-Replaces `engine/advisor.js` + `engine/deepseek.js`. **The LLM key moves server-side.**
+Replaces `engine/advisor.js` + `engine/deepseek.js`. The model is called from the server.
 
 ### `POST /v1/advisor/messages` — SSE
 

@@ -173,9 +173,7 @@ function SpeedPicker() {
   );
 }
 
-// Sarvam is MITRA's voice. It ships configured from .env, so this panel is
-// about *choosing how she sounds* rather than about pasting a key — the key
-// field is only there so a judge can swap in their own on a hosted build.
+// Sarvam is MITRA's voice. This panel chooses how she sounds.
 function SarvamSection() {
   const [speaker, setSpeaker] = useState(getSarvamSpeaker());
   const [previewLang, setPreviewLang] = useState('hi');

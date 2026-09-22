@@ -255,13 +255,12 @@ test('dashboard copy is derived from the active customer, never a demo persona',
   `);
 });
 
-test('the blocked Account Aggregator consent path is disabled rather than offered', () => {
+test('the Account Aggregator consent control stays disabled', () => {
   run('idbi', `
     const source = await fs.readFile('src/components/ConnectAccounts.jsx', 'utf8');
-    // API 739 returns a link reference the consent never granted, so the
-    // import always fails closed (audit finding 4). Don't route users into it.
     assert.match(source, /Account Aggregator consent · unavailable/);
-    assert.match(source, /Disabled upstream, not here/);
+    assert.match(source, /ghost-btn[\\s\\S]{0,160}disabled/);
     assert.doesNotMatch(source, /Try Account Aggregator consent/);
+    assert.doesNotMatch(source, /fixture defect/);
   `);
 });

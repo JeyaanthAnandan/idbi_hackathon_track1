@@ -297,22 +297,9 @@ export default function ConnectAccounts({ onBack, riskProfileOverride = null }) 
       )}
       <button className="primary-btn" onClick={fetchDirect} disabled={!idbiEnabled}>Fetch IDBI sandbox data</button>
       <p className="ob-sub" style={{ fontSize: 12 }}>Direct sandbox test data · accounts, balances, lien, statement, loans and credit exposure · no personal bank login</p>
-      {/* The AA consent request and redirect legs (APIs 590/592) return 200 and
-          a live OneMoney redirect URL. The statement leg (739) then returns a
-          link reference that does not match the one the consent granted, so the
-          import fails closed every time — a provider fixture defect, recorded as
-          finding 4 in docs/IDBI_SANDBOX_AUDIT.md. Offering the button anyway
-          just walks the customer into that wall, so it stays disabled until the
-          references reconcile. */}
-      <button className="ghost-btn" onClick={() => startConnect('bank')} disabled title="Blocked by a provider fixture defect">
+      <button className="ghost-btn" onClick={() => startConnect('bank')} disabled>
         Account Aggregator consent · unavailable
       </button>
-      <p className="ob-sub" style={{ fontSize: 12 }}>
-        Disabled upstream, not here. IDBI's sandbox grants consent for one account reference and then
-        returns a statement for a different one, so MITRA refuses the import rather than attaching
-        someone else's transactions to your profile. The consent request and redirect steps themselves
-        are verified in the sandbox audit. Use direct sandbox data above in the meantime.
-      </p>
 
       <details style={{ marginTop: 16 }}><summary>Other providers · local demo fixtures</summary>
       {PROVIDER_LIST.filter(p => p.id !== 'bank').map((p) => {

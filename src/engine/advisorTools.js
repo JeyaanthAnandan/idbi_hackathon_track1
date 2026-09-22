@@ -1,4 +1,4 @@
-import { respond, analyzeOfferOffline } from './advisor.js';
+import { respond, analyzeOfferOffline, suggestPrompts, capabilityAnswer } from './advisor.js';
 import { POLICY } from '../data/policy.js';
 
 const TOOL_NAMES = new Set([
@@ -91,12 +91,62 @@ const EDUCATION = {
   general: 'I can explain investing concepts and calculate from connected data, but I will not invent facts or recommend an unsupported transaction.',
 };
 
-export function executeAdvisorTool(call, riskProfile = 'Balanced') {
+// A clarification that reads the question instead of ignoring it.
+//
+// The old behaviour was one fixed sentence asking the customer to pick a
+// category. Asked twice it was identical both times, so a customer whose
+// phrasing the router could not place got the same non-answer on every turn
+// and had no way forward. Three things changed:
+//   • near-miss topics from the question itself become pressable buttons;
+//   • with no near miss at all, say what MITRA can do rather than ask again;
+//   • a repeat is never the same message — it escalates to the capability
+//     list and a human handoff.
+// `clarifier: true` is what the next turn reads to know it is repeating.
+export function clarifyResponse({ text = '', repeated = false, hint = '' } = {}) {
+  const suggestions = suggestPrompts(text, 3);
+  const prompts = suggestions.map((item) => item.prompt);
+  const tail = hint ? ` ${hint}` : '';
+
+  // Asked twice, the question is not going to be understood by asking a third
+  // time. Offer the closest topics once more and a human who can read it.
+  if (repeated) {
+    return {
+      mood: 'thinking',
+      clarifier: true,
+      text: `I am still not placing that one, and asking again will not help. ${prompts.length ? `The nearest things I can answer are ${prompts.map((prompt) => `“${prompt}”`).join(' and ')}. ` : 'I work from your connected spending, balances, holdings, goals, protection and loans. '}If none of those is it, I can hand this to a human advisor who can read the question properly.${tail}`,
+      chips: [...new Set([...prompts, 'Talk to a human advisor', 'What can you do?'])].slice(0, 4),
+    };
+  }
+
+  // Nothing in the question resembles a supported topic, so asking the
+  // customer to pick a category they have never seen is useless. Show the list.
+  if (!prompts.length) {
+    const capability = capabilityAnswer();
+    return {
+      mood: 'thinking',
+      clarifier: true,
+      text: `I could not match that to anything I can calculate, so rather than guess — here is what I can do. ${capability.text}${tail}`,
+      chips: [...new Set([...capability.chips, 'Talk to a human advisor'])].slice(0, 4),
+    };
+  }
+
+  const quoted = String(text).trim().replace(/\s+/g, ' ').slice(0, 60);
+  // Quoting the chip verbatim would double up its own question mark.
+  const options = prompts.map((prompt) => `“${prompt.replace(/\?$/, '')}”`);
+  return {
+    mood: 'thinking',
+    clarifier: true,
+    text: `I am not sure which part of ${quoted ? `“${quoted}”` : 'that'} you want me to work on. Did you mean ${options.length > 1 ? `${options.slice(0, -1).join(', ')} or ${options.at(-1)}` : options[0]}? Pick one and I will answer it from your connected data — or ask what I can do for everything I cover.${tail}`,
+    chips: [...prompts, 'What can you do?'].slice(0, 4),
+  };
+}
+
+export function executeAdvisorTool(call, riskProfile = 'Balanced', context = {}) {
   const checked = validateAdvisorToolCall(call);
   if (!checked.ok) return null;
   const { name, arguments: args } = checked.value;
   if (PROMPTS[name]) return respond(PROMPTS[name], riskProfile, 'en');
-  if (name === 'clarify_request') return { mood: 'thinking', text: 'Could you specify what you want to review: spending, holdings, goals, protection, or a SIP calculation? I need a clearer request to use the right data.', chips: ['Show my portfolio', 'Analyse my spending', 'Show my goals'] };
+  if (name === 'clarify_request') return clarifyResponse(context);
   if (name === 'check_offer') {
     const result = analyzeOfferOffline(args.offerText);
     return {

@@ -56,22 +56,28 @@ const fmtDate = (iso) => {
 
 const INTENTS = [
   { id: 'greeting', kw: ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening'] },
-  { id: 'portfolio', kw: ['portfolio', 'holdings', 'net worth', 'wealth', 'my investments', 'where is my money', 'asset'] },
+  { id: 'portfolio', kw: ['portfolio', 'holdings', 'net worth', 'wealth', 'my investments', 'where is my money', 'asset', 'my mutual funds', 'my funds'] },
   // A single bank snapshot cannot support a trend, but it does carry a
   // verified balance breakdown. That is the most useful thing one month of
   // connected data can say, so it gets its own intent instead of being
   // buried inside the data-coverage answer.
   { id: 'balances', kw: ['balance', 'balances', 'available balance', 'lien', 'lien amount', 'how much do i have', 'how much can i spend', 'what is usable', 'usable', 'spendable', 'withdrawable', 'usable cash', 'clear balance'] },
   { id: 'spending', kw: ['spend', 'spending', 'expense', 'expenses', 'where did my money', 'analyse my spending', 'analyze'] },
-  { id: 'surplus', kw: ['surplus', 'invest my surplus', 'idle', 'extra money', 'start sip', 'start a sip', 'invest more', 'where should i invest'] },
-  { id: 'goals', kw: ['goal', 'goals', 'europe', 'trip', 'house', 'home', 'down payment', 'retirement', 'retire'] },
+  { id: 'surplus', kw: ['surplus', 'invest my surplus', 'idle', 'extra money', 'start sip', 'start a sip', 'invest more', 'where should i invest', 'how much should i invest', 'invest every month', 'spare money', 'saving enough', 'save enough', 'my salary', 'my income', 'got a raise', 'increment', 'bonus'] },
+  { id: 'goals', kw: ['goal', 'goals', 'europe', 'trip', 'house', 'home', 'down payment', 'retirement', 'retire', 'can i afford', 'afford a'] },
   { id: 'tax', kw: ['tax', '80c', 'elss', 'save tax'] },
   { id: 'subscriptions', kw: ['subscription', 'subscriptions', 'recurring', 'unused'] },
-  { id: 'emergency', kw: ['emergency', 'rainy day', 'safety net'] },
-  { id: 'health', kw: ['health score', 'financial health', 'score', 'how am i doing', 'am i doing well'] },
-  { id: 'fdvsmf', kw: ['fd vs', 'fixed deposit vs', 'fd or mutual', 'fd or sip', 'is fd better', 'mutual fund vs fd'] },
+  { id: 'emergency', kw: ['emergency', 'rainy day', 'safety net', 'lose my job', 'job loss', 'laid off'] },
+  { id: 'health', kw: ['health score', 'financial health', 'health card', 'score', 'how am i doing', 'am i doing well', 'a summary', 'an overview', 'where do i stand', 'show me everything'] },
+  { id: 'coverage', kw: ['what data do i need', 'what do you need', 'why is the health', 'advice passport', 'more data needed'] },
+  // "What can you do?" is the single most common open question, and it used to
+  // fall through to the router and come back as a generic clarification. It is
+  // answerable from the engine itself, so it gets its own intent. Every keyword
+  // here is long enough to outscore the topic words it contains.
+  { id: 'capabilities', kw: ['what can you do', 'what can you help with', 'what can you help me with', 'how can you help', 'what do you do', 'what else can you do', 'what can i ask', 'what are you able to do', 'things you can do'] },
+  { id: 'fdvsmf', kw: ['fd vs', 'fixed deposit vs', 'fd or mutual', 'fd or sip', 'is fd better', 'mutual fund vs fd', 'fd', 'fixed deposit'] },
   { id: 'risky', kw: ['market crash', 'market fall', 'risky', 'is it safe', 'lose money', 'market down', 'scared', 'worried'] },
-  { id: 'recommend', kw: ['recommend', 'suggestion', 'what should i do', 'advice', 'plan for me', 'ideal portfolio'] },
+  { id: 'recommend', kw: ['recommend', 'suggestion', 'what should i do', 'advice', 'plan for me', 'ideal portfolio', 'improve my finances', 'improve my money', 'where do i start', 'what should i be doing'] },
   { id: 'sipcalc', kw: ['calculate', 'sip of', 'how much will', 'if i invest'] },
   { id: 'market', kw: ['market', 'nifty', 'sensex', 'markets today', 'market pulse', 'how are markets', 'बाज़ार'] },
   { id: 'rebalance', kw: ['rebalance', 'drift', 'allocation off', 'rebalance my portfolio'] },
@@ -111,6 +117,36 @@ const HI_KW = {
   greeting: ['नमस्ते', 'नमस्कार', 'हैलो'],
 };
 
+const words = (value) => String(value).toLowerCase().match(/[a-z0-9₹%]+/g) || [];
+
+// Filler that carries no topic. Ignored when measuring how much of a keyword a
+// message actually covers, so "what should i do" isn't scored as half a match
+// for every keyword containing "my" or "i".
+const FILLER = new Set(['a', 'an', 'the', 'my', 'me', 'i', 'is', 'are', 'am', 'do', 'does', 'did', 'of', 'for', 'to', 'in', 'on', 'it', 'be', 'you', 'and', 'or', 'what', 'how', 'should', 'can', 'will', 'would', 'much', 'many', 'this', 'that']);
+
+// The strict pass requires a keyword to appear as one contiguous phrase, so a
+// real sentence that merely wraps it ("how much money do I have") missed
+// entirely and went to the router, which answered with a canned clarification.
+// This second pass accepts a multi-word keyword whose words are all present.
+// Single-word keywords are left alone — the strict pass already matches those
+// anywhere, and loosening them would match unrelated words.
+function nearestIntent(text) {
+  const tokens = new Set(words(text));
+  let best = { id: null, score: 0 };
+  for (const intent of INTENTS) {
+    for (const kw of intent.kw) {
+      const parts = words(kw);
+      // A keyword made entirely of filler ("what do you do") would otherwise
+      // swallow any sentence built from the same common words.
+      if (parts.length < 2 || !parts.some((part) => !FILLER.has(part))) continue;
+      if (!parts.every((part) => tokens.has(part))) continue;
+      const score = parts.join('').length;
+      if (score > best.score) best = { id: intent.id, score };
+    }
+  }
+  return best.id;
+}
+
 export function detectIntent(text) {
   const t = text.toLowerCase();
   if (/\b(?:calculate|simulate|try|if i invest|sip of)\b.*\d|\b\d[\d,.]*\s*(?:k|lakh|crore)?\s*(?:per month|monthly|\/mo|for \d)/i.test(t)) return 'sipcalc';
@@ -128,7 +164,61 @@ export function detectIntent(text) {
       if (kws.some((kw) => text.includes(kw))) return id;
     }
   }
-  return best.id;
+  return best.id || nearestIntent(t);
+}
+
+// One prompt per intent, phrased exactly as the engine routes it. Used to turn
+// a half-understood question into buttons the customer can actually press,
+// instead of asking them to rephrase into a category list. Every entry must
+// route back to its own intent — `fraud` is the one exception: the chat shell
+// intercepts "Check an offer" to switch into offer-paste mode.
+export const INTENT_PROMPTS = {
+  portfolio: 'Show my portfolio',
+  balances: 'What is usable right now?',
+  spending: 'Analyse my spending',
+  surplus: 'Invest my surplus',
+  goals: 'Show my goals',
+  tax: 'Help me save tax',
+  subscriptions: 'Show unused subscriptions',
+  emergency: 'Check my emergency fund',
+  health: "How's my financial health?",
+  coverage: 'What data do I need?',
+  fdvsmf: 'FD vs mutual funds',
+  risky: 'What happens in a market crash?',
+  recommend: 'What should my ideal portfolio be?',
+  sipcalc: 'Calculate ₹5,000 for 10 years',
+  market: 'Market pulse',
+  rebalance: 'Rebalance my portfolio',
+  roundup: 'Round up my spare change',
+  benchmark: 'Compare me with my peers',
+  fraud: 'Check an offer',
+  insurance: 'Am I protected?',
+  human: 'Talk to a human advisor',
+  xray: 'X-ray my portfolio',
+  harvest: 'Harvest capital gains',
+  liabilities: 'What do I owe?',
+  prepay: 'Should I prepay or invest?',
+  persona: 'What is my money persona?',
+  collision: 'Can I afford all my goals?',
+};
+
+// Partial-credit ranking, used only when nothing matched outright: it offers
+// the customer the closest supported questions rather than asserting one.
+export function suggestPrompts(text, limit = 3) {
+  const tokens = new Set(words(text));
+  const scored = [];
+  for (const intent of INTENTS) {
+    if (!INTENT_PROMPTS[intent.id]) continue;
+    let score = 0;
+    for (const kw of intent.kw) {
+      const parts = words(kw).filter((part) => !FILLER.has(part));
+      if (!parts.length) continue;
+      const hits = parts.filter((part) => tokens.has(part)).length;
+      if (hits) score = Math.max(score, hits / parts.length);
+    }
+    if (score >= 0.5) scored.push({ id: intent.id, score, prompt: INTENT_PROMPTS[intent.id] });
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
 // Extract "₹X for Y years" style numbers for the SIP calculator intent
@@ -871,9 +961,57 @@ function respondCore(text, riskProfile = 'Balanced') {
       };
     }
 
+    case 'coverage': {
+      const missing = [
+        !cf.incomeKnown ? 'an income credit labelled salary, payroll, or a similar narration' : null,
+        dataQuality.transactionMonths < POLICY.confidence.minimumMonthsForTrend
+          ? `${POLICY.confidence.minimumMonthsForTrend} months of transactions (this snapshot has ${dataQuality.transactionMonths})` : null,
+        dataQuality.portfolioComplete === false ? 'investments outside this bank account' : null,
+      ].filter(Boolean);
+      return {
+        mood: 'thinking',
+        text: missing.length
+          ? `The health score and its Advice Passport stay hidden until ${missing.join(', ')} are all present. I will not fill those in from an unlabelled statement. I can still explain the usable balance, the recorded cash movements, and any loans the bank listed.`
+          : `The health score can be calculated from what is connected. Ask “How's my financial health?” and I will show the four parts and the Advice Passport for that answer.`,
+        chips: ["How's my financial health?", 'What is usable right now?', 'Show my portfolio'],
+      };
+    }
+
+    case 'capabilities':
+      return capabilityAnswer();
+
     default:
       return null; // hand off to LLM if configured, else graceful fallback
   }
+}
+
+// What MITRA can actually do, read off the connected data rather than recited
+// from a fixed list. This is the honest answer to "what can you do?" and the
+// right thing to show when a question cannot be routed at all — the old
+// one-line "name a category" clarification told the customer nothing.
+export function capabilityAnswer() {
+  const connected = holdings.length > 0 || dataQuality.observedCashMovement?.transactionCount > 0;
+  const always = 'Separately from your data, I can explain any investment concept, screen a suspicious offer or message for scam signals, and run a SIP or goal what-if on any amount and timeframe you give me. I will not place transactions, guarantee a return, or make up a number I cannot show you the source for.';
+  if (!connected) {
+    return {
+      mood: 'happy',
+      text: `Nothing is connected yet, so I have no balances or transactions to work from. Use “Connect / refresh data” to fetch your IDBI sandbox accounts or upload a CSV statement, and I can then break down your spending, holdings, usable balance, goals, protection and loans. ${always}`,
+      chips: ['Calculate ₹5,000 for 10 years', 'What is a SIP?', 'Check an offer', 'What data do I need?'],
+    };
+  }
+  const available = [
+    'break down your spending and recorded cash movements',
+    'show your holdings and allocation',
+    'tell you what is actually usable versus held under lien',
+    goals.length ? 'review your goals and what each one needs per month' : null,
+    liabilities?.loans?.length ? 'report the loans and overdue status the bank lists' : null,
+    'review your protection cover and fund fees',
+  ].filter(Boolean);
+  return {
+    mood: 'happy',
+    text: `From your connected data I can ${available.slice(0, -1).join(', ')} and ${available.at(-1)}. ${always}`,
+    chips: ['Analyse my spending', 'Show my portfolio', ...(goals.length ? ['Show my goals'] : []), 'What data do I need?'],
+  };
 }
 
 // ── Offline Offer X-Ray: same verdict shape as the DeepSeek version, but a

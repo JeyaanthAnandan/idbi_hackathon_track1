@@ -384,6 +384,25 @@ export function stopSpeaking() {
   window.speechSynthesis?.cancel();
 }
 
+function cleanSpeech(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9\u0900-\u097f\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// The call mic sits next to the speaker. A transcript that is just MITRA's
+// own last line — or the "Hi" at the start of it — must not be asked back to her.
+export function isAssistantEcho(heard, spoken) {
+  const a = cleanSpeech(heard);
+  const b = cleanSpeech(spoken);
+  if (!a || !b || a === b) return a !== '' && a === b;
+  if (/^(hi|hello|hey|namaste|good morning|good evening)$/.test(a) && b.includes(a)) return true;
+  const aWords = a.split(' ').filter((word) => word.length > 2);
+  const bWords = b.split(' ').filter((word) => word.length > 2);
+  if (aWords.length < 4 || bWords.length < 4) return false;
+  const heardWords = new Set(aWords);
+  const overlap = bWords.filter((word) => heardWords.has(word)).length;
+  return overlap / bWords.length >= 0.6;
+}
+
 // ── listening ────────────────────────────────────────────────
 // Same call signature as before so callers don't care which engine ran:
 //   listen({ onResult(text, detectedLang), onEnd, onError, lang })

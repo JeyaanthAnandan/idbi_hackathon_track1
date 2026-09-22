@@ -6,9 +6,10 @@
 // accepts directly) and watches the waveform so a hands-free call can end
 // the turn on silence instead of making the customer tap anything.
 
-const SILENCE_RMS = 0.012;      // below this counts as "not speaking"
-const SILENCE_MS = 1400;        // trailing quiet that ends a turn
-const NO_SPEECH_TIMEOUT = 7000; // gave up waiting for the customer to start
+const SPEECH_RMS = 0.02;        // room tone and a speaker tail stay under this
+const SILENCE_MS = 900;         // trailing quiet that ends a turn
+const MIN_SPEECH_MS = 450;      // a short blip is not a question
+const NO_SPEECH_TIMEOUT = 8000; // gave up waiting for the customer to start
 const MAX_MS = 20000;           // hard stop, so a hot mic can't record forever
 
 export const canRecord = () =>
@@ -55,7 +56,9 @@ export function recordUtterance({ onStart, onLevel, onSilence, autoStop = true }
 
     let raf = 0;
     let spoke = false;
+    let speechMs = 0;
     let quietSince = 0;
+    let lastTick = Date.now();
     const startedAt = Date.now();
 
     const cleanup = () => {
@@ -72,9 +75,12 @@ export function recordUtterance({ onStart, onLevel, onSilence, autoStop = true }
       onLevel?.(Math.min(1, rms * 12)); // 0–1, for the mic animation
 
       const now = Date.now();
-      if (rms > SILENCE_RMS) {
-        spoke = true;
+      const elapsed = now - lastTick;
+      lastTick = now;
+      if (rms > SPEECH_RMS) {
+        speechMs += elapsed;
         quietSince = 0;
+        if (speechMs >= MIN_SPEECH_MS) spoke = true;
       } else if (spoke) {
         if (!quietSince) quietSince = now;
         else if (autoStop && now - quietSince > SILENCE_MS) {

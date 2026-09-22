@@ -12,7 +12,7 @@ import { presentationForWidget, callChartTargets } from '../engine/presenter.js'
 import {
   respond, fallbackResponse, analyzeOfferOffline,
 } from '../engine/advisor.js';
-import { speak, stopSpeaking, listen } from '../engine/speech.js';
+import { speak, stopSpeaking, listen, isAssistantEcho } from '../engine/speech.js';
 import { fmt } from '../engine/analytics.js';
 import { customer, holdings } from '../data/customer.js';
 import { getCharacter, savedCharacter } from '../engine/characters.js';
@@ -38,6 +38,7 @@ import { answerConversation } from '../engine/conversation.js';
 // ids already sitting in restored (persisted) history.
 let msgId = Date.now();
 const mid = () => ++msgId;
+const cleanSpoken = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9\u0900-\u097f\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitial, onPresent, onConversationActivity, presentationActive = false, onBusyChange }) {
   const [messages, setMessages] = useState(loadChatHistory);
@@ -123,6 +124,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const callListeningRef = useRef(false);
   const recRef = useRef(null);
   const lastQuestionRef = useRef('');
+  const lastSpokenRef = useRef('');
   const presenterActiveRef = useRef(false);
   presenterActiveRef.current = presentationActive || !!showPresenter;
   useEffect(() => {
@@ -169,8 +171,14 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           callListeningRef.current = false;
           recRef.current = null;
           setCallListening(false);
-          setCallHeard(t);
           setCallInterim('');
+          if (isAssistantEcho(t, lastSpokenRef.current)) {
+            setCallHeard('');
+            setCallCaption('That was my voice. Ask your question once I finish.');
+            scheduleCallListen(callSession, 400);
+            return;
+          }
+          setCallHeard(t);
           setCallCaption('Checking that against your financial plan…');
           applyDetectedLang(detected);
           handleSend(t);
@@ -188,9 +196,13 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           setCallListening(false);
           setMicLevel(0);
           updateTranscribing(false);
+          if (e === 'no-speech') {
+            setCallError('');
+            scheduleCallListen(callSession, 300);
+            return;
+          }
           const message =
-            e === 'no-speech' ? "I didn't hear anything. Tap the microphone and try again."
-            : e === 'NotAllowedError' || e === 'not-allowed' ? 'Microphone access is blocked. Allow it in your browser, then retry.'
+            e === 'NotAllowedError' || e === 'not-allowed' ? 'Microphone access is blocked. Allow it in your browser, then retry.'
             : typeof e === 'string' && e.startsWith('Sarvam') ? 'Voice transcription is temporarily unavailable. Retry or use a prompt below.'
             : typeof e === 'string' ? e
             : 'The microphone is unavailable. Retry or use a prompt below.';
@@ -214,10 +226,25 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
   };
 
+  // Leave a gap after MITRA stops talking so the mic does not record her reply.
+  const scheduleCallListen = (session, delay = 700) => {
+    setTimeout(() => {
+      if (session !== callSessionRef.current || !inCallRef.current || requestBusy.current) return;
+      startCallListen();
+    }, delay);
+  };
+
   const pushMitra = (resp, session = callSessionRef.current) => {
     if (!mountedRef.current || session !== callSessionRef.current) return;
     const checked = validateAdvisorResponse(resp);
     const safeResp = checked.ok ? checked.value : { ...fallbackResponse(true), engineMode: 'POLICY_FALLBACK' };
+    const spoken = cleanSpoken(safeResp.text);
+    if (inCallRef.current && spoken && spoken === cleanSpoken(lastSpokenRef.current)) {
+      setPreparingVoice(false);
+      setCallCaption('Ask about your portfolio, spending, goals, health, or a SIP amount.');
+      scheduleCallListen(session, 400);
+      return;
+    }
     const id = mid();
     const passport = buildAdvicePassport({
       question: lastQuestionRef.current,
@@ -258,10 +285,11 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         if (!controller.signal.aborted && inCallRef.current && session === callSessionRef.current) setCallDirection(plan);
       });
       setCallCaption(safeResp.text);
+      lastSpokenRef.current = safeResp.text;
       setPreparingVoice(voiceOnRef.current);
       if (!voiceOnRef.current) {
         setPreparingVoice(false);
-        setTimeout(() => { if (session === callSessionRef.current) startCallListen(); }, 80);
+        scheduleCallListen(session);
         return;
       }
       speak(safeResp.text, {
@@ -272,7 +300,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         onEnd: () => {
           setPreparingVoice(false);
           setSpeaking(false);
-          if (session === callSessionRef.current) { setCallCompletion((count) => count + 1); startCallListen(); }
+          if (session === callSessionRef.current) { setCallCompletion((count) => count + 1); scheduleCallListen(session); }
         },
       });
       return;

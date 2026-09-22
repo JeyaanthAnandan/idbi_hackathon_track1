@@ -1,5 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { isAssistantEcho } from '../src/engine/speech.js';
+
+test('a call ignores the assistant hearing herself', () => {
+  const spoken = "Hi, I'm MITRA. Ask me anything about your money — I'm listening.";
+  assert.equal(isAssistantEcho('Hi', spoken), true);
+  assert.equal(isAssistantEcho(spoken, spoken), true);
+  assert.equal(isAssistantEcho('Show my portfolio', spoken), false);
+  assert.equal(isAssistantEcho('Could you specify what you want to review: spending, holdings, goals, protection, or a SIP calculation?', 'Could you specify what you want to review: spending, holdings, goals, protection, or a SIP calculation?'), true);
+});
 
 test('interim words are visible without submitting; final words submit once; abort ignores stale events', async () => {
   const old = { window: globalThis.window, localStorage: globalThis.localStorage };

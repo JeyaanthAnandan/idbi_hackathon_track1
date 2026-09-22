@@ -9,6 +9,7 @@ export default defineConfig(({ command }) => ({
   base: process.env.BASE ?? (command === 'build' ? './' : '/'),
   plugins: [react()],
   server: {
+    host: '127.0.0.1',
     port: Number(process.env.MITRA_WEB_PORT || 5173),
     strictPort: true,
     proxy: { '/api': `http://127.0.0.1:${process.env.MITRA_API_PORT || 8787}` },

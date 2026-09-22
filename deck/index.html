@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MITRA — Prototype Submission Deck · IDBI Innovate 2026</title>
+
+<!-- Typography: Cabinet Grotesk (display) + Switzer (body) from Fontshare,
+     JetBrains Mono for labels/diagrams — echoes the mono tagline on the
+     IDBI Innovate template ("Build. Integrate. Transform."). -->
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&f[]=switzer@400,500,600,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ===========================================================
+   1. THEME TOKENS
+   Palette is sampled from the IDBI Innovate 2026 template:
+   deep teal cover, green-to-orange header band, IDBI orange.
+   Change these to re-skin the entire deck.
+   =========================================================== */
+:root{
+  --teal-900:#06332A;
+  --teal-800:#07463A;
+  --teal-700:#0B6B54;
+  --teal-500:#0F8C7E;
+  --mint:#2EE6C5;
+  --orange:#F2761D;
+  --orange-600:#D95F0C;
+
+  --ink:#0C2B24;
+  --ink-2:#38544C;
+  --muted:#6C8780;
+  --line:#DCE7E3;
+  --line-2:#EDF3F1;
+  --canvas:#F5F9F7;
+  --card:#FFFFFF;
+
+  --stage-bg:#06332A;   /* letterbox colour around the stage */
+  --slide-bg:#FFFFFF;
+
+  --font-display:'Cabinet Grotesk','Switzer',sans-serif;
+  --font-body:'Switzer',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+
+  /* Template chrome measurements, in 1920x1080 stage pixels */
+  --hdr-h:125px;
+  --ftr-h:20px;
+  --pad-x:72px;
+
+  --ease:cubic-bezier(.16,1,.3,1);
+  --dur:.62s;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ===========================================================
+   2. FIXED 16:9 STAGE — MANDATORY BASE STYLES (viewport-base.css)
+   Slides are authored at 1920x1080 and the whole stage is scaled.
+   =========================================================== */
+
+/* 1. Lock the browser viewport */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 2. Full-window deck viewport */
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 3. Fixed 16:9 design canvas.
+   JavaScript sets transform: translate(...) scale(...). */
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+
+/* 4. Slides stack inside the fixed stage.
+   Content must be laid out at 1920×1080, not reflowed per device. */
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* 5. Keep media inside authored slide bounds */
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 6. Presentation chrome stays outside the slide design system */
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+/* 7. Print one fixed-size slide per page */
+@media print {
+    html,
+    body {
+        width: 1920px;
+        height: auto;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-viewport {
+        position: static;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-stage {
+        position: static;
+        width: auto;
+        height: auto;
+        transform: none !important;
+        background: none;
+    }
+
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .slide:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .deck-controls {
+        display: none !important;
+    }
+}
+
+/* 8. Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================================
+   3. TEMPLATE CHROME
+   hdr.png / ftr.png are cropped straight out of the official
+   IDBI Innovate 2026 .pptx, so the brand band is pixel-exact:
+   IDBI Bank logo left, "IDBI Innovate" centre, partner logos right.
+   =========================================================== */
+.slide{font-family:var(--font-body);color:var(--ink);background:var(--canvas)}
+
+.chrome-hdr,
+.chrome-ftr{position:absolute;left:0;width:1920px;background-repeat:no-repeat;background-size:1920px auto;z-index:4;pointer-events:none}
+.chrome-hdr{top:0;height:var(--hdr-h);background-image:url('assets/hdr.png')}
+.chrome-ftr{bottom:0;height:var(--ftr-h);background-image:url('assets/ftr.png')}
+
+/* Signature motion: a light sweep crosses the brand band on slide entry. */
+.chrome-hdr::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.30) 50%,transparent 62%);
+  transform:translateX(-100%);
+}
+.slide.visible .chrome-hdr::after{animation:sweep 1.5s var(--ease) .18s 1}
+@keyframes sweep{to{transform:translateX(100%)}}
+
+/* ===========================================================
+   4. SLIDE SHELL
+   Content lives between the header band and the footer strip:
+   1080 - 125 - 20 = 935px of vertical room.
+   =========================================================== */
+.inner{
+  position:absolute;left:0;right:0;
+  top:var(--hdr-h);bottom:var(--ftr-h);
+  padding:42px var(--pad-x) 34px;
+  display:flex;flex-direction:column;
+  z-index:2;
+}
+
+/* Faint network motif echoing the cover artwork. Decorative only. */
+.slide.content::before{
+  content:'';position:absolute;inset:var(--hdr-h) 0 var(--ftr-h) 0;z-index:1;
+  background-image:radial-gradient(circle,rgba(11,107,84,.30) 1px,transparent 1px);
+  background-size:34px 34px;opacity:.10;pointer-events:none;
+}
+.slide.content::after{
+  content:'';position:absolute;right:-180px;top:40px;width:620px;height:620px;z-index:1;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(46,230,197,.16),rgba(46,230,197,0) 68%);
+}
+
+/* --- Slide heading block --- */
+.head{flex:none;margin-bottom:26px}
+.kicker{
+  font-family:var(--font-mono);font-size:17px;font-weight:500;
+  letter-spacing:.20em;text-transform:uppercase;color:var(--orange-600);
+  display:flex;align-items:center;gap:14px;margin-bottom:11px;
+}
+.kicker::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--orange) 0%,rgba(15,140,126,.5) 34%,transparent 100%)}
+h2{
+  font-family:var(--font-display);font-weight:800;font-size:52px;line-height:1.05;
+  letter-spacing:-.018em;color:var(--teal-900);
+}
+h2 em{font-style:normal;color:var(--orange)}
+.sub{margin-top:11px;font-size:21px;line-height:1.45;color:var(--ink-2);max-width:1320px;font-weight:400}
+.sub b{font-weight:600;color:var(--teal-700)}
+
+/* --- Body region: everything under the heading --- */
+.body{flex:1;min-height:0;display:flex;gap:26px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* --- Cards --- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;position:relative;overflow:hidden;
+  box-shadow:0 1px 2px rgba(6,51,42,.04),0 10px 26px -18px rgba(6,51,42,.35);
+  display:flex;flex-direction:column;
+}
+
+/* Cards and stat rows stretch to fill their column, so a slide never ends
+   with a band of dead space under the last card. Images are excluded — a
+   stretched screenshot would distort. */
+.body > .col > .card,
+.body > .col > .statrow{flex:1 0 auto}
+
+/* A closing line pinned to the bottom of a card, using the slack that
+   uneven column heights create. */
+.c-foot{
+  margin-top:auto;padding-top:14px;border-top:1px solid var(--line-2);
+  font-size:15.5px;line-height:1.4;color:var(--muted);
+}
+.c-foot b{color:var(--teal-700);font-weight:600}
+.card.deep .c-foot{border-top-color:rgba(255,255,255,.18);color:#9FCCC1}
+.card.deep .c-foot b{color:var(--mint)}
+.card.warm .c-foot{border-top-color:#F0D3B6}
+.card.tint{background:linear-gradient(160deg,#FFFFFF 0%,#F2F9F6 100%)}
+.card.deep{background:linear-gradient(155deg,var(--teal-800) 0%,var(--teal-700) 100%);border-color:transparent;color:#EAF6F2}
+.card.deep .c-t{color:#fff}
+.card.deep .c-b{color:#BFDDD5}
+.card.deep .c-h{color:var(--mint)}
+.card.warm{background:linear-gradient(155deg,#FFF6EE 0%,#FFEFE2 100%);border-color:#F6D8BE}
+
+/* Accent rail on the left edge of a card */
+.card.rail::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal-500)}
+.card.rail.o::before{background:var(--orange)}
+.card.rail.m::before{background:var(--mint)}
+
+.c-h{font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-500);margin-bottom:9px}
+.c-t{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.2;color:var(--teal-900);margin-bottom:8px;letter-spacing:-.008em}
+.c-b{font-size:17px;line-height:1.5;color:var(--ink-2)}
+.c-b b{font-weight:600;color:var(--teal-700)}
+
+/* --- Stat figures --- */
+.stat{font-family:var(--font-display);font-weight:800;font-size:54px;line-height:1;letter-spacing:-.03em;color:var(--teal-700);font-variant-numeric:tabular-nums}
+.stat.o{color:var(--orange)}
+.stat small{font-size:24px;font-weight:700;letter-spacing:0}
+.stat-l{font-size:15px;line-height:1.35;color:var(--muted);margin-top:8px;font-weight:500}
+
+.statrow{display:flex;gap:14px}
+.statrow .card{flex:1;text-align:left;padding:18px 20px}
+
+/* --- Dense feature lists --- */
+ul.ticks{list-style:none;display:flex;flex-direction:column;gap:9px}
+ul.ticks li{position:relative;padding-left:26px;font-size:16.5px;line-height:1.42;color:var(--ink-2)}
+ul.ticks li::before{
+  content:'';position:absolute;left:0;top:.52em;width:9px;height:9px;border-radius:2px;
+  background:var(--teal-500);transform:rotate(45deg);
+}
+ul.ticks li b{font-weight:600;color:var(--teal-900)}
+ul.ticks.o li::before{background:var(--orange)}
+ul.ticks.m li::before{background:var(--mint)}
+
+/* --- Small pill tags --- */
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{
+  font-family:var(--font-mono);font-size:12.5px;font-weight:500;letter-spacing:.04em;
+  padding:5px 10px;border-radius:7px;background:#EAF4F0;color:var(--teal-700);border:1px solid #D4E7E1;
+}
+.tag.o{background:#FFF1E6;color:var(--orange-600);border-color:#F8DCC4}
+
+/* --- Data table --- */
+table.t{width:100%;border-collapse:collapse;font-size:16.5px}
+table.t th{
+  font-family:var(--font-mono);font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);text-align:left;padding:0 14px 10px;border-bottom:2px solid var(--line);
+}
+table.t td{padding:11px 14px;border-bottom:1px solid var(--line-2);color:var(--ink-2);vertical-align:top;line-height:1.38}
+table.t td:first-child{font-weight:600;color:var(--teal-900)}
+table.t tr:last-child td{border-bottom:none}
+table.t tr.total td{border-top:2px solid var(--teal-500);border-bottom:none;font-weight:700;color:var(--teal-800);padding-top:13px}
+table.t td.num{font-family:var(--font-mono);font-size:16px;white-space:nowrap;color:var(--teal-700);font-weight:500}
+
+/* --- Footnote strip above the footer --- */
+.note{
+  flex:none;margin-top:16px;padding:12px 18px;border-radius:11px;
+  background:#EDF5F2;border:1px solid #D7E8E2;
+  font-size:15.5px;line-height:1.45;color:var(--ink-2);
+}
+.note b{color:var(--teal-700);font-weight:600}
+.note.warm{background:#FFF4EA;border-color:#F6DCC2}
+.note.warm b{color:var(--orange-600)}
+
+/* --- Fill-in placeholders the team completes before submitting --- */
+.fill{
+  color:var(--orange-600);font-weight:600;
+  border-bottom:2px dashed rgba(242,118,29,.55);padding-bottom:1px;
+}
+
+/* ===========================================================
+   5. SLIDE 1 — COVER
+   cover.jpg is the top 640px band cropped from the template's
+   own title slide; team details sit on the white area below it.
+   =========================================================== */
+.slide.cover{background:#fff}
+.cover-band{position:absolute;top:0;left:0;width:1920px;height:640px;background:url('assets/cover.jpg') no-repeat center/1920px 640px;z-index:2}
+.cover-body{position:absolute;top:640px;left:0;right:0;bottom:var(--ftr-h);padding:38px var(--pad-x) 26px;display:flex;gap:56px;z-index:3}
+.cover-l{width:700px;flex:none;border-right:1px solid var(--line);padding-right:48px}
+.wordmark{font-family:var(--font-display);font-weight:800;font-size:96px;line-height:.9;letter-spacing:-.045em;color:var(--teal-900)}
+.wordmark span{color:var(--orange)}
+.wordmark-sub{font-family:var(--font-mono);font-size:15.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--teal-500);margin-top:14px;font-weight:500}
+.wordmark-d{font-size:19px;line-height:1.42;color:var(--ink-2);margin-top:14px}
+.cover-r{flex:1;display:flex;flex-direction:column;gap:15px;justify-content:center}
+.field{display:flex;gap:18px;align-items:baseline}
+.field-k{font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);width:186px;flex:none}
+.field-v{font-size:19px;line-height:1.44;color:var(--ink);font-weight:500}
+
+/* ===========================================================
+   6. SLIDE 19 — CLOSING (full-bleed template artwork)
+   =========================================================== */
+.slide.closing{background:url('assets/thanks.jpg') no-repeat center/1920px 1080px}
+.closing-tag{
+  position:absolute;left:var(--pad-x);bottom:64px;z-index:3;
+  font-family:var(--font-mono);font-size:17px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.82);
+}
+
+/* ===========================================================
+   7. PHONE SCREENSHOTS
+   =========================================================== */
+.phone{flex:none;border-radius:20px;display:block}
+.shotwrap{display:flex;gap:26px;align-items:flex-start;min-width:0}
+.shotwrap .notes{display:flex;flex-direction:column;gap:11px;min-width:0;padding-top:4px}
+.anno{border-left:3px solid var(--mint);padding:2px 0 2px 14px}
+.anno-t{font-family:var(--font-display);font-weight:700;font-size:18.5px;color:var(--teal-900);margin-bottom:3px}
+.anno-b{font-size:15.5px;line-height:1.42;color:var(--ink-2)}
+.anno.o{border-left-color:var(--orange)}
+
+/* ===========================================================
+   8. DIAGRAMS (inline SVG, authored at stage scale)
+   =========================================================== */
+.dia{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.dia svg{width:100%;height:100%}
+.d-box{fill:#fff;stroke:var(--line);stroke-width:1.5}
+.d-band{fill:#F1F7F5;stroke:#D6E6E1;stroke-width:1.5}
+.d-deep{fill:#0B6B54;stroke:none}
+.d-warm{fill:#FFF3E8;stroke:#F5D6BB;stroke-width:1.5}
+.d-lbl{font-family:var(--font-mono);font-size:12.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;fill:#6C8780}
+.d-ttl{font-family:'Cabinet Grotesk',sans-serif;font-size:17.5px;font-weight:700;fill:#0C2B24}
+.d-ttl-w{font-family:'Cabinet Grotesk',sans-serif;font-size:17.5px;font-weight:700;fill:#fff}
+.d-txt{font-family:'Switzer',sans-serif;font-size:14.5px;fill:#38544C}
+.d-txt-w{font-family:'Switzer',sans-serif;font-size:14.5px;fill:#BFDDD5}
+.d-mono{font-family:'JetBrains Mono',monospace;font-size:13px;fill:#0B6B54;font-weight:500}
+.d-mono-o{font-family:'JetBrains Mono',monospace;font-size:13px;fill:#D95F0C;font-weight:500}
+.d-arrow{stroke:#0B6B54;stroke-width:2;fill:none;marker-end:url(#ah)}
+.d-arrow-o{stroke:#F2761D;stroke-width:2;fill:none;marker-end:url(#ao)}
+.d-dash{stroke:#F2761D;stroke-width:2;fill:none;stroke-dasharray:7 6;marker-end:url(#ao)}
+.d-life{stroke:#C6DCD6;stroke-width:1.5;stroke-dasharray:5 5}
+
+/* Diagram entry animation: elements fade up in reading order. */
+.slide .dia g.st{opacity:0;transform:translateY(14px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+.slide.visible .dia g.st{opacity:1;transform:translateY(0)}
+
+/* ===========================================================
+   9. REVEAL ANIMATION
+   Delay is set per element with style="--d:.15s" so the stagger
+   survives arbitrary nesting (nth-child would not).
+   =========================================================== */
+.reveal{opacity:0;transform:translateY(24px);
+  transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);
+  transition-delay:var(--d,0s)}
+.slide.visible .reveal{opacity:1;transform:translateY(0)}
+
+/* ===========================================================
+   10. DECK CHROME (outside the 1920x1080 stage)
+   =========================================================== */
+/* Parked bottom-right and mostly transparent so it never sits on top of
+   slide content; it comes forward on hover. */
+.deck-controls{display:flex;align-items:center;gap:14px;
+  left:auto;right:24px;bottom:20px;transform:none;
+  background:rgba(6,51,42,.72);backdrop-filter:blur(9px);
+  border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:8px 8px 8px 18px;
+  opacity:.32;transition:opacity .25s var(--ease)}
+.deck-controls:hover,.deck-controls:focus-within{opacity:1}
+.deck-controls .pg{font-family:var(--font-mono);font-size:13px;color:#BFDDD5;letter-spacing:.09em;font-variant-numeric:tabular-nums}
+.deck-controls button{
+  width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.07);color:#EAF6F2;cursor:pointer;font-size:14px;line-height:1;
+  display:grid;place-items:center;transition:background .2s,transform .2s}
+.deck-controls button:hover{background:rgba(46,230,197,.24);transform:translateY(-1px)}
+.deck-controls button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.progress{position:fixed;left:0;top:0;height:3px;background:linear-gradient(90deg,var(--teal-500),var(--mint),var(--orange));z-index:1001;transition:width .45s var(--ease)}
+
+/* Inline editing affordance */
+.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer}
+.edit-toggle{position:fixed;top:16px;left:16px;z-index:10001;
+  width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+  background:rgba(6,51,42,.82);color:#fff;font-size:17px;cursor:pointer;
+  opacity:0;pointer-events:none;transition:opacity .3s ease}
+.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto}
+.edit-toggle.active{background:var(--orange);border-color:var(--orange)}
+body.editing [contenteditable="true"]{outline:1px dashed rgba(242,118,29,.75);outline-offset:3px;border-radius:3px}
+body.editing [contenteditable="true"]:focus{outline:2px solid var(--orange);background:rgba(242,118,29,.06)}
+.edit-hint{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:10001;
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;color:#fff;
+  background:rgba(6,51,42,.88);padding:8px 15px;border-radius:999px;display:none}
+body.editing .edit-hint{display:block}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============================================================
+     SLIDE 1 — COVER / TEAM DETAILS
+     ============================================================ -->
+<section class="slide cover active" aria-label="Cover and team details">
+  <div class="cover-band"></div>
+  <div class="chrome-ftr"></div>
+  <div class="cover-body">
+    <div class="cover-l">
+      <div class="wordmark reveal" style="--d:.05s">MITRA<span>.</span></div>
+      <div class="wordmark-sub reveal" style="--d:.12s">My Intelligent Treasury &amp; Robo Advisor</div>
+      <div class="wordmark-d reveal" style="--d:.19s">An avatar-based AI wealth advisor built to live inside <b>IDBI GO Mobile+</b> — speaking, listening and advising in nine Indian languages.</div>
+    </div>
+    <div class="cover-r">
+      <div class="field reveal" style="--d:.24s">
+        <div class="field-k">Team name</div>
+        <div class="field-v"><span class="fill">[ add team name ]</span></div>
+      </div>
+      <div class="field reveal" style="--d:.30s">
+        <div class="field-k">Team leader</div>
+        <div class="field-v"><span class="fill">[ add team leader name ]</span></div>
+      </div>
+      <div class="field reveal" style="--d:.36s">
+        <div class="field-k">Problem statement</div>
+        <div class="field-v"><b>Track 1 — Wealth Advisory.</b> Wealth guidance reaches only the customers a human relationship manager has time for. Make timely, personalised, data-driven advice available to every IDBI customer, in their own language, from data the bank already holds.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 2 — BRIEF ABOUT THE IDEA
+     ============================================================ -->
+<section class="slide content" aria-label="Brief about the idea">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Brief about the idea</div>
+      <h2 class="reveal" style="--d:.08s">“Bank Aisa Dost Jaisa”, <em>digitised</em>.</h2>
+      <p class="sub reveal" style="--d:.12s">MITRA (Hindi: <i>friend</i>) is a conversational AI advisor that turns the bank's most under-used asset — <b>the customer's own transaction behaviour</b> — into advice the customer actually acts on.</p>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.32">
+        <div class="card rail reveal" style="--d:.16s">
+          <div class="c-h">The gap</div>
+          <div class="c-t">Advisory is rationed by headcount</div>
+          <div class="c-b">A relationship manager can hold maybe 200 relationships. Everyone else gets a product push. Meanwhile salary credits, spend patterns, deposits and SIPs already describe each customer precisely — that data simply never becomes guidance.</div>
+        </div>
+        <div class="card rail o reveal" style="--d:.21s">
+          <div class="c-h">The idea</div>
+          <div class="c-t">An advisor that scales to every customer</div>
+          <div class="c-b">MITRA reads six months of the customer's own transactions, computes their financial position, and opens a conversation about it — by voice, with an animated face, in the language they actually speak. <b>Marginal cost per customer approaches zero.</b></div>
+        </div>
+        <div class="card rail m reveal" style="--d:.26s">
+          <div class="c-h">The constraint that makes it bankable</div>
+          <div class="c-t">The model never authors a number</div>
+          <div class="c-b">A dated, deterministic policy engine computes and narrates every rupee figure. The LLM is allowed only to pick one allow-listed tool with schema-validated arguments. Every recommendation is issued with a <b>hash-linked receipt</b>.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.82">
+        <div class="card deep reveal" style="--d:.30s">
+          <div class="c-h">What the customer sees</div>
+          <div class="c-t" style="font-size:20px">“Your Financial Health Score is 69/100 and I've spotted ₹25,125 sitting idle each month. Want me to put it to work?”</div>
+          <div class="c-b">— MITRA's opening line, computed live, spoken aloud, with the evidence one tap away.</div>
+        </div>
+        <div class="statrow reveal" style="--d:.35s">
+          <div class="card tint"><div class="stat" data-count="27">0</div><div class="stat-l">capabilities working<br>in the prototype</div></div>
+          <div class="card tint"><div class="stat o" data-count="9">0</div><div class="stat-l">Indian languages<br>spoken &amp; understood</div></div>
+        </div>
+        <div class="statrow reveal" style="--d:.39s">
+          <div class="card tint"><div class="stat" data-count="134">0</div><div class="stat-l">automated tests,<br>all passing</div></div>
+          <div class="card tint"><div class="stat o" data-count="11">0</div><div class="stat-l">IDBI sandbox APIs<br>wired end to end</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 3 — OPPORTUNITIES
+     Answers the three questions the template asks by name.
+     ============================================================ -->
+<section class="slide content" aria-label="Opportunities">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Opportunities</div>
+      <h2 class="reveal" style="--d:.08s">Different, because of what we <em>refuse</em> to do.</h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1">
+        <div class="card tint reveal" style="--d:.14s">
+          <div class="c-h">01 · How is it different?</div>
+          <div class="c-t">Conversation-first, vernacular-first, ledger-grounded</div>
+          <ul class="ticks" style="margin-top:12px">
+            <li>Existing robo-advisors are <b>form-first and English-first</b>. MITRA opens with a spoken sentence about money the customer already has.</li>
+            <li>Generic LLM assistants hallucinate figures. Here the engine computes; <b>the model only routes</b> to an allow-listed tool.</li>
+            <li>Aggregator apps read balances. MITRA reads <b>behaviour</b> — six months of debits, credits and cadence.</li>
+            <li>A 3D talking-head avatar with a 2D fallback, not a text box with a send button.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card tint reveal" style="--d:.19s">
+          <div class="c-h">02 · How does it solve the problem?</div>
+          <div class="c-t">Behaviour in, timely nudge out</div>
+          <ul class="ticks o" style="margin-top:12px">
+            <li><b>Idle surplus</b> detected from salary-credit and spend cadence, not from a form.</li>
+            <li><b>Spend anomalies</b> measured against a rolling three-month baseline.</li>
+            <li><b>80C gap, drift, protection gap</b> and goal shortfalls computed monthly.</li>
+            <li>Each finding becomes a nudge — in the customer's language, at the moment the money is actually free.</li>
+            <li>Reaches the <b>98% of customers a human RM will never call</b>, at near-zero marginal cost.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card deep reveal" style="--d:.24s">
+          <div class="c-h">03 · USP</div>
+          <div class="c-t">The Advice Passport</div>
+          <div class="c-b" style="margin-bottom:12px">Every personalised recommendation MITRA issues carries, as data:</div>
+          <ul class="ticks m">
+            <li style="color:#BFDDD5">evidence rows with field, value, source and as-of date</li>
+            <li style="color:#BFDDD5">the <b style="color:#2EE6C5">formula</b> that produced the number</li>
+            <li style="color:#BFDDD5">policy version, engine mode and confidence</li>
+            <li style="color:#BFDDD5">action state — <b style="color:#2EE6C5">never</b> <span style="font-family:var(--font-mono);font-size:13px">EXECUTED</span></li>
+            <li style="color:#BFDDD5">a SHA-256 receipt hash-linked to the previous one</li>
+          </ul>
+          <div class="c-b" style="margin-top:13px">A regulated bank can reconstruct and defend every sentence MITRA has ever said to a customer.</div>
+        </div>
+      </div>
+    </div>
+    <div class="note reveal" style="--d:.30s"><b>Why that ordering matters:</b> the differentiator is not that an LLM is present. It is that the LLM is fenced — and that the fence is verifiable after the fact, by someone who does not trust us.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 4 — FEATURES (CORE PLATFORM)
+     ============================================================ -->
+<section class="slide content" aria-label="Features, core platform">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Features offered · 1 of 2</div>
+      <h2 class="reveal" style="--d:.08s">Understand → Grow → Protect → Act</h2>
+      <p class="sub reveal" style="--d:.12s">Twenty-three platform capabilities, all working in the prototype. Change one number in the underlying data and every score, nudge, projection and recommendation below changes with it.</p>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1">
+        <div class="card reveal" style="--d:.16s;flex:1 0 auto">
+          <div class="c-h">Understand</div>
+          <ul class="ticks">
+            <li><b>360° behavioural insights</b> — idle surplus, spend spikes vs 3-month baseline, subscription leakage, 80C gap</li>
+            <li><b>Financial Health Score</b> — 0–100 across savings, emergency cover, diversification, goal readiness</li>
+            <li><b>Money Persona</b> — discipline, consistency, indulgence and protection scored from six months of data</li>
+            <li><b>Peer benchmarking</b> — percentile bars against an anonymised cohort</li>
+            <li><b>Market Pulse</b> — the weekly index move translated into <i>your</i> portfolio impact in ₹</li>
+          </ul>
+          <div class="c-foot">Every figure here comes from the customer's own six-month ledger — <b>none of it is asked for in a form</b>.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card reveal" style="--d:.20s;flex:1 0 auto">
+          <div class="c-h">Grow</div>
+          <ul class="ticks m">
+            <li><b>Wealth Time Machine</b> — drag extra-SIP and bear/base/bull levers, watch the age of financial freedom move live</li>
+            <li><b>Life events</b> — wedding, child, home, parents' care reshape the curve and the freedom age</li>
+            <li><b>Round-Up investing</b> — sweeps UPI spare change into a liquid fund</li>
+            <li><b>Goal-based planning</b> — real SIP mathematics per goal, risk-profiled model portfolios</li>
+            <li><b>Drift detection</b> — fixes allocation drift via SIP glide path, no tax-triggering sells</li>
+            <li><b>Prepay vs invest</b> — amortisation-level, risk-adjusted answer</li>
+          </ul>
+          <div class="c-foot">Projections are allowed to disappoint: <b>“freedom never arrives on your current path”</b> is a real output.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card reveal" style="--d:.24s;flex:1 0 auto">
+          <div class="c-h">Protect</div>
+          <ul class="ticks o">
+            <li><b>Fraud Shield</b> — any “guaranteed 30%” offer gets a SEBI/RBI-based five-point scam check</li>
+            <li><b>Protection Gap</b> — term and health adequacy against the 15× income rule</li>
+            <li><b>Portfolio X-Ray</b> — finds Regular-plan commission drag and fund overlap</li>
+            <li><b>LTCG harvesting</b> — models the exemption with eligibility and exit-load warnings</li>
+            <li><b>Goal Collision triage</b> — when all goals together exceed capacity, MITRA says so and prioritises</li>
+          </ul>
+          <div class="c-foot">An advisor that only ever sells is not an advisor. <b>Protection is half the product.</b></div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card reveal" style="--d:.28s;flex:1 0 auto">
+          <div class="c-h">Act</div>
+          <ul class="ticks">
+            <li><b>Advice Passport</b> — evidence, formula, data date, confidence, policy version and receipt on every recommendation</li>
+            <li><b>Money Rules</b> — IFTTT-for-money: salary-day auto-invest, sweep-to-FD, budget alerts, SIP step-up</li>
+            <li><b>Wealth XP</b> — good behaviour earns levels, Smart Saver → Wealth Pro</li>
+            <li><b>Human RM handoff</b> — prepares a reviewable brief and states plainly that no callback is booked</li>
+          </ul>
+          <div class="c-foot">
+            Acting is where most prototypes quietly overclaim. Every CTA here is labelled at the point of the tap.
+            <div class="tags" style="margin-top:9px">
+              <span class="tag o">simulations are labelled</span>
+              <span class="tag o">no order is ever placed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 5 — FEATURES (VOICE + AI)
+     ============================================================ -->
+<section class="slide content" aria-label="Features, voice and AI layers">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Features offered · 2 of 2</div>
+      <h2 class="reveal" style="--d:.08s">Voice is the access mechanism, <em>not a garnish</em>.</h2>
+      <p class="sub reveal" style="--d:.12s">The mandate is reaching customers who aren't served today. Those customers don't type English.</p>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.1">
+        <div class="card rail m reveal" style="--d:.16s;flex:1 0 auto">
+          <div class="c-h">Voice layer · Sarvam AI</div>
+          <ul class="ticks m">
+            <li><b>Bulbul v3 (TTS)</b> — a genuine Indian voice in English, Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada and Malayalam, on every device. Most phones ship no Tamil, Telugu, Kannada or Malayalam voice at all.</li>
+            <li><b>Saaras v3 (STT)</b> — transcribes the mic <i>and identifies the language itself</i> (0.99 confidence in testing). The customer never picks a language from a menu; they just talk.</li>
+            <li><b>Mayura (translation)</b> — question in, English out, deterministic engine computes, answer translated back in <span class="tag" style="padding:2px 7px">modern-colloquial</span> mode.</li>
+            <li><b>Hands-free live call</b> — MITRA speaks, listens, detects end-of-turn from the waveform, and answers, with live captions.</li>
+          </ul>
+          <div class="tags"><span class="tag">graceful fallback → Web Speech API at EN + HI</span></div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card rail o reveal" style="--d:.21s">
+          <div class="c-h">AI layer · constrained routing</div>
+          <ul class="ticks o">
+            <li><b>Structured tool routing</b> — the model must select one allow-listed tool with schema-validated arguments</li>
+            <li><b>Offer X-Ray</b> — paste any WhatsApp forward or scheme pitch, get Safe/Caution/Avoid with red flags and hidden costs</li>
+            <li><b>Natural-language goals</b> — “I want a MacBook next year” → schema-validated amount and timeframe → policy-based SIP simulation</li>
+          </ul>
+        </div>
+        <div class="card deep reveal" style="--d:.26s">
+          <div class="c-h">The audit rule</div>
+          <div class="c-b">Nine languages share <b style="color:#2EE6C5">one auditable rule set</b> instead of nine forked ones. A translation is accepted only when every numeric figure survives it intact — SIP, ELSS, equity fund and every ₹ amount must appear unchanged inside the native-script sentence, or the translation is rejected.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.92">
+        <div class="card warm reveal" style="--d:.31s">
+          <div class="c-h" style="color:var(--orange-600)">New this phase</div>
+          <div class="c-t">3D talking-head avatar</div>
+          <div class="c-b">A rigged GLB avatar with viseme-driven lip-sync and mood states, plus a <b>2D/3D toggle in Settings</b> so the lightweight SVG avatar remains the default on low-end devices. Merged to <span style="font-family:var(--font-mono);font-size:13.5px">main</span> this phase.</div>
+          <div class="tags"><span class="tag o">TalkingHeadAvatar.jsx</span><span class="tag o">talkingHeadMotion.js</span></div>
+        </div>
+        <div class="card reveal" style="--d:.35s;flex:1 0 auto">
+          <div class="c-h">Avatar direction</div>
+          <div class="c-b">A director module maps the sentence being spoken to gaze, blink, brow and mouth state, so the face reacts to <i>what</i> is being said — the delivery of a shortfall differs from the delivery of a win.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 6 — PROCESS FLOW / USE-CASE DIAGRAM
+     ============================================================ -->
+<section class="slide content" aria-label="Process flow diagram">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Process flow diagram</div>
+      <h2 class="reveal" style="--d:.08s">From raw ledger to defensible advice</h2>
+    </div>
+    <div class="dia reveal" style="--d:.12s">
+      <svg viewBox="0 0 1776 660" role="img" aria-label="Process flow from data sources through validation, analytics, conversation and receipt issuance">
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0.5 L8,4.5 L0,8.5 Z" fill="#0B6B54"/></marker>
+          <marker id="ao" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0.5 L8,4.5 L0,8.5 Z" fill="#F2761D"/></marker>
+        </defs>
+
+        <!-- STAGE 1: data sources -->
+        <g class="st" style="transition-delay:.20s">
+          <text class="d-lbl" x="0" y="16">1 · Source</text>
+          <rect class="d-band" x="0" y="30" width="300" height="250" rx="14"/>
+          <rect class="d-box" x="18" y="52" width="264" height="62" rx="10"/>
+          <text class="d-ttl" x="34" y="76">IDBI Sandbox Gateway</text>
+          <text class="d-txt" x="34" y="98">Direct enquiry + statement</text>
+          <rect class="d-box" x="18" y="124" width="264" height="62" rx="10"/>
+          <text class="d-ttl" x="34" y="148">FinPro / AA consent</text>
+          <text class="d-txt" x="34" y="170">Customer-approved fetch</text>
+          <rect class="d-box" x="18" y="196" width="264" height="62" rx="10"/>
+          <text class="d-ttl" x="34" y="220">Statement upload</text>
+          <text class="d-txt" x="34" y="242">CSV, parsed in browser</text>
+        </g>
+
+        <!-- STAGE 2: validation gate -->
+        <g class="st" style="transition-delay:.32s">
+          <text class="d-lbl" x="360" y="16">2 · Gate</text>
+          <rect class="d-warm" x="360" y="30" width="286" height="250" rx="14"/>
+          <text class="d-ttl" x="384" y="66">Validate &amp; normalise</text>
+          <text class="d-txt" x="384" y="96">Consent handle matches session</text>
+          <text class="d-txt" x="384" y="120">Link references match the request</text>
+          <text class="d-txt" x="384" y="144">Amounts, dates, Dr/Cr direction</text>
+          <text class="d-txt" x="384" y="168">Pagination cursor with loop guard</text>
+          <text class="d-txt" x="384" y="192">Provenance + as-of date attached</text>
+          <rect x="384" y="212" width="238" height="48" rx="8" fill="#FFE6D2"/>
+          <text class="d-mono-o" x="398" y="232">pending / revoked / expired</text>
+          <text class="d-mono-o" x="398" y="250">→ import stops. No fallback.</text>
+        </g>
+
+        <!-- STAGE 3: analytics -->
+        <g class="st" style="transition-delay:.44s">
+          <text class="d-lbl" x="706" y="16">3 · Compute</text>
+          <rect class="d-band" x="706" y="30" width="312" height="250" rx="14"/>
+          <text class="d-ttl" x="730" y="66">Deterministic engine</text>
+          <text class="d-txt" x="730" y="96">Cashflow &amp; idle-surplus detection</text>
+          <text class="d-txt" x="730" y="120">Spend anomalies vs 3-mo baseline</text>
+          <text class="d-txt" x="730" y="144">Health score · drift · percentile</text>
+          <text class="d-txt" x="730" y="168">SIP / goal / 80C / FIRE mathematics</text>
+          <text class="d-txt" x="730" y="192">Protection &amp; collision analysis</text>
+          <rect x="730" y="212" width="264" height="48" rx="8" fill="#E4F2EE"/>
+          <text class="d-mono" x="744" y="232">Dated policy version stamped</text>
+          <text class="d-mono" x="744" y="250">on every output</text>
+        </g>
+
+        <!-- STAGE 4: conversation -->
+        <g class="st" style="transition-delay:.56s">
+          <text class="d-lbl" x="1078" y="16">4 · Converse</text>
+          <rect class="d-band" x="1078" y="30" width="312" height="250" rx="14"/>
+          <text class="d-ttl" x="1102" y="66">MITRA</text>
+          <text class="d-txt" x="1102" y="96">17 intents, EN + Hindi keywords</text>
+          <text class="d-txt" x="1102" y="120">Data-grounded response composer</text>
+          <text class="d-txt" x="1102" y="144">Inline chart widgets in chat</text>
+          <text class="d-txt" x="1102" y="168">Voice out, voice in, avatar motion</text>
+          <text class="d-txt" x="1102" y="192">“Why this advice?” explanation</text>
+          <rect x="1102" y="212" width="264" height="48" rx="8" fill="#E4F2EE"/>
+          <text class="d-mono" x="1116" y="232">Narration is composed by the</text>
+          <text class="d-mono" x="1116" y="250">engine, not by the model</text>
+        </g>
+
+        <!-- STAGE 5: receipt -->
+        <g class="st" style="transition-delay:.68s">
+          <text class="d-lbl" x="1450" y="16">5 · Record</text>
+          <rect class="d-deep" x="1450" y="30" width="326" height="250" rx="14"/>
+          <text class="d-ttl-w" x="1474" y="66">Advice Passport</text>
+          <text class="d-txt-w" x="1474" y="96">Evidence rows + formula</text>
+          <text class="d-txt-w" x="1474" y="120">Data as-of + confidence</text>
+          <text class="d-txt-w" x="1474" y="144">Policy version + engine mode</text>
+          <text class="d-txt-w" x="1474" y="168">Action state, never EXECUTED</text>
+          <rect x="1474" y="190" width="278" height="70" rx="8" fill="rgba(46,230,197,.14)"/>
+          <text x="1490" y="214" style="font-family:'JetBrains Mono',monospace;font-size:13px;fill:#2EE6C5;font-weight:500">sha256(payload ‖ prevHash)</text>
+          <text x="1490" y="236" style="font-family:'Switzer',sans-serif;font-size:13.5px;fill:#BFDDD5">Hash-linked chain — altering any</text>
+          <text x="1490" y="252" style="font-family:'Switzer',sans-serif;font-size:13.5px;fill:#BFDDD5">field breaks verification.</text>
+        </g>
+
+        <!-- Connecting arrows -->
+        <g class="st" style="transition-delay:.78s">
+          <path class="d-arrow" d="M300,155 L352,155"/>
+          <path class="d-arrow" d="M646,155 L698,155"/>
+          <path class="d-arrow" d="M1018,155 L1070,155"/>
+          <path class="d-arrow" d="M1390,155 L1442,155"/>
+        </g>
+
+        <!-- Feedback loop + actor lane -->
+        <g class="st" style="transition-delay:.88s">
+          <path class="d-arrow-o" d="M1613,288 L1613,330 Q1613,344 1599,344 L246,344 Q232,344 232,330 L232,296"/>
+          <rect x="690" y="326" width="430" height="36" rx="8" fill="#FFF3E8" stroke="#F5D6BB" stroke-width="1.5"/>
+          <text class="d-mono-o" x="712" y="349">receipt id returned to the customer's passport view</text>
+
+          <rect class="d-band" x="0" y="400" width="1776" height="112" rx="14"/>
+          <text class="d-lbl" x="24" y="428">Use cases · who does what</text>
+          <text class="d-ttl" x="24" y="458">Customer</text>
+          <text class="d-txt" x="24" y="482">Connects an account · asks a question by voice or text · runs a what-if · opens the passport · reviews an RM brief</text>
+          <text class="d-ttl" x="900" y="458">Bank / reviewer</text>
+          <text class="d-txt" x="900" y="482">Replays any recommendation from its evidence · verifies the receipt chain · audits the policy version that produced it</text>
+
+          <rect class="d-warm" x="0" y="530" width="1776" height="58" rx="12"/>
+          <text class="d-ttl" x="24" y="556">The boundary, stated on screen</text>
+          <text class="d-txt" x="24" y="578">Money-adjacent actions are simulations. No mandate, trade, policy, cancellation or RM callback is executed by the prototype — and the UI says so at the point of action, not in a footnote.</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 7 — WIREFRAMES / MOCK DIAGRAMS
+     ============================================================ -->
+<section class="slide content" aria-label="Wireframes and mock diagrams">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Wireframes / mock diagrams</div>
+      <h2 class="reveal" style="--d:.08s">Inside the GO Mobile+ shell</h2>
+      <p class="sub reveal" style="--d:.12s">MITRA is designed as a tab in the bank's existing app, not a separate destination — the advisor sits where the customer already checks their balance.</p>
+    </div>
+    <div class="body">
+      <div class="shotwrap col reveal" style="--d:.16s;flex:1;flex-direction:row">
+        <img class="phone" src="assets/shot-home.png" alt="MITRA home screen inside IDBI GO Mobile+ showing balance, financial health score and the daily brief" width="360" height="690">
+        <div class="notes">
+          <div class="c-h">Home · the daily brief</div>
+          <div class="anno"><div class="anno-t">Bank first, advisor second</div><div class="anno-b">Real IDBI GO+ chrome and the “bank aisa dost jaisa” lockup. MITRA earns attention inside a screen the customer already opens.</div></div>
+          <div class="anno"><div class="anno-t">One computed line</div><div class="anno-b">Markets ↑0.82% this week (your funds +₹1,077) · shopping spends ↑51% · 80C gap ₹81,000 · idle surplus ₹25,125/mo. Every figure derived from the ledger.</div></div>
+          <div class="anno o"><div class="anno-t">Health score on the balance card</div><div class="anno-b">69/100 sits next to the number the customer came to see, so advisory is not a separate errand.</div></div>
+          <div class="anno o"><div class="anno-t">MITRA in the tab bar</div><div class="anno-b">Centre position with a live indicator when she has something worth saying.</div></div>
+        </div>
+      </div>
+      <div class="shotwrap col reveal" style="--d:.22s;flex:1;flex-direction:row">
+        <img class="phone" src="assets/shot-mitra.png" alt="MITRA conversation screen with the avatar, an opening insight and suggested replies" width="360" height="690">
+        <div class="notes">
+          <div class="c-h">MITRA · the conversation</div>
+          <div class="anno"><div class="anno-t">She opens, not the customer</div><div class="anno-b">The first message is an insight, not a greeting — health score plus the idle surplus she found, with a direct offer to act on it.</div></div>
+          <div class="anno"><div class="anno-t">Suggested replies do the teaching</div><div class="anno-b">“Invest my surplus”, “Check an offer”, “Am I protected?” — customers who have never used an advisor learn what to ask.</div></div>
+          <div class="anno o"><div class="anno-t">Voice is one tap, both ways</div><div class="anno-b">Mic to speak in any of nine languages; speaker icon for Bulbul v3 playback; phone icon starts the hands-free live call.</div></div>
+          <div class="anno o"><div class="anno-t">Language toggle, not a settings trip</div><div class="anno-b">The <b>अ</b> control switches the whole conversation, including speech in and out.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 8 — ARCHITECTURE (SYSTEM)
+     ============================================================ -->
+<section class="slide content" aria-label="System architecture diagram">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Architecture · 1 of 3 — system</div>
+      <h2 class="reveal" style="--d:.08s">A deterministic spine with an <em>AI sidecar</em></h2>
+    </div>
+    <div class="dia reveal" style="--d:.12s">
+      <svg viewBox="0 0 1776 680" role="img" aria-label="Layered system architecture: experience, intelligence, API and data layers, with voice and AI routing as sidecars">
+        <defs>
+          <marker id="ah2" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0.5 L8,4.5 L0,8.5 Z" fill="#0B6B54"/></marker>
+          <marker id="ao2" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0.5 L8,4.5 L0,8.5 Z" fill="#F2761D"/></marker>
+        </defs>
+
+        <!-- EXPERIENCE LAYER -->
+        <g class="st" style="transition-delay:.18s">
+          <rect class="d-band" x="0" y="0" width="1240" height="132" rx="14"/>
+          <text class="d-lbl" x="22" y="28">Experience · React 18 + Vite</text>
+          <rect class="d-box" x="22" y="42" width="222" height="72" rx="10"/>
+          <text class="d-ttl" x="38" y="68">Home + Daily Brief</text>
+          <text class="d-txt" x="38" y="90">Proactive nudges</text>
+          <rect class="d-box" x="258" y="42" width="222" height="72" rx="10"/>
+          <text class="d-ttl" x="274" y="68">Wealth 360°</text>
+          <text class="d-txt" x="274" y="90">Score · drift · peers · pulse</text>
+          <rect class="d-box" x="494" y="42" width="222" height="72" rx="10"/>
+          <text class="d-ttl" x="510" y="68">Time Machine</text>
+          <text class="d-txt" x="510" y="90">What-if · freedom age</text>
+          <rect class="d-deep" x="730" y="42" width="258" height="72" rx="10"/>
+          <text class="d-ttl-w" x="746" y="68">MITRA</text>
+          <text class="d-txt-w" x="746" y="90">Avatar 2D/3D · voice · call</text>
+          <rect class="d-box" x="1002" y="42" width="216" height="72" rx="10"/>
+          <text class="d-ttl" x="1018" y="68">Connect</text>
+          <text class="d-txt" x="1018" y="90">Consent · upload · status</text>
+        </g>
+
+        <!-- INTELLIGENCE LAYER -->
+        <g class="st" style="transition-delay:.30s">
+          <rect class="d-band" x="0" y="158" width="1240" height="164" rx="14"/>
+          <text class="d-lbl" x="22" y="186">Intelligence · 26 engine modules, deterministic and auditable</text>
+          <rect class="d-box" x="22" y="200" width="386" height="104" rx="10"/>
+          <text class="d-ttl" x="38" y="226">Analytics engine</text>
+          <text class="d-txt" x="38" y="250">Cashflow · surplus · anomalies</text>
+          <text class="d-txt" x="38" y="272">Health score · drift · percentile</text>
+          <text class="d-txt" x="38" y="294">SIP · goal · 80C · FIRE maths</text>
+          <rect class="d-box" x="424" y="200" width="386" height="104" rx="10"/>
+          <text class="d-ttl" x="440" y="226">Conversational engine</text>
+          <text class="d-txt" x="440" y="250">17 intents, EN + Hindi keywords</text>
+          <text class="d-txt" x="440" y="272">Data-grounded composer</text>
+          <text class="d-txt" x="440" y="294">Chart widget payloads</text>
+          <rect class="d-box" x="826" y="200" width="392" height="104" rx="10"/>
+          <text class="d-ttl" x="842" y="226">Policy &amp; passport</text>
+          <text class="d-txt" x="842" y="250">Dated policy version</text>
+          <text class="d-txt" x="842" y="272">Evidence · formula · confidence</text>
+          <text class="d-txt" x="842" y="294">Guarantee/execution filters</text>
+        </g>
+
+        <!-- API LAYER -->
+        <g class="st" style="transition-delay:.42s">
+          <rect class="d-band" x="0" y="348" width="1240" height="120" rx="14"/>
+          <text class="d-lbl" x="22" y="376">API · Node, 16 routes, session-authenticated</text>
+          <rect class="d-box" x="22" y="390" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="38" y="414">Auth &amp; session</text>
+          <text class="d-txt" x="38" y="436">Signup · login · hashed tokens</text>
+          <rect class="d-box" x="326" y="390" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="342" y="414">Connector</text>
+          <text class="d-txt" x="342" y="436">Snapshot · consent · statements</text>
+          <rect class="d-box" x="630" y="390" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="646" y="414">State &amp; profile</text>
+          <text class="d-txt" x="646" y="436">Onboarding · portfolio · goals</text>
+          <rect class="d-deep" x="934" y="390" width="284" height="62" rx="10"/>
+          <text class="d-ttl-w" x="950" y="414">Receipt chain</text>
+          <text class="d-txt-w" x="950" y="436">Issue · verify · audit log</text>
+        </g>
+
+        <!-- DATA LAYER -->
+        <g class="st" style="transition-delay:.54s">
+          <rect class="d-band" x="0" y="494" width="1240" height="120" rx="14"/>
+          <text class="d-lbl" x="22" y="522">Data</text>
+          <rect class="d-warm" x="22" y="536" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="38" y="560">IDBI Sandbox Gateway</text>
+          <text class="d-txt" x="38" y="582">11 routes wired</text>
+          <rect class="d-warm" x="326" y="536" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="342" y="560">FinPro / AA consent</text>
+          <text class="d-txt" x="342" y="582">Handle · redirect · statement</text>
+          <rect class="d-box" x="630" y="536" width="288" height="62" rx="10"/>
+          <text class="d-ttl" x="646" y="560">Statement upload</text>
+          <text class="d-txt" x="646" y="582">CSV parsed client-side</text>
+          <rect class="d-box" x="934" y="536" width="284" height="62" rx="10"/>
+          <text class="d-ttl" x="950" y="560">Synthetic 360° corpus</text>
+          <text class="d-txt" x="950" y="582">Demo personas, labelled</text>
+        </g>
+
+        <!-- SIDECARS -->
+        <g class="st" style="transition-delay:.66s">
+          <rect class="d-band" x="1284" y="158" width="492" height="164" rx="14" fill="#F1F7F5"/>
+          <text class="d-lbl" x="1306" y="186">Sidecar · voice</text>
+          <text class="d-ttl" x="1306" y="216">Sarvam AI</text>
+          <text class="d-txt" x="1306" y="242">Bulbul v3 — TTS, 9 languages</text>
+          <text class="d-txt" x="1306" y="266">Saaras v3 — STT + language ID</text>
+          <text class="d-txt" x="1306" y="290">Mayura — numeric-safe translation</text>
+          <text class="d-txt" x="1306" y="312">Fallback: Web Speech API (EN/HI)</text>
+
+          <rect class="d-warm" x="1284" y="348" width="492" height="164" rx="14"/>
+          <text class="d-lbl" x="1306" y="376" style="fill:#D95F0C">Sidecar · routing only</text>
+          <text class="d-ttl" x="1306" y="406">DeepSeek / Sarvam LLM</text>
+          <text class="d-txt" x="1306" y="432">Selects ONE allow-listed tool</text>
+          <text class="d-txt" x="1306" y="456">Arguments are schema-validated</text>
+          <text class="d-txt" x="1306" y="480">Offer X-Ray · goal extraction</text>
+          <text class="d-mono-o" x="1306" y="502">Never authors a ₹ figure.</text>
+        </g>
+
+        <!-- Arrows: spine -->
+        <g class="st" style="transition-delay:.76s">
+          <path class="d-arrow" style="marker-end:url(#ah2)" d="M620,132 L620,152"/>
+          <path class="d-arrow" style="marker-end:url(#ah2)" d="M620,322 L620,342"/>
+          <path class="d-arrow" style="marker-end:url(#ah2)" d="M620,468 L620,488"/>
+          <!-- sidecar links -->
+          <path class="d-dash" style="marker-end:url(#ao2)" d="M1240,240 L1278,240"/>
+          <path class="d-dash" style="marker-end:url(#ao2)" d="M1240,430 L1278,430"/>
+        </g>
+
+        <!-- Footer note -->
+        <g class="st" style="transition-delay:.86s">
+          <rect class="d-warm" x="0" y="640" width="1776" height="40" rx="10"/>
+          <text class="d-txt" x="22" y="666">The dashed links are the only paths a language model touches. Cut both sidecars and MITRA still computes, narrates and issues receipts — in English and Hindi, with degraded voice. Nothing in the advice path depends on a model being available or correct.</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 9 — SEQUENCE DIAGRAM (IDBI CONSENT → ADVICE → RECEIPT)
+     ============================================================ -->
+<section class="slide content" aria-label="Sequence diagram of the IDBI consent and advice flow">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Architecture · 2 of 3 — sequence</div>
+      <h2 class="reveal" style="--d:.08s">Consent → statement → advice → <em>receipt</em></h2>
+    </div>
+    <div class="dia reveal" style="--d:.12s">
+      <svg viewBox="0 0 1776 726" role="img" aria-label="Sequence diagram: customer, app, MITRA API, IDBI FinPro sandbox, policy engine and receipt chain">
+        <defs>
+          <marker id="ah3" markerWidth="8" markerHeight="8" refX="6.6" refY="4" orient="auto"><path d="M0,0.5 L7,4 L0,7.5 Z" fill="#0B6B54"/></marker>
+          <marker id="ao3" markerWidth="8" markerHeight="8" refX="6.6" refY="4" orient="auto"><path d="M0,0.5 L7,4 L0,7.5 Z" fill="#F2761D"/></marker>
+        </defs>
+
+        <!-- Lifeline headers -->
+        <g class="st" style="transition-delay:.18s">
+          <rect class="d-box" x="10" y="0" width="200" height="50" rx="9"/>
+          <text class="d-ttl" x="110" y="31" text-anchor="middle">Customer</text>
+          <rect class="d-box" x="272" y="0" width="212" height="50" rx="9"/>
+          <text class="d-ttl" x="378" y="31" text-anchor="middle">MITRA app</text>
+          <rect class="d-deep" x="556" y="0" width="212" height="50" rx="9"/>
+          <text class="d-ttl-w" x="662" y="31" text-anchor="middle">MITRA API</text>
+          <rect class="d-warm" x="852" y="0" width="256" height="50" rx="9"/>
+          <text class="d-ttl" x="980" y="31" text-anchor="middle">IDBI FinPro sandbox</text>
+          <rect class="d-box" x="1192" y="0" width="212" height="50" rx="9"/>
+          <text class="d-ttl" x="1298" y="31" text-anchor="middle">Policy engine</text>
+          <rect class="d-deep" x="1490" y="0" width="212" height="50" rx="9"/>
+          <text class="d-ttl-w" x="1596" y="31" text-anchor="middle">Receipt chain</text>
+
+          <path class="d-life" d="M110,50 L110,666"/>
+          <path class="d-life" d="M378,50 L378,666"/>
+          <path class="d-life" d="M662,50 L662,666"/>
+          <path class="d-life" d="M980,50 L980,666"/>
+          <path class="d-life" d="M1298,50 L1298,666"/>
+          <path class="d-life" d="M1596,50 L1596,666"/>
+        </g>
+
+        <!-- Phase label: consent -->
+        <g class="st" style="transition-delay:.26s">
+          <rect x="0" y="66" width="1776" height="22" rx="6" fill="#EDF5F2"/>
+          <text class="d-lbl" x="12" y="82">Phase A · consent</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3)" d="M110,110 L372,110"/>
+          <text class="d-txt" x="118" y="104">1 “Connect my IDBI account”</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3)" d="M378,142 L656,142"/>
+          <text class="d-mono" x="386" y="136">2 POST /api/idbi/consent/request</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3)" d="M662,174 L974,174"/>
+          <text class="d-mono-o" x="670" y="168">3 API 590 requestConsentFromFinPro</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3);stroke-dasharray:6 5" d="M980,206 L668,206"/>
+          <text class="d-txt" x="700" y="200">4 consent_handle</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3)" d="M662,238 L974,238"/>
+          <text class="d-mono-o" x="670" y="232">5 API 592 getWebRedirectionEncryptedURL</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3);stroke-dasharray:6 5" d="M980,270 L668,270"/>
+          <text class="d-txt" x="700" y="264">6 webRedirectionUrl</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3);stroke-dasharray:6 5" d="M656,302 L116,302"/>
+          <text class="d-txt" x="150" y="296">7 redirect — customer approves at the FIP</text>
+        </g>
+
+        <!-- Phase label: fetch -->
+        <g class="st" style="transition-delay:.42s">
+          <rect x="0" y="322" width="1776" height="22" rx="6" fill="#EDF5F2"/>
+          <text class="d-lbl" x="12" y="338">Phase B · fetch and validate</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3)" d="M378,366 L656,366"/>
+          <text class="d-mono" x="386" y="360">8 POST /api/idbi/consent/snapshot</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3)" d="M662,398 L974,398"/>
+          <text class="d-mono-o" x="670" y="392">9 API 591 getConsentListFromFinPro</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3);stroke-dasharray:6 5" d="M980,430 L668,430"/>
+          <text class="d-txt" x="700" y="424">active consent + linkRefNumbers[ ]</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3)" d="M662,462 L974,462"/>
+          <text class="d-mono-o" x="670" y="456" style="font-size:12px">10 API 739 getAccountStatementFromFinPro</text>
+
+          <path class="d-arrow-o" style="marker-end:url(#ao3);stroke-dasharray:6 5" d="M980,494 L668,494"/>
+          <text class="d-txt" x="700" y="488">statement pages, following the cursor</text>
+
+          <rect x="576" y="510" width="392" height="46" rx="8" fill="#FFE6D2" stroke="#F5D6BB" stroke-width="1.5"/>
+          <text class="d-mono-o" x="592" y="530">11 normalizeFinProStatement</text>
+          <text class="d-txt" x="592" y="548">refs must match the request, or the import refuses</text>
+        </g>
+
+        <!-- Phase label: advise -->
+        <g class="st" style="transition-delay:.58s">
+          <rect x="0" y="570" width="1776" height="22" rx="6" fill="#EDF5F2"/>
+          <text class="d-lbl" x="12" y="586">Phase C · advise and record</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3)" d="M662,614 L1292,614"/>
+          <text class="d-txt" x="670" y="608">12 transactions, balances, provenance, as-of date</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3)" d="M1304,614 L1590,614"/>
+          <text class="d-mono" x="1312" y="608">14 sha256 ‖ prevHash</text>
+
+          <path class="d-arrow" style="marker-end:url(#ah3);stroke-dasharray:6 5" d="M1292,646 L384,646"/>
+          <text class="d-txt" x="700" y="640">13 insight + evidence + formula + confidence → spoken by MITRA</text>
+        </g>
+
+        <!-- Footer -->
+        <g class="st" style="transition-delay:.72s">
+          <rect class="d-warm" x="0" y="672" width="1776" height="54" rx="10"/>
+          <text class="d-ttl" x="20" y="696">Failure is loud, by design</text>
+          <text class="d-txt" x="20" y="718">A pending, revoked, expired or foreign-account consent stops the import. A link reference that does not match the request stops the import. Neither case falls back to fixture data — the customer is told the fetch failed rather than shown a plausible number.</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 10 — AWS DEPLOYMENT TOPOLOGY
+     ============================================================ -->
+<section class="slide content" aria-label="AWS deployment architecture">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Architecture · 3 of 3 — AWS deployment</div>
+      <h2 class="reveal" style="--d:.08s">Deployed in <em>ap-south-1</em>, and nowhere else</h2>
+      <p class="sub reveal" style="--d:.12s">Mumbai primary, Hyderabad DR. RBI's 2018 storage directive plus DPDP-era guidance keep every bucket, table and backup inside India — <b>no cross-region replication leaves the country</b>.</p>
+    </div>
+    <div class="dia reveal" style="--d:.16s">
+      <svg viewBox="0 0 1776 590" role="img" aria-label="AWS deployment topology from CloudFront through API Gateway and Lambda to DynamoDB, Aurora, Bedrock and Step Functions">
+        <defs>
+          <marker id="ah4" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0.5 L8,4.5 L0,8.5 Z" fill="#0B6B54"/></marker>
+        </defs>
+
+        <!-- Edge tier -->
+        <g class="st" style="transition-delay:.20s">
+          <rect class="d-band" x="0" y="0" width="1776" height="88" rx="14"/>
+          <text class="d-lbl" x="20" y="26">Edge</text>
+          <rect class="d-box" x="20" y="36" width="250" height="40" rx="8"/>
+          <text class="d-ttl" x="145" y="62" text-anchor="middle">Customer browser</text>
+          <rect class="d-warm" x="310" y="36" width="290" height="40" rx="8"/>
+          <text class="d-ttl" x="455" y="62" text-anchor="middle">CloudFront + AWS WAF</text>
+          <rect class="d-box" x="640" y="36" width="290" height="40" rx="8"/>
+          <text class="d-ttl" x="785" y="62" text-anchor="middle">S3 — SPA assets (OAC)</text>
+          <rect class="d-warm" x="970" y="36" width="340" height="40" rx="8"/>
+          <text class="d-ttl" x="1140" y="62" text-anchor="middle">API Gateway (HTTP API) + WAF</text>
+          <rect class="d-box" x="1350" y="36" width="406" height="40" rx="8"/>
+          <text class="d-ttl" x="1553" y="62" text-anchor="middle">Cognito JWT authorizer · throttling</text>
+        </g>
+
+        <!-- Compute tier -->
+        <g class="st" style="transition-delay:.32s">
+          <rect class="d-deep" x="0" y="112" width="1776" height="96" rx="14"/>
+          <text class="d-lbl" x="20" y="138" style="fill:#2EE6C5">Compute · Lambda (Node 20, ARM64) in VPC</text>
+          <rect x="20" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="111" y="176" text-anchor="middle">fn-auth</text>
+          <rect x="214" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="305" y="176" text-anchor="middle">fn-snapshot</text>
+          <rect x="408" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="499" y="176" text-anchor="middle">fn-insights</text>
+          <rect x="602" y="150" width="182" height="42" rx="8" fill="rgba(46,230,197,.20)"/><text class="d-ttl-w" x="693" y="176" text-anchor="middle">fn-advisor</text>
+          <rect x="796" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="887" y="176" text-anchor="middle">fn-consent</text>
+          <rect x="990" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="1081" y="176" text-anchor="middle">fn-goals</text>
+          <rect x="1184" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="1275" y="176" text-anchor="middle">fn-actions</text>
+          <rect x="1378" y="150" width="182" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="1469" y="176" text-anchor="middle">fn-ingest-api</text>
+          <rect x="1572" y="150" width="184" height="42" rx="8" fill="rgba(255,255,255,.10)"/><text class="d-ttl-w" x="1664" y="176" text-anchor="middle">fn-reference</text>
+        </g>
+
+        <!-- State tier -->
+        <g class="st" style="transition-delay:.44s">
+          <rect class="d-band" x="0" y="232" width="1776" height="152" rx="14"/>
+          <text class="d-lbl" x="20" y="258">State, models and orchestration</text>
+
+          <rect class="d-box" x="20" y="270" width="272" height="98" rx="10"/>
+          <text class="d-ttl" x="36" y="294">DynamoDB</text>
+          <text class="d-txt" x="36" y="316">Single table, PK CUST#&lt;id&gt;</text>
+          <text class="d-txt" x="36" y="336">profile · consents · actions</text>
+          <text class="d-txt" x="36" y="356">chat · XP · on-demand + PITR</text>
+
+          <rect class="d-box" x="308" y="270" width="272" height="98" rx="10"/>
+          <text class="d-ttl" x="324" y="294">Aurora Serverless v2</text>
+          <text class="d-txt" x="324" y="316">Postgres, 0.5 ACU floor</text>
+          <text class="d-txt" x="324" y="336">Transactions · holdings</text>
+          <text class="d-txt" x="324" y="356">Window functions, rollups</text>
+
+          <rect class="d-warm" x="596" y="270" width="272" height="98" rx="10"/>
+          <text class="d-ttl" x="612" y="294">Amazon Bedrock</text>
+          <text class="d-txt" x="612" y="316">Claude Sonnet 5 — chat</text>
+          <text class="d-txt" x="612" y="336">Claude Haiku 4.5 — classify</text>
+          <text class="d-mono-o" x="612" y="357">+ Guardrails, in-region</text>
+
+          <rect class="d-box" x="884" y="270" width="330" height="98" rx="10"/>
+          <text class="d-ttl" x="900" y="294">Step Functions (Express)</text>
+          <text class="d-txt" x="900" y="316">GuardDuty scan → Textract →</text>
+          <text class="d-txt" x="900" y="336">normalise → categorise →</text>
+          <text class="d-txt" x="900" y="356">persist → recompute</text>
+
+          <rect class="d-box" x="1230" y="270" width="250" height="98" rx="10"/>
+          <text class="d-ttl" x="1246" y="294">S3 ingest</text>
+          <text class="d-txt" x="1246" y="316">SSE-KMS, versioned</text>
+          <text class="d-txt" x="1246" y="336">90-day lifecycle</text>
+          <text class="d-txt" x="1246" y="356">Presigned PUT</text>
+
+          <rect class="d-box" x="1496" y="270" width="260" height="98" rx="10"/>
+          <text class="d-ttl" x="1512" y="294">KMS · Secrets Mgr</text>
+          <text class="d-txt" x="1512" y="316">CMK per environment</text>
+          <text class="d-txt" x="1512" y="336">Field-level envelope</text>
+          <text class="d-txt" x="1512" y="356">Auto-rotate at 90d</text>
+        </g>
+
+        <!-- Arrows -->
+        <g class="st" style="transition-delay:.56s">
+          <path class="d-arrow" style="marker-end:url(#ah4)" d="M888,88 L888,108"/>
+          <path class="d-arrow" style="marker-end:url(#ah4)" d="M888,208 L888,228"/>
+        </g>
+
+        <!-- Ops + environments -->
+        <g class="st" style="transition-delay:.66s">
+          <rect class="d-band" x="0" y="408" width="878" height="76" rx="12"/>
+          <text class="d-lbl" x="20" y="434">Observability &amp; governance</text>
+          <text class="d-txt" x="20" y="460">CloudWatch Logs/Metrics · X-Ray · CloudTrail org trail, immutable,</text>
+          <text class="d-txt" x="20" y="478">separate log-archive account · Security Hub · Config · EventBridge</text>
+
+          <rect class="d-band" x="898" y="408" width="878" height="76" rx="12"/>
+          <text class="d-lbl" x="918" y="434">Environments — separate accounts under Organizations</text>
+          <text class="d-txt" x="918" y="460">dev (synthetic) · sbx (AA sandbox, IP-allowlisted) · uat (masked, MFA) · prod (break-glass)</text>
+          <text class="d-txt" x="918" y="478">SCPs deny any region outside ap-south-* and deny disabling CloudTrail</text>
+        </g>
+
+        <!-- Status callout -->
+        <g class="st" style="transition-delay:.76s">
+          <rect class="d-warm" x="0" y="504" width="1776" height="86" rx="12"/>
+          <text class="d-ttl" x="20" y="530">Current deployment status</text>
+          <text class="d-txt" x="20" y="554">The submitted prototype runs on a local Node API plus a Vite dev server, with the IDBI sandbox gateway called server-side. The topology above is the</text>
+          <text class="d-txt" x="20" y="574">deployment target, specified in full in docs/SANDBOX_REQUIREMENTS.md. Live AWS endpoint and account details to be added before the final submission.</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 11 — TECHNOLOGIES
+     ============================================================ -->
+<section class="slide content" aria-label="Technologies used">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Technologies to be used</div>
+      <h2 class="reveal" style="--d:.08s">Boring where it counts, sharp where it differentiates</h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.25">
+        <div class="card reveal" style="--d:.14s;flex:1;padding:18px 20px">
+          <table class="t">
+            <thead><tr><th style="width:150px">Layer</th><th style="width:300px">Built with</th><th>Why this choice</th></tr></thead>
+            <tbody>
+              <tr><td>Front end</td><td class="num">React 18 · Vite 5</td><td>25 components, hand-rolled SVG charts — no charting dependency to audit or licence</td></tr>
+              <tr><td>Advice engine</td><td class="num">Pure JavaScript, 26 modules</td><td>Deterministic and portable; the same code runs in the browser today and in Lambda tomorrow</td></tr>
+              <tr><td>API</td><td class="num">Node (node:http), 16 routes</td><td>Zero framework dependencies in the path that touches customer data</td></tr>
+              <tr><td>Integrity</td><td class="num">node:crypto SHA-256</td><td>Hash-linked receipt chain over a stable JSON serialisation</td></tr>
+              <tr><td>Voice</td><td class="num">Sarvam AI — Bulbul v3, Saaras v3, Mayura</td><td>The only practical route to Tamil, Telugu, Kannada and Malayalam speech on ordinary phones</td></tr>
+              <tr><td>Avatar</td><td class="num">Animated SVG + GLB talking head</td><td>3D where the device allows, 2D fallback everywhere else</td></tr>
+              <tr><td>LLM</td><td class="num">DeepSeek Flash (prototype) → Amazon Bedrock</td><td>Routing only, schema-validated; Bedrock moves the key server-side and adds Guardrails</td></tr>
+              <tr><td>Bank data</td><td class="num">IDBI sandbox gateway · FinPro / AA</td><td>11 routes wired, with strict reference validation on every import</td></tr>
+              <tr><td>Tests</td><td class="num">node:test — 17 files, 134 tests</td><td>Contract, integration, regression, speech and trust-layer coverage; no test framework dependency</td></tr>
+              <tr><td>Target cloud</td><td class="num">AWS ap-south-1 — CDK (TypeScript)</td><td>Infrastructure as code; CI/CD via GitHub Actions with OIDC, no long-lived keys</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col" style="flex:.55">
+        <div class="card deep reveal" style="--d:.20s">
+          <div class="c-h">Dependency posture</div>
+          <div class="c-t" style="font-size:20px">Two runtime dependencies</div>
+          <div class="c-b"><span style="font-family:var(--font-mono);font-size:13.5px;color:#2EE6C5">react</span> and <span style="font-family:var(--font-mono);font-size:13.5px;color:#2EE6C5">react-dom</span>. Everything else — charts, parsing, hashing, HTTP, the test runner — is standard library or hand-written. A bank's security review has almost nothing to chase.</div>
+        </div>
+        <div class="card reveal" style="--d:.25s;flex:1 0 auto">
+          <div class="c-h">Build &amp; verify</div>
+          <ul class="ticks">
+            <li><span style="font-family:var(--font-mono);font-size:14px">npm run dev</span> — app + API</li>
+            <li><span style="font-family:var(--font-mono);font-size:14px">npm run dev:sandbox</span> — with the live IDBI gateway</li>
+            <li><span style="font-family:var(--font-mono);font-size:14px">npm test</span> — 134 tests, ~10s</li>
+            <li><span style="font-family:var(--font-mono);font-size:14px">npm run verify:idbi</span> — replays every published sandbox scenario and regenerates the audit</li>
+          </ul>
+          <div class="tags"><span class="tag">reproducible</span><span class="tag">no hidden state</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 12 — ESTIMATED IMPLEMENTATION COST
+     ============================================================ -->
+<section class="slide content" aria-label="Estimated implementation cost">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Estimated implementation cost</div>
+      <h2 class="reveal" style="--d:.08s">A sandbox that costs less than one RM's <em>phone bill</em></h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.15">
+        <div class="card reveal" style="--d:.14s;flex:1;padding:18px 20px">
+          <div class="c-h">AWS sandbox — indicative monthly run rate, low demo traffic</div>
+          <table class="t" style="margin-top:6px">
+            <thead><tr><th>Service</th><th style="width:180px;text-align:right">Monthly (USD)</th><th style="width:300px">Note</th></tr></thead>
+            <tbody>
+              <tr><td>Lambda + API Gateway</td><td class="num" style="text-align:right">$5 – 15</td><td>Zero idle cost between demos</td></tr>
+              <tr><td>DynamoDB on-demand + PITR</td><td class="num" style="text-align:right">$5 – 10</td><td>Customer-scoped access patterns</td></tr>
+              <tr><td>Aurora Serverless v2</td><td class="num" style="text-align:right">$45 – 90</td><td>0.5 ACU floor, ~8h/day active</td></tr>
+              <tr><td>S3 + Textract</td><td class="num" style="text-align:right">$10 – 20</td><td>≈500 statement pages/month</td></tr>
+              <tr><td>Bedrock (Sonnet + Haiku mix)</td><td class="num" style="text-align:right">$40 – 120</td><td>≈2,000 conversations/month</td></tr>
+              <tr><td>CloudFront + WAF</td><td class="num" style="text-align:right">$15 – 25</td><td>Managed rules, India geo-restriction</td></tr>
+              <tr><td>KMS, Secrets Mgr, CloudWatch, X-Ray</td><td class="num" style="text-align:right">$15 – 25</td><td>Per-environment CMK</td></tr>
+              <tr class="total"><td>Total</td><td class="num" style="text-align:right;font-size:19px">≈ $135 – 305</td><td>Aurora and Bedrock dominate</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col" style="flex:.7">
+        <div class="card warm reveal" style="--d:.20s">
+          <div class="c-h" style="color:var(--orange-600)">If budget is tight</div>
+          <div class="stat o">$60 – 90<small>/mo</small></div>
+          <div class="stat-l">Drop Aurora, keep everything in DynamoDB with pre-aggregated monthly rollups, and route all LLM traffic to Haiku. The cost is ad-hoc query flexibility, not customer-facing capability.</div>
+        </div>
+        <div class="card deep reveal" style="--d:.25s">
+          <div class="c-h">The number that matters</div>
+          <div class="c-t" style="font-size:20px">Marginal cost per advised customer falls with scale; an RM's does not.</div>
+          <div class="c-b">Bedrock is the only line item that grows with conversations, and classification traffic routes to Haiku. Everything else is fixed or near-fixed.</div>
+        </div>
+        <div class="card reveal" style="--d:.30s;flex:1 0 auto">
+          <div class="c-h">Build effort</div>
+          <ul class="ticks">
+            <li><b>Phase 0</b> — server-side engine extraction, contract tests, no AWS spend</li>
+            <li><b>Phase 1</b> — CDK landing zone, Cognito, DynamoDB, first Lambdas</li>
+            <li><b>Phase 2</b> — AA integration, Step Functions ingest, Bedrock + Guardrails</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 13 — SNAPSHOTS OF THE PROTOTYPE
+     ============================================================ -->
+<section class="slide content" aria-label="Snapshots of the prototype">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Snapshots of the prototype</div>
+      <h2 class="reveal" style="--d:.08s">Every figure on these screens is computed, not written</h2>
+    </div>
+    <div class="body">
+      <div class="shotwrap col reveal" style="--d:.14s;flex:1;flex-direction:row">
+        <img class="phone" src="assets/shot-wealth.png" alt="Wealth 360 screen showing health score breakdown, peer benchmarking and allocation drift" width="360" height="690">
+        <div class="notes">
+          <div class="c-h">Wealth 360°</div>
+          <div class="anno"><div class="anno-t">Health score, broken down</div><div class="anno-b">Savings rate, emergency cover, diversification and goal readiness each scored separately, so the customer can see which one is dragging.</div></div>
+          <div class="anno"><div class="anno-t">You vs people like you</div><div class="anno-b">Percentile bars against an anonymised cohort of salaried metro earners in the same age band — comparison people actually understand.</div></div>
+          <div class="anno o"><div class="anno-t">Drift, with a non-destructive fix</div><div class="anno-b">Current vs target allocation donuts. The proposed correction runs through a SIP glide path rather than a sell that would trigger tax.</div></div>
+          <div class="anno o"><div class="anno-t">Market Pulse in rupees</div><div class="anno-b">The weekly index move translated into this customer's own portfolio impact, with behavioural framing rather than a ticker.</div></div>
+        </div>
+      </div>
+      <div class="shotwrap col reveal" style="--d:.20s;flex:1;flex-direction:row">
+        <img class="phone" src="assets/shot-timemachine.png" alt="Wealth Time Machine screen with SIP and market levers and the projected age of financial freedom" width="360" height="690">
+        <div class="notes">
+          <div class="c-h">Wealth Time Machine</div>
+          <div class="anno"><div class="anno-t">Two levers, one honest answer</div><div class="anno-b">Drag extra SIP and the bear/base/bull market assumption; wealth-at-60 and the age of financial freedom recompute live.</div></div>
+          <div class="anno"><div class="anno-t">Life events reshape the curve</div><div class="anno-b">Wedding at 31, child at 33, home at 35, parents' care at 45 — each toggles on as a marker and moves the freedom age, sometimes past 60.</div></div>
+          <div class="anno o"><div class="anno-t">It is allowed to deliver bad news</div><div class="anno-b">“Freedom never arrives on your current path” is a real output. The engine does not round a shortfall into optimism.</div></div>
+          <div class="anno o"><div class="anno-t">One tap hands the plan to MITRA</div><div class="anno-b">The scenario becomes conversation context, so the follow-up question already knows what the customer just modelled.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 14 — PERFORMANCE / BENCHMARKING
+     ============================================================ -->
+<section class="slide content" aria-label="Prototype performance and benchmarking">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Prototype performance &amp; benchmarking</div>
+      <h2 class="reveal" style="--d:.08s">Measured, and reproducible on your machine</h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1">
+        <div class="statrow reveal" style="--d:.13s">
+          <div class="card tint"><div class="stat" data-count="134">0</div><div class="stat-l">automated tests<br>134 pass · 0 fail</div></div>
+          <div class="card tint"><div class="stat o">~10<small>s</small></div><div class="stat-l">full suite<br>wall-clock</div></div>
+        </div>
+        <div class="card reveal" style="--d:.18s;flex:1 0 auto">
+          <div class="c-h">Test coverage by area · 17 files</div>
+          <ul class="ticks">
+            <li><b>Contract</b> — IDBI request/response shape, enrichment mapping, loan and lien joins</li>
+            <li><b>Integration</b> — API routes, customer context, client state, data-coverage flows</li>
+            <li><b>Regression</b> — statement import, connect UI, trust layer</li>
+            <li><b>Speech</b> — motion, playback, transcript, pacing</li>
+            <li><b>Conversation</b> — intent routing, avatar direction, presenter integration</li>
+          </ul>
+          <div class="tags"><span class="tag">node:test</span><span class="tag">no framework dependency</span><span class="tag">npm test</span></div>
+        </div>
+      </div>
+      <div class="col" style="flex:1.05">
+        <div class="card reveal" style="--d:.23s">
+          <div class="c-h">IDBI sandbox audit · reproducible with npm run verify:idbi</div>
+          <table class="t" style="margin-top:4px">
+            <tbody>
+              <tr><td>Published YAML specs downloaded</td><td class="num" style="text-align:right">34</td></tr>
+              <tr><td>Distinct test routes exercised</td><td class="num" style="text-align:right">31</td></tr>
+              <tr><td>Published request scenarios sent</td><td class="num" style="text-align:right">45</td></tr>
+              <tr><td>Returned HTTP 200 with parseable JSON</td><td class="num" style="text-align:right">41</td></tr>
+              <tr><td>Returned HTTP 400 (documented causes)</td><td class="num" style="text-align:right">4</td></tr>
+              <tr><td>Routes with at least one HTTP 200</td><td class="num" style="text-align:right">30</td></tr>
+              <tr class="total"><td>Routes wired into the product</td><td class="num" style="text-align:right;font-size:19px">11</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card warm reveal" style="--d:.28s">
+          <div class="c-h" style="color:var(--orange-600)">What the audit does not claim</div>
+          <div class="c-b">HTTP 200 proves that a sample response is available. It does not prove correct cross-API identity, live consent, authentication enforcement, or production readiness — and the audit document says exactly that, in writing, next to the numbers.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.72">
+        <div class="card deep reveal" style="--d:.33s;flex:1 0 auto">
+          <div class="c-h">Engineering footprint</div>
+          <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">
+            <div><div class="stat" style="color:#fff;font-size:42px" data-count="11242">0</div><div class="stat-l" style="color:#BFDDD5">lines of application code</div></div>
+            <div><div class="stat" style="color:#2EE6C5;font-size:42px" data-count="26">0</div><div class="stat-l" style="color:#BFDDD5">engine modules, all deterministic</div></div>
+            <div><div class="stat" style="color:#2EE6C5;font-size:42px" data-count="25">0</div><div class="stat-l" style="color:#BFDDD5">React components</div></div>
+            <div><div class="stat" style="color:#fff;font-size:42px" data-count="16">0</div><div class="stat-l" style="color:#BFDDD5">authenticated API routes</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note reveal" style="--d:.38s"><b>Voice benchmark:</b> Saaras v3 identified the spoken language without a menu selection at 0.99 confidence in testing, across the nine supported languages. Language detection failing over to a manual picker is the degraded path, not the normal one.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 15 — HONEST BOUNDARIES
+     ============================================================ -->
+<section class="slide content" aria-label="What is real and what is simulated">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Scope &amp; integrity</div>
+      <h2 class="reveal" style="--d:.08s">What is real, and what we <em>refuse to claim</em></h2>
+      <p class="sub reveal" style="--d:.12s">A wealth advisor that overstates itself is a compliance incident waiting to happen. This is the boundary, stated the same way in the product, the repository and this deck.</p>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1">
+        <div class="card rail reveal" style="--d:.16s;flex:1 0 auto">
+          <div class="c-h" style="color:var(--teal-500)">Real and working</div>
+          <ul class="ticks">
+            <li><b>11 IDBI sandbox routes</b> called server-side, live, with request IDs captured</li>
+            <li><b>Consent handle and encrypted redirect</b> obtained from FinPro and bound to the authenticated MITRA session</li>
+            <li><b>Statement normalisation</b> with strict link-reference validation and pagination cursor handling</li>
+            <li><b>Every analytic</b> computed from the returned data — change an input, every output changes</li>
+            <li><b>Hash-linked advice receipts</b> issued and verifiable through the API</li>
+            <li><b>Nine-language voice</b> in and out, with automatic language identification</li>
+            <li><b>134 automated tests</b>, all passing, reproducible in about ten seconds</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card rail o reveal" style="--d:.21s;flex:1 0 auto">
+          <div class="c-h" style="color:var(--orange-600)">Simulated, blocked, or not claimed</div>
+          <ul class="ticks o">
+            <li><b>No execution, ever</b> — no mandate, trade, policy issuance, cancellation or RM callback is performed. The passport refuses an <span style="font-family:var(--font-mono);font-size:13px">EXECUTED</span> action state outright</li>
+            <li><b>Loan data is inspected, not merged</b> — the sandbox fixtures lack a verified loan-to-customer join, so loan terms never become profile inputs</li>
+            <li><b>Multi-account consent is blocked</b> — the published fixture returns a mismatched link reference, and the connector refuses the import rather than substituting a plausible one</li>
+            <li><b>Browser-side keys are a prototype shortcut</b> — production moves them server-side behind Bedrock and Secrets Manager</li>
+            <li><b>Demo personas are synthetic</b> and labelled as such wherever they appear</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col" style="flex:.85">
+        <div class="card deep reveal" style="--d:.26s;flex:1 0 auto">
+          <div class="c-h">The design principle</div>
+          <div class="c-t" style="font-size:25px;line-height:1.24">Refusing to import bad data is a feature.</div>
+          <div class="c-b" style="margin-top:12px">An earlier build of the connector silently accepted a mismatched link reference from the FinPro sample. It now refuses that import — and the audit document records the correction, including the earlier over-claim.</div>
+          <div class="c-b" style="margin-top:14px">A prototype that fails loudly is a prototype a bank can reason about. One that quietly shows a plausible number is worse than one that shows nothing.</div>
+          <div class="tags" style="margin-top:16px"><span class="tag" style="background:rgba(46,230,197,.16);color:#2EE6C5;border-color:rgba(46,230,197,.3)">docs/IDBI_SANDBOX_AUDIT.md</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 16 — ADDITIONAL DETAILS / FUTURE DEVELOPMENT
+     ============================================================ -->
+<section class="slide content" aria-label="Additional details and future development">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Additional details / future development</div>
+      <h2 class="reveal" style="--d:.08s">The path from prototype to production</h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1">
+        <div class="card rail reveal" style="--d:.14s"><div class="c-h">Data</div>
+          <div class="c-t">True 360°, other banks included</div>
+          <div class="c-b">RBI Account Aggregator plus core-banking feeds, so held-away assets enter the picture. Textract replaces the current browser-side CSV path for PDF statements.</div>
+        </div>
+        <div class="card rail m reveal" style="--d:.19s"><div class="c-h">Avatar &amp; voice</div>
+          <div class="c-t">Lip-synced 3D, two more languages</div>
+          <div class="c-b">The 3D talking head landed this phase. Next: production-grade viseme timing, the Sarvam key moved server-side, and Punjabi plus Odia — both already supported by Bulbul.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card rail o reveal" style="--d:.24s"><div class="c-h">Compliance</div>
+          <div class="c-t">From hash chain to WORM</div>
+          <div class="c-b">Extend the implemented hash-linked receipts with managed append-only storage, a SEBI Investment Adviser review of the policy set, and an approved RM escalation path with a real callback SLA.</div>
+        </div>
+        <div class="card rail o reveal" style="--d:.29s"><div class="c-h">Execution</div>
+          <div class="c-t">Where simulations become actions</div>
+          <div class="c-b">Live mutual fund, FD and SGB order APIs, NPCI e-mandates for SIP registration, and nudges delivered as push notifications rather than in-app only. Each one flips a labelled simulation into a real, receipted action.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:1">
+        <div class="card rail m reveal" style="--d:.34s"><div class="c-h">Learning loop</div>
+          <div class="c-t">The bank's compounding asset</div>
+          <div class="c-b">Accepted and rejected nudges become training signal for per-customer personalisation, and cohort benchmarks move from synthetic distributions to real anonymised segments. Every advised customer makes the next customer's advice better.</div>
+        </div>
+        <div class="card deep reveal" style="--d:.39s;flex:1 0 auto">
+          <div class="c-h">Why this scales for a public-sector bank</div>
+          <div class="c-b">The mandate is reaching customers who are not served today. Those customers are not short of products — they are short of someone who will explain their own money to them, in their own language, at the moment it matters. That is a software problem, and it is the one MITRA solves.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 17 — IMPROVEMENTS IN THE 2ND PROTOTYPE PHASE
+     ============================================================ -->
+<section class="slide content" aria-label="Improvements during the second prototype phase">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Improvements during the 2nd prototype phase</div>
+      <h2 class="reveal" style="--d:.08s">From a convincing demo to a <em>defensible</em> one</h2>
+      <p class="sub reveal" style="--d:.12s">The first prototype proved the idea. This phase replaced the parts that were only pretending to be real.</p>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.3">
+        <div class="card reveal" style="--d:.16s;flex:1;padding:18px 20px">
+          <table class="t">
+            <thead><tr><th style="width:250px">Area</th><th style="width:330px">Before</th><th>Now</th></tr></thead>
+            <tbody>
+              <tr><td>Bank data</td><td>Synthetic personas only</td><td><b>11 IDBI sandbox routes wired</b> — account discovery, enquiry, paginated statements, consent request, encrypted redirect, consent list, FinPro statement, lien, loan details, overdue, customer limits</td></tr>
+              <tr><td>Consent</td><td>Not implemented</td><td>Full FinPro consent flow — handle, encrypted redirect URL, active-consent selection, and refusal on pending, revoked, expired or foreign-account results</td></tr>
+              <tr><td>Data integrity</td><td>Mismatched references silently accepted</td><td><b>Strict link-reference validation.</b> The connector now refuses the inconsistent published fixture instead of importing it, and the audit records the earlier over-claim</td></tr>
+              <tr><td>Enrichment</td><td>Balance only</td><td>Lien and effective-available balances kept distinct from reported balance; loans and exposure surfaced with their joins explicitly marked unresolved</td></tr>
+              <tr><td>Avatar</td><td>2D animated SVG</td><td><b>3D talking-head avatar</b> with viseme lip-sync and a 2D/3D toggle in Settings — merged to main this phase</td></tr>
+              <tr><td>Voice</td><td>Fixed delivery rate</td><td>Speaking-speed control, plus motion and pacing regression tests</td></tr>
+              <tr><td>Conversation</td><td>Chat panel</td><td>Interactive companion rail and full-screen live call with hands-free turn-taking and live captions</td></tr>
+              <tr><td>Verification</td><td>No automated tests</td><td><b>134 tests across 17 files</b>, all passing — contract, integration, regression, speech and trust-layer</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col" style="flex:.52">
+        <div class="card warm reveal" style="--d:.22s">
+          <div class="c-h" style="color:var(--orange-600)">Landed this phase</div>
+          <div class="c-t">Merged to main</div>
+          <div class="c-b">The 3D talking-head avatar branch was merged and the full suite re-run: <b>134 passing, 0 failing</b>.</div>
+        </div>
+        <div class="card deep reveal" style="--d:.27s;flex:1 0 auto">
+          <div class="c-h">The honest summary</div>
+          <div class="c-b">Phase one could have been demoed with the sandbox switched off and nobody would have noticed. Phase two cannot — the connector now refuses data it cannot verify, which means when it works, it works for a reason we can point at.</div>
+          <div class="c-b" style="margin-top:14px">The single most valuable change is not a feature. It is that the audit document now contradicts an earlier claim we made, in writing, and we kept it there.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 18 — LINKS
+     ============================================================ -->
+<section class="slide content" aria-label="Submission links">
+  <div class="chrome-hdr"></div><div class="chrome-ftr"></div>
+  <div class="inner">
+    <div class="head">
+      <div class="kicker reveal" style="--d:.04s">Submission links</div>
+      <h2 class="reveal" style="--d:.08s">See it, run it, read it</h2>
+    </div>
+    <div class="body">
+      <div class="col" style="flex:1.1">
+        <div class="card rail reveal" style="--d:.14s">
+          <div class="c-h">GitHub public repository</div>
+          <div class="c-t"><span class="fill">[ add public repository URL ]</span></div>
+          <div class="c-b">Full source, the sandbox audit, the API contract and the OpenAPI specification.</div>
+        </div>
+        <div class="card rail o reveal" style="--d:.19s">
+          <div class="c-h">Demo video · 3 minutes</div>
+          <div class="c-t"><span class="fill">[ add demo video URL ]</span></div>
+          <div class="c-b">Onboarding → health score → idle surplus → Advice Passport → Hindi voice → Time Machine → Fraud Shield.</div>
+        </div>
+        <div class="card rail m reveal" style="--d:.24s">
+          <div class="c-h">Final product link</div>
+          <div class="c-t"><span class="fill">[ add hosted product URL ]</span></div>
+          <div class="c-b">Requires the Node API and an <span style="font-family:var(--font-mono);font-size:14px">/api</span> proxy — a static build alone cannot provide login or bank access.</div>
+        </div>
+        <div class="card rail o reveal" style="--d:.29s">
+          <div class="c-h">AWS deployment</div>
+          <div class="c-t"><span class="fill">[ add AWS endpoint · ap-south-1 ]</span></div>
+          <div class="c-b">Deployment target specified in <span style="font-family:var(--font-mono);font-size:14px">docs/SANDBOX_REQUIREMENTS.md</span>; endpoint to be added.</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.9">
+        <div class="card reveal" style="--d:.33s">
+          <div class="c-h">Run it locally in two commands</div>
+          <div style="font-family:var(--font-mono);font-size:16px;line-height:1.9;color:var(--teal-700);background:#EDF5F2;border-radius:10px;padding:14px 16px;margin-top:4px">
+            npm install<br>
+            npm run dev<span style="color:var(--muted)">      # → localhost:5173</span><br>
+            npm run dev:sandbox<span style="color:var(--muted)">  # with live IDBI gateway</span>
+          </div>
+        </div>
+        <div class="card reveal" style="--d:.37s;flex:1 0 auto">
+          <div class="c-h">Documentation in the repository</div>
+          <ul class="ticks">
+            <li><b>IDBI_SANDBOX_AUDIT.md</b> — every route tested, every failure and contradiction recorded</li>
+            <li><b>SANDBOX_REQUIREMENTS.md</b> — the full AWS target architecture, security requirements and cost model</li>
+            <li><b>API_CONTRACT.md</b> + <b>openapi.yaml</b> — the interface the bank would integrate against</li>
+            <li><b>DATA_AUDIT.md</b> — what data exists today and where it comes from</li>
+            <li><b>VERIFICATION.md</b> — verified coverage, fixes and remaining limits</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="note warm reveal" style="--d:.42s"><b>Before submitting:</b> press <b>E</b> to enter edit mode and replace the four dashed placeholders above, plus the team name and leader on the cover slide.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SLIDE 19 — CLOSING
+     ============================================================ -->
+<section class="slide closing" aria-label="Thank you">
+  <div class="closing-tag reveal" style="--d:.25s">MITRA · My Intelligent Treasury &amp; Robo Advisor</div>
+</section>
+
+</main>
+</div>
+
+<!-- Deck chrome lives outside the 1920x1080 stage -->
+<nav class="deck-controls" aria-label="Slide navigation">
+  <span class="pg" id="pageNum">01 / 19</span>
+  <button id="prevBtn" aria-label="Previous slide">‹</button>
+  <button id="nextBtn" aria-label="Next slide">›</button>
+</nav>
+
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)" aria-label="Toggle edit mode">✏️</button>
+<div class="edit-hint">EDIT MODE · click any text to change it · Ctrl+S saves · E exits</div>
+
+<script>
+/* ============================================================
+   SLIDE PRESENTATION CONTROLLER
+   Scales the fixed 1920x1080 stage to the viewport and handles
+   keyboard, wheel, touch and button navigation.
+   ============================================================ */
+class SlidePresentation {
+  constructor(){
+    this.slides  = Array.from(document.querySelectorAll('.slide'));
+    this.stage   = document.getElementById('deckStage');
+    this.pageNum = document.getElementById('pageNum');
+    this.bar     = document.getElementById('progress');
+    this.current = 0;
+
+    this.setupStageScale();
+    this.setupKeyboardNav();
+    this.setupTouchNav();
+    this.setupWheelNav();
+    this.setupButtons();
+    this.showSlide(0);
+  }
+
+  /* One transform scales the whole stage. Content never reflows,
+     so the deck stays 16:9 on a phone exactly as on a projector. */
+  setupStageScale(){
+    const scale = () => {
+      const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const x = (window.innerWidth  - 1920 * f) / 2;
+      const y = (window.innerHeight - 1080 * f) / 2;
+      this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+    };
+    scale();
+    window.addEventListener('resize', scale);
+    window.addEventListener('orientationchange', scale);
+  }
+
+  setupKeyboardNav(){
+    document.addEventListener('keydown', (e) => {
+      if (e.target.getAttribute('contenteditable') === 'true') return;
+      switch(e.key){
+        case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
+          e.preventDefault(); this.next(); break;
+        case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+          e.preventDefault(); this.prev(); break;
+        case 'Home': e.preventDefault(); this.showSlide(0); break;
+        case 'End':  e.preventDefault(); this.showSlide(this.slides.length - 1); break;
+      }
+    });
+  }
+
+  setupTouchNav(){
+    let x0 = null, y0 = null;
+    document.addEventListener('touchstart', (e) => {
+      x0 = e.changedTouches[0].clientX; y0 = e.changedTouches[0].clientY;
+    }, {passive:true});
+    document.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      const dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) dx < 0 ? this.next() : this.prev();
+      x0 = y0 = null;
+    }, {passive:true});
+  }
+
+  setupWheelNav(){
+    let lock = false;
+    document.addEventListener('wheel', (e) => {
+      if (lock || document.body.classList.contains('editing')) return;
+      if (Math.abs(e.deltaY) < 24) return;
+      lock = true;
+      e.deltaY > 0 ? this.next() : this.prev();
+      setTimeout(() => { lock = false; }, 620);
+    }, {passive:true});
+  }
+
+  setupButtons(){
+    document.getElementById('nextBtn').addEventListener('click', () => this.next());
+    document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+  }
+
+  next(){ this.showSlide(this.current + 1); }
+  prev(){ this.showSlide(this.current - 1); }
+
+  showSlide(i){
+    this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+    this.slides.forEach((s, n) => {
+      const on = n === this.current;
+      s.classList.toggle('active', on);
+      s.classList.toggle('visible', on);
+    });
+    const n = this.current + 1, total = this.slides.length;
+    this.pageNum.textContent = `${String(n).padStart(2,'0')} / ${total}`;
+    this.bar.style.width = `${(n / total) * 100}%`;
+    countUpIn(this.slides[this.current]);
+  }
+}
+
+/* ============================================================
+   COUNT-UP FIGURES
+   Any element with data-count animates from 0 on slide entry.
+   Formatting keeps thousands separators for large numbers.
+   ============================================================ */
+function countUpIn(slide){
+  slide.querySelectorAll('[data-count]').forEach((el) => {
+    if (el.dataset.done === '1') return;
+    el.dataset.done = '1';
+    const target = parseFloat(el.dataset.count);
+    const dur = 1100, t0 = performance.now();
+    const fmt = (v) => target >= 1000 ? Math.round(v).toLocaleString('en-IN') : String(Math.round(v));
+    const tick = (t) => {
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));   // ease-out cubic
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ============================================================
+   INLINE EDITING
+   Hover the top-left corner or press E. Edits persist to
+   localStorage and survive a reload.
+   ============================================================ */
+class InlineEditor {
+  constructor(){
+    this.isActive = false;
+    this.key = 'mitra-idbi-deck-edits';
+    this.targets = 'h2, .sub, .c-t, .c-b, .c-h, .stat-l, .kicker, li, .field-v, .anno-t, .anno-b, .note, td, .wordmark-d, .closing-tag';
+    this.restore();
+  }
+
+  nodes(){ return Array.from(document.querySelectorAll(this.targets)); }
+
+  toggleEditMode(){
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('editing', this.isActive);
+    document.getElementById('editToggle').classList.toggle('active', this.isActive);
+    this.nodes().forEach((el, i) => {
+      el.setAttribute('contenteditable', this.isActive ? 'true' : 'false');
+      if (this.isActive && !el.dataset.eid) el.dataset.eid = 'e' + i;
+    });
+    if (!this.isActive) this.save();
+  }
+
+  save(){
+    const data = {};
+    this.nodes().forEach((el) => { if (el.dataset.eid) data[el.dataset.eid] = el.innerHTML; });
+    try { localStorage.setItem(this.key, JSON.stringify(data)); } catch(_) {}
+  }
+
+  restore(){
+    let data;
+    try { data = JSON.parse(localStorage.getItem(this.key) || '{}'); } catch(_) { return; }
+    if (!data || !Object.keys(data).length) return;
+    this.nodes().forEach((el, i) => {
+      const id = 'e' + i;
+      if (data[id] !== undefined){ el.dataset.eid = id; el.innerHTML = data[id]; }
+    });
+  }
+}
+
+/* --- Boot --- */
+const deck   = new SlidePresentation();
+const editor = new InlineEditor();
+
+/* Exposed so a console or an automated check can drive the deck directly. */
+window.deck = deck;
+window.editor = editor;
+
+/* Edit affordance: JS hover with a grace period, because a CSS
+   sibling selector breaks when pointer-events toggles mid-hover. */
+(function wireEditAffordance(){
+  const hotzone = document.querySelector('.edit-hotzone');
+  const toggle  = document.getElementById('editToggle');
+  let hideTimer = null;
+
+  const show = () => { clearTimeout(hideTimer); toggle.classList.add('show'); };
+  const hide = () => {
+    hideTimer = setTimeout(() => { if (!editor.isActive) toggle.classList.remove('show'); }, 400);
+  };
+
+  hotzone.addEventListener('mouseenter', show);
+  hotzone.addEventListener('mouseleave', hide);
+  toggle .addEventListener('mouseenter', show);
+  toggle .addEventListener('mouseleave', hide);
+  hotzone.addEventListener('click', () => editor.toggleEditMode());
+  toggle .addEventListener('click', () => editor.toggleEditMode());
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && e.target.getAttribute('contenteditable') !== 'true'){
+      editor.toggleEditMode();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 's'){ e.preventDefault(); editor.save(); }
+  });
+})();
+</script>
+</body>
+</html>

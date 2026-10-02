@@ -27,7 +27,7 @@ async function request(path, options = {}) {
 
 // Provider availability is public (no session needed), so it is fetched in
 // demo mode too — the demo personas use the same server-side AI.
-async function loadAiStatus() {
+export async function loadAiStatus() {
   try {
     const response = await fetch('/api/ai/status', { signal: AbortSignal.timeout(5000) });
     if (response.ok) setAiStatus(await response.json());

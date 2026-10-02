@@ -32,11 +32,14 @@ test('translation survives Sarvam’s "=" filter and 1000-character limit, keepi
   globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
   const realFetch = globalThis.fetch;
   const inputs = [];
+  const modes = [];
   // Fake Mayura: rejects "=" and inputs over 1000 chars, refuses one poison line, otherwise tags the text.
   globalThis.fetch = async (url, options) => {
     const { input } = JSON.parse(options.body);
     inputs.push(input);
-    const bad = input.includes('=') || input.length > 1000 || input.includes('POISON');
+    const { mode } = JSON.parse(options.body);
+    modes.push(mode);
+    const bad = input.includes('=') || input.length > 1000 || input.includes('POISON') || (input.includes('DROPS') && mode === 'modern-colloquial');
     return new Response(JSON.stringify(bad ? { error: { message: 'Input contains potentially unsafe content.' } } : { translated_text: `[ta] ${input}` }), { status: bad ? 400 : 200, headers: { 'content-type': 'application/json' } });
   };
   try {
@@ -53,6 +56,11 @@ test('translation survives Sarvam’s "=" filter and 1000-character limit, keepi
       '• [ta] Last line.',
     ], 'lines and bullets keep their layout; a failing line stays in English');
 
+    modes.length = 0;
+    const retried = await translateSarvam('This line DROPS a clause in one style.', 'ta');
+    assert.equal(retried, '[ta] This line DROPS a clause in one style.', 'a line that fails in one style is retried in another');
+    assert.deepEqual(modes, ['modern-colloquial', 'classic-colloquial']);
+
     const big = await translateSarvam(`Intro line.\n${longLine}\n• Bullet.`, 'ta');
     assert.equal(big.split('\n').length, 3);
     assert.ok((big.split('\n')[1].match(/\[ta\]/g) || []).length > 1, 'an over-long line is translated in several pieces');
@@ -60,4 +68,13 @@ test('translation survives Sarvam’s "=" filter and 1000-character limit, keepi
     globalThis.fetch = realFetch;
     delete globalThis.localStorage;
   }
+});
+
+test('the voice follows the script the reply is written in', async () => {
+  const { voiceLanguageFor } = await import('../src/engine/multilingual.js');
+  assert.equal(voiceLanguageFor('Your fund covers 4.2 months.', 'ta'), 'en', 'an untranslated reply is read in English');
+  assert.equal(voiceLanguageFor('உங்க fund 4.2 months cover பண்ணும்.', 'ta'), 'ta');
+  assert.equal(voiceLanguageFor('नमस्कार, मी कविता बोलते आहे.', 'en'), 'hi', 'Devanagari asked for in English gets a Devanagari voice');
+  assert.equal(voiceLanguageFor('नमस्कार, मी कविता बोलते आहे.', 'mr'), 'mr');
+  assert.equal(voiceLanguageFor('வணக்கம்', 'en'), 'ta');
 });

@@ -72,7 +72,49 @@ export function figuresGrounded(reply, sources) {
   return { ok: unknown.length === 0, unknown };
 }
 
-function cleanFollowups(list, fallback = []) {
+// Bullets sometimes arrive inline ("… • a • b"); put each on its own line.
+const tidy = (value) => (typeof value === 'string'
+  ? value.trim().replace(/[ \t]+•\s+/g, '\n• ').replace(/\n{3,}/g, '\n\n').slice(0, 1200)
+  : '');
+
+// One grounded AI answer: ask DeepSeek (thinking on) for the JSON reply,
+// retry a blank JSON-mode answer once without JSON mode, and give a reply
+// quoting a figure not found in `sources` one rewrite before rejecting it.
+// Shared by the customer composer and the RM copilot (engine/rmComposer.js).
+export async function composeGrounded({ system, user, sources, signal, completeFn = complete }) {
+  const ask = (json, correction = '') => completeFn({
+    system,
+    messages: [{ role: 'user', content: user + correction }],
+    json,
+    thinking: true,
+    temperature: 0.4,
+    maxTokens: 3000,
+    signal,
+  });
+  let { content, reasoning } = await ask(true);
+  // A blank JSON-mode answer gets one retry with JSON mode off; the prompt
+  // still asks for the same JSON shape, which parseJSON extracts.
+  if (!parseJSON(content)?.reply) ({ content, reasoning } = await ask(false));
+  let parsed = parseJSON(content);
+  let reply = tidy(parsed?.reply);
+  if (!reply) return { rejected: 'empty reply' };
+
+  // A figure that can't be traced to the facts gets one chance at a rewrite
+  // before the reply is dropped — usually a general market statistic that can
+  // be said in words just as well.
+  let grounded = figuresGrounded(reply, sources);
+  if (!grounded.ok) {
+    ({ content, reasoning } = await ask(true, `\n\nYOUR PREVIOUS DRAFT used figures that are not in the facts: ${grounded.unknown.join(', ')}. Rewrite the answer without those numbers — describe them in words (for example "sharp falls" instead of a percentage). Every remaining figure must appear in the facts or the user's own words.`));
+    parsed = parseJSON(content);
+    reply = tidy(parsed?.reply);
+    if (!reply) return { rejected: 'empty reply after rewrite' };
+    grounded = figuresGrounded(reply, sources);
+  }
+  if (!grounded.ok) return { rejected: `figures not in facts: ${grounded.unknown.join(', ')}` };
+  return { parsed, reply, reasoning };
+}
+
+export function cleanFollowups(list, fallback = []) {
   const chips = (Array.isArray(list) ? list : [])
     .filter((item) => typeof item === 'string')
     .map((item) => item.trim().replace(/\s+/g, ' '))
@@ -92,41 +134,9 @@ export async function composeAnswer({ text, history = [], riskProfile = 'Balance
     : '';
   const user = `CUSTOMER_FACTS:\n${facts}${hintText}${transcript}\n\nCARDS: ${Object.entries(CARDS).map(([id, label]) => `${id} (${label})`).join('; ')}\n\nCUSTOMER QUESTION: ${String(text).slice(0, 2000)}`;
 
-  const ask = (json, correction = '') => completeFn({
-    system: SYSTEM,
-    messages: [{ role: 'user', content: user + correction }],
-    json,
-    thinking: true,
-    temperature: 0.4,
-    maxTokens: 3000,
-    signal,
-  });
-  const sources = [facts, text, engineHint?.text || '', ...turns.map((m) => m.text)];
-  // Bullets sometimes arrive inline ("… • a • b"); put each on its own line.
-  const tidy = (value) => (typeof value === 'string'
-    ? value.trim().replace(/[ \t]+•\s+/g, '\n• ').replace(/\n{3,}/g, '\n\n').slice(0, 1200)
-    : '');
-
-  let { content, reasoning } = await ask(true);
-  // A blank JSON-mode answer gets one retry with JSON mode off; the prompt
-  // still asks for the same JSON shape, which parseJSON extracts.
-  if (!parseJSON(content)?.reply) ({ content, reasoning } = await ask(false));
-  let parsed = parseJSON(content);
-  let reply = tidy(parsed?.reply);
-  if (!reply) return { rejected: 'empty reply' };
-
-  // A figure that can't be traced to the facts gets one chance at a rewrite
-  // before the reply is dropped — usually a general market statistic that can
-  // be said in words just as well.
-  let grounded = figuresGrounded(reply, sources);
-  if (!grounded.ok) {
-    ({ content, reasoning } = await ask(true, `\n\nYOUR PREVIOUS DRAFT used figures that are not in CUSTOMER_FACTS: ${grounded.unknown.join(', ')}. Rewrite the answer without those numbers — describe them in words (for example "sharp falls" instead of a percentage). Every remaining figure must appear in CUSTOMER_FACTS or the customer's own words.`));
-    parsed = parseJSON(content);
-    reply = tidy(parsed?.reply);
-    if (!reply) return { rejected: 'empty reply after rewrite' };
-    grounded = figuresGrounded(reply, sources);
-  }
-  if (!grounded.ok) return { rejected: `figures not in facts: ${grounded.unknown.join(', ')}` };
+  const out = await composeGrounded({ system: SYSTEM, user, sources: [facts, text, engineHint?.text || '', ...turns.map((m) => m.text)], signal, completeFn });
+  if (out.rejected) return out;
+  const { parsed, reply, reasoning } = out;
 
   const card = Object.hasOwn(CARDS, parsed.card) ? parsed.card : null;
   const cardResponse = card ? executeAdvisorTool({ name: card, arguments: {} }, riskProfile) : null;

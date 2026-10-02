@@ -4,6 +4,10 @@ import { RM_PROFILE } from '../../data/rmBook.js';
 import { talkingPoints } from '../../engine/rmInsights.js';
 import { POLICY } from '../../data/policy.js';
 import { fmt, fmtL, timeAgo } from './ui.jsx';
+import { composeRmAnswer, VIEWS } from '../../engine/rmCopilot.js';
+import { canTranslate, inputLanguage, nextReplyLanguage, questionInEnglish, replyInLanguage, voiceLanguageFor } from '../../engine/multilingual.js';
+import { hasDeepSeek, LANGUAGES, langLabel } from '../../engine/deepseek.js';
+import { speak, stopSpeaking, listen } from '../../engine/speech.js';
 
 // ─────────────────────────────────────────────────────────────
 // The right-hand MITRA rail of the RM console. It is the same dark rail
@@ -12,7 +16,9 @@ import { fmt, fmtL, timeAgo } from './ui.jsx';
 //   • CopilotRail   — MITRA for the RM: overnight triage and briefings
 //   • MirrorRail    — a read-only copy of the customer's own chat for a case
 //   • HistoryRail   — what a customer recently did with MITRA (shared with consent)
-// Every answer is computed from the desk and the book; nothing is generated.
+// The copilot's chips answer instantly from the desk and the book. Anything
+// the RM types or says goes to DeepSeek with a fact sheet of that same desk
+// and book (engine/rmCopilot.js), in any of MITRA's nine languages.
 // ─────────────────────────────────────────────────────────────
 
 export function MitraMark({ size = 46 }) {
@@ -103,35 +109,172 @@ function answer(text, { book, desk, now }) {
   return { from: 'mitra', text: 'I can brief you on any customer in your book, list your sign-offs, show the handoff queue, or find who is overdue for a call. Try a name, like "Brief me on Gurpreet".' };
 }
 
+// The rail's own languages. Same nine as the customer app, plus Auto, which
+// answers in whatever language the RM just typed or spoke.
+const RM_LANG_KEY = 'mitra_rm_lang_mode';
+const RM_VOICE_KEY = 'mitra_rm_voice';
+const readPref = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } };
+const writePref = (key, value) => { try { localStorage.setItem(key, value); } catch { /* preference only */ } };
+
+// The English text of a reply — kept for the AI's conversation history and
+// for speaking, whatever language it is displayed in.
+const plainText = (m) => m.text || [...(m.points || []).map((t) => `${t.title} ${t.text}`), ...(m.list || [])].join('\n');
+
+async function localiseMessage(m, lang) {
+  if (lang === 'en') return m;
+  const tr = (value) => replyInLanguage(value, lang);
+  const [text, list, points] = await Promise.all([
+    m.text ? tr(m.text) : null,
+    m.list ? Promise.all(m.list.map(tr)) : null,
+    m.points ? Promise.all(m.points.map(async (t) => ({ title: await tr(t.title), text: await tr(t.text) }))) : null,
+  ]);
+  return { ...m, ...(text ? { text } : {}), ...(list ? { list } : {}), ...(points ? { points } : {}) };
+}
+
 export function CopilotRail({ book, desk, now, onOpenCase, onOpenCustomer, onGo }) {
   const openCases = desk.cases.filter((c) => c.status !== 'CLOSED');
   const urgent = openCases.filter((c) => c.status === 'NEW').sort((a, b) => Date.parse(a.slaDueAt) - Date.parse(b.slaDueAt))[0];
   const pending = desk.reviews.filter((r) => r.status === 'PENDING');
   const top = urgent ? book.find((b) => b.persona.customer.id === urgent.customerId) : book[0];
   const [thread, setThread] = useState([]);
+  const threadRef = useRef(thread);
+  threadRef.current = thread;
   const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recRef = useRef(null);
+  const [langMode, setLangModeState] = useState(() => readPref(RM_LANG_KEY, 'auto'));
+  const langModeRef = useRef(langMode);
+  langModeRef.current = langMode;
+  const [lang, setLangState] = useState(() => (langMode !== 'auto' && LANGUAGES.some((l) => l.code === langMode) ? langMode : 'en'));
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  const [langMenu, setLangMenu] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(() => readPref(RM_VOICE_KEY, 'on') !== 'off');
+  const voiceRef = useRef(voiceOn);
+  voiceRef.current = voiceOn;
+  const [toast, setToast] = useState('');
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView?.({ block: 'end', behavior: 'smooth' }); }, [thread.length]);
+  useEffect(() => { endRef.current?.scrollIntoView?.({ block: 'end', behavior: 'smooth' }); }, [thread.length, thinking]);
+  useEffect(() => () => { stopSpeaking(); recRef.current?.abort?.(); }, []);
+  const ai = hasDeepSeek();
+  const translator = canTranslate();
 
-  const ask = (text) => {
-    if (!text.trim()) return;
-    setThread((t) => [...t, { from: 'rm', text }, answer(text, { book, desk, now })]);
-    setDraft('');
+  const flash = (text) => { setToast(text); setTimeout(() => setToast(''), 2600); };
+  const setLang = (code) => { setLangState(code); langRef.current = code; };
+  const setLangMode = (mode) => { setLangModeState(mode); langModeRef.current = mode; writePref(RM_LANG_KEY, mode); };
+
+  const say = (m) => {
+    if (!voiceRef.current) return;
+    const text = plainText(m);
+    speak(text, { lang: voiceLanguageFor(text, langRef.current) });
   };
+
+  // `chip` answers instantly from the desk; anything typed or spoken goes to
+  // DeepSeek with the RM fact sheet. `tapped` never changes the language.
+  const ask = async (raw, { chip = false, tapped = chip, spokenLang = null } = {}) => {
+    const text = raw.trim();
+    if (!text || busy) return;
+    stopSpeaking();
+    setDraft('');
+    setBusy(true);
+    setThread((t) => [...t, { from: 'rm', text }]);
+    try {
+      const { lang: heard, romanized } = await inputLanguage(text, { spokenLang, tapped, langMode: langModeRef.current, currentLang: langRef.current });
+      const next = nextReplyLanguage({ detected: heard, langMode: langModeRef.current, currentLang: langRef.current });
+      if (next !== langRef.current) { setLang(next); flash(`Replying in ${langLabel(next)}`); }
+      const english = await questionInEnglish(text, { romanized });
+      const history = threadRef.current.map((m) => ({ from: m.from, text: m.en || plainText(m) }));
+      let reply = null;
+      if (!chip && ai) {
+        setThinking(true);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 35000);
+        try {
+          const out = await composeRmAnswer({ text: english, history, book, desk, now, signal: controller.signal });
+          if (out.response) reply = out.response;
+          else console.warn('[MITRA RM] AI reply rejected:', out.rejected);
+        } catch (error) { console.warn('[MITRA RM] AI copilot unavailable:', error?.message || error); }
+        finally { clearTimeout(timer); setThinking(false); }
+      }
+      if (!reply) reply = answer(english, { book, desk, now });
+      const shown = await localiseMessage({ ...reply, en: plainText(reply) }, langRef.current);
+      setThread((t) => [...t, shown]);
+      say(shown);
+    } finally { setBusy(false); }
+  };
+
+  const toggleMic = () => {
+    if (listening || transcribing) { recRef.current?.stop?.(); return; }
+    stopSpeaking();
+    const rec = listen({
+      lang: langRef.current,
+      onLevel: () => {},
+      onTranscribing: setTranscribing,
+      onResult: (transcript, detected) => { setListening(false); ask(transcript, { spokenLang: detected }); },
+      onEnd: () => setListening(false),
+      onError: () => { setListening(false); setTranscribing(false); flash('Microphone unavailable — type instead'); },
+    });
+    if (rec) { recRef.current = rec; setListening(true); }
+  };
+
   const firstName = top?.persona.customer.name.replace(/^Dr\.\s*/, '').split(' ')[0];
   const chips = [
     firstName && `Brief me on ${firstName}`,
     pending.length ? 'Start with sign-offs' : null,
     "Who haven't I called?",
   ].filter(Boolean);
+  const lastAi = [...thread].reverse().find((m) => m.from === 'mitra');
 
   const intro = urgent
     ? `${urgent.customerName.split(' ')[0]} asked for you ${timeAgo(urgent.createdAt, now)} on ${urgent.source.replace('MITRA ', 'a ')}${urgent.language !== 'English' ? ` in ${urgent.language}` : ''}. The SLA ends at ${new Date(urgent.slaDueAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}.`
     : 'No handoff is waiting on you right now.';
+  const openLink = (o) => (o.type === 'case' ? onOpenCase(o.id) : o.type === 'customer' ? onOpenCustomer(o.id) : onGo(o.id));
+  const openLabel = (o) => (o.type === 'case' ? `Open ${o.id}` : o.type === 'customer' ? `Open ${book.find((b) => b.persona.customer.id === o.id)?.persona.customer.name || o.id}` : `Open ${VIEWS[o.id]}`);
 
   return (
     <aside className="mr" aria-label={`MITRA for ${RM_PROFILE.name.split(' ')[0]}`}>
-      <RailHead title={<>MITRA<sup>®</sup></>} sub={`for ${RM_PROFILE.name.split(' ')[0]} · RM copilot`} />
+      <div className="mr-head">
+        <MitraMark />
+        <div>
+          <div className="mr-title">MITRA<sup>®</sup></div>
+          <div className="mr-eyebrow">
+            {transcribing ? 'Understanding…' : listening ? 'Listening…' : thinking ? 'Thinking it through…'
+              : `for ${RM_PROFILE.name.split(' ')[0]} · ${langMode === 'auto' ? `Auto · ${langLabel(lang)}` : langLabel(lang)}${ai ? ' · DeepSeek' : ''}`}
+          </div>
+        </div>
+        <div className="mr-tools">
+          <div className="mr-lang">
+            <button type="button" className={`mr-tool${langMode === 'auto' || lang !== 'en' ? ' is-on' : ''}`} aria-haspopup="menu" aria-expanded={langMenu}
+              aria-label={langMode === 'auto' ? `Language: Auto, replying in ${langLabel(lang)}` : `Language: ${langLabel(lang)}`}
+              onClick={() => setLangMenu((v) => !v)}>
+              {langMode === 'auto' ? <span className="mr-auto">Auto</span> : (LANGUAGES.find((l) => l.code === lang)?.short || 'A')}
+            </button>
+            {langMenu && (
+              <div className="mr-lang-menu" role="menu">
+                <button type="button" role="menuitem" className={langMode === 'auto' ? 'is-on' : ''} disabled={!translator}
+                  onClick={() => { setLangMenu(false); setLangMode('auto'); flash('Auto: I’ll reply in the language you use'); }}>
+                  <span>Auto</span><small>{translator ? 'Reply in the language you use' : 'Needs AI'}</small>
+                </button>
+                {LANGUAGES.map((l) => (
+                  <button key={l.code} type="button" role="menuitem" className={langMode !== 'auto' && l.code === lang ? 'is-on' : ''}
+                    disabled={l.code !== 'en' && !translator}
+                    onClick={() => { setLangMenu(false); setLangMode(l.code); setLang(l.code); flash(`Replies in ${l.label}`); }}>
+                    <span>{l.native}</span><small>{l.label}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="button" className={`mr-tool${voiceOn ? ' is-on' : ''}`} aria-pressed={voiceOn} aria-label={voiceOn ? 'Voice replies on — tap to mute' : 'Voice replies off — tap to unmute'}
+            onClick={() => { const next = !voiceOn; setVoiceOn(next); voiceRef.current = next; writePref(RM_VOICE_KEY, next ? 'on' : 'off'); if (!next) stopSpeaking(); }}>
+            <Icon name={voiceOn ? 'speaker' : 'speakerOff'} size={16} />
+          </button>
+        </div>
+      </div>
+      {toast && <div className="mr-toast" role="status">{toast}</div>}
       <div className="mr-body">
         <div className="mr-bubble">
           <div className="mr-eyebrow">Overnight triage · {book.length} customers</div>
@@ -141,17 +284,18 @@ export function CopilotRail({ book, desk, now, onOpenCase, onOpenCustomer, onGo 
           </p>
         </div>
         <div className="mr-chips">
-          {chips.map((c) => <button key={c} type="button" className="mr-chip" onClick={() => ask(c)}>{c}</button>)}
+          {chips.map((c) => <button key={c} type="button" className="mr-chip" disabled={busy} onClick={() => ask(c, { chip: true })}>{c}</button>)}
         </div>
         {thread.map((m, i) => m.from === 'rm'
           ? <div key={i} className="mr-user">{m.text}</div>
           : (
             <div key={i} className="mr-bubble">
+              {m.ai && <div className="mr-eyebrow">MITRA · DeepSeek · every figure from your book</div>}
               {m.eyebrow && <div className="mr-eyebrow">{m.eyebrow}</div>}
-              {m.text && <p>{m.text}</p>}
+              {m.text && <p className="mr-text">{m.text}</p>}
               {m.points && <Points points={m.points} />}
               {m.list && <ul className="mr-list">{m.list.map((x) => <li key={x}>{x}</li>)}</ul>}
-              {(m.foot || m.action) && (
+              {(m.foot || m.action || m.open) && (
                 <div className="mr-foot">
                   {m.foot && <span className="mr-eyebrow orange">Advice Passport · {m.foot}</span>}
                   {m.action && (
@@ -159,18 +303,29 @@ export function CopilotRail({ book, desk, now, onOpenCase, onOpenCustomer, onGo 
                       {m.action.label} →
                     </button>
                   )}
+                  {m.open && <button type="button" className="mr-link" onClick={() => openLink(m.open)}>{openLabel(m.open)} →</button>}
                 </div>
               )}
             </div>
           ))}
+        {thinking && <div className="mr-bubble mr-thinking"><span className="mr-dots"><i /><i /><i /></span> Thinking it through…</div>}
+        {!busy && lastAi?.followups?.length > 0 && (
+          <div className="mr-chips">
+            {lastAi.followups.map((c) => <button key={c} type="button" className="mr-chip" onClick={() => ask(c, { tapped: true })}>{c}</button>)}
+          </div>
+        )}
         <div ref={endRef} />
       </div>
       <form className="mr-compose" onSubmit={(e) => { e.preventDefault(); ask(draft); }}>
+        <button type="button" className={`mr-mic${listening || transcribing ? ' is-live' : ''}`} onClick={toggleMic} disabled={busy && !listening}
+          aria-label={listening ? 'Stop listening' : 'Speak to MITRA'}>
+          <Icon name="mic" size={17} />
+        </button>
         <label className="mr-input">
           <span className="sr-only">Ask MITRA</span>
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask about a customer, case or rule…" />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask about a customer, case or rule — any language" disabled={busy} />
         </label>
-        <button type="submit" className="mr-send" aria-label="Send"><Icon name="send" size={18} /></button>
+        <button type="submit" className="mr-send" aria-label="Send" disabled={busy}><Icon name="send" size={18} /></button>
       </form>
     </aside>
   );

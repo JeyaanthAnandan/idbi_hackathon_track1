@@ -19,13 +19,13 @@ import { getCharacter, savedCharacter } from '../engine/characters.js';
 import { awardXP } from '../engine/xp.js';
 import Icon from './Icons.jsx';
 import {
-  hasDeepSeek, translate, analyzeOffer, selectDeepSeekAdvisorTool,
+  hasDeepSeek, analyzeOffer, selectDeepSeekAdvisorTool,
   LANGUAGES, langLabel,
 } from '../engine/deepseek.js';
 import { applyAction } from '../engine/portfolioState.js';
 import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
 import {
-  hasSarvam, translateSarvam, translateToEnglish, selectSarvamAdvisorTool, toSarvamLang, identifyLanguage, isLatinScript,
+  hasSarvam, selectSarvamAdvisorTool, toSarvamLang,
 } from '../engine/sarvam.js';
 import {
   validateAdvisorResponse, validateOfferAnalysis, figuresPreserved,
@@ -34,7 +34,7 @@ import { buildAdvicePassport } from '../engine/advicePassport.js';
 import { createAdviceReceipt } from '../engine/api.js';
 import { answerConversation } from '../engine/conversation.js';
 import { composeAnswer } from '../engine/composer.js';
-import { detectLanguage, scriptLanguage } from '../engine/languageDetect.js';
+import { inputLanguage, nextReplyLanguage, questionInEnglish, replyInLanguage, voiceLanguageFor } from '../engine/multilingual.js';
 
 const LANG_MODE_KEY = 'mitra_lang_mode';
 import { needsHumanReview, queueAdviceReview, submitHandoff } from '../engine/rmDesk.js';
@@ -162,9 +162,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   // set it: Saaras reports the language it heard, and typed text is detected
   // in sendMessage. A pinned language is never switched.
   const applyDetectedLang = (detected) => {
-    if (langModeRef.current !== 'auto' || !detected || detected === langRef.current) return;
-    // Without a translator only English and the hand-written Hindi exist.
-    if (!canTranslate && !['en', 'hi'].includes(detected)) return;
+    const next = nextReplyLanguage({ detected, langMode: langModeRef.current, currentLang: langRef.current });
+    if (next === langRef.current) return;
     setLang(detected);
     langRef.current = detected;
     showToast(`Heard ${langLabel(detected)} — replying in ${langLabel(detected)}`);
@@ -401,21 +400,11 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   // Sarvam's Mayura is preferred: 'modern-colloquial' keeps SIP, ELSS and the
   // ₹ figures in English inside a native-script sentence — which is how Indian
   // customers actually discuss money, and it keeps every number auditable.
-  // Speak in the language the reply is actually written in. If a reply could
-  // not be translated it is still English, and a Tamil voice reading English
-  // sounds broken.
-  const voiceLangFor = (text) => (langRef.current !== 'en' && scriptLanguage(text) === 'latin' ? 'en' : langRef.current);
+  const voiceLangFor = (text) => voiceLanguageFor(text, langRef.current);
 
   const localise = async (resp) => {
     if (langRef.current === 'en' || !canTranslate) return resp;
-    try {
-      const text = hasSarvam()
-        ? await translateSarvam(resp.text, langRef.current, { check: figuresPreserved })
-        : await translate(resp.text, langRef.current);
-      return figuresPreserved(resp.text, text) ? { ...resp, text } : resp;
-    } catch {
-      return resp;
-    }
+    return { ...resp, text: await replyInLanguage(resp.text, langRef.current) };
   };
 
   // `chip` marks a tapped suggestion: it is a known command, so it skips the
@@ -472,12 +461,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // typed text is read from its script, with Sarvam's identifier for
     // Hindi/Marathi and romanised text. A tapped chip keeps the current
     // language. In Auto mode the reply switches to match.
-    let inputLang = spokenLang;
-    let romanized = false;
-    const mayBeVernacular = !isLatinScript(text) || langModeRef.current === 'auto' || langRef.current !== 'en';
-    if (!tapped && !inputLang && mayBeVernacular) {
-      ({ lang: inputLang, romanized } = await detectLanguage(text, { identify: voiceAI ? identifyLanguage : null }));
-    }
+    const { lang: inputLang, romanized } = await inputLanguage(text, { spokenLang, tapped, langMode: langModeRef.current, currentLang: langRef.current });
     if (inputLang) applyDetectedLang(inputLang);
 
     // ── Offer Analyzer mode: the next message is the offer to inspect ──
@@ -493,15 +477,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // in English. Sarvam translates the question in and the answer back out, so
     // all nine languages get the same audited numbers rather than nine forked
     // rule sets. The customer still sees their own words in their own script.
-    let engineText = text;
-    if (voiceAI && (!isLatinScript(text) || romanized)) {
-      try {
-        const translated = await translateToEnglish(text, { force: romanized });
-        if (figuresPreserved(text, translated)) engineText = translated;
-      } catch {
-        /* translation down — let the engine try the raw text */
-      }
-    }
+    const engineText = await questionInEnglish(text, { romanized });
 
     // ── Natural-language goal creation ──
     // Explicit goal costs and periods are resolved by the shared engine.

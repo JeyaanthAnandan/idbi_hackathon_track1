@@ -341,14 +341,24 @@ export function splitLong(line, limit = TRANSLATE_PIECE) {
 
 export async function translateSarvam(text, langCode, { signal, mode = 'modern-colloquial', check = () => true } = {}) {
   if (!text || langCode === 'en') return text;
+  // 'modern-colloquial' reads most naturally but sometimes drops a clause
+  // ("(in 78 min)") — measured on Tamil it kept every figure in 4 of 9
+  // replies, against 9 of 9 for the other two styles. A line that loses a
+  // figure is retried in those before it is left in English.
+  const modes = [...new Set([mode, 'classic-colloquial', 'formal'])];
   const piece = async (value) => {
-    try {
-      const out = await translateOnce(value, langCode, { signal, mode });
-      if (out && check(value, out)) return out;
-      console.warn('[MITRA voice] kept a line in English: figures changed in translation', { line: value, translated: out });
-    } catch (error) {
-      console.warn('[MITRA voice] kept a line in English: translation failed', { line: value, error: error?.message });
+    let last = null;
+    for (const style of modes) {
+      try {
+        const out = await translateOnce(value, langCode, { signal, mode: style });
+        if (out && check(value, out)) return out;
+        last = { reason: 'figures changed in translation', translated: out };
+      } catch (error) {
+        last = { reason: 'translation failed', error: error?.message };
+        if (signal?.aborted) break;
+      }
     }
+    console.warn(`[MITRA voice] kept a line in English: ${last?.reason}`, { line: value, ...last });
     return value;
   };
   const lines = await Promise.all(String(text).split('\n').map(async (line) => {

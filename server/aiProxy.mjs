@@ -13,7 +13,7 @@
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const SARVAM_BASE = 'https://api.sarvam.ai';
-const SARVAM_PATHS = new Set(['/text-to-speech', '/speech-to-text', '/translate', '/v1/chat/completions']);
+const SARVAM_PATHS = new Set(['/text-to-speech', '/speech-to-text', '/translate', '/text-lid', '/v1/chat/completions']);
 const SARVAM_CHAT_MODEL = 'sarvam-105b';
 
 const deepseekKey = () => (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || '').trim();
@@ -24,7 +24,9 @@ export const aiStatus = () => ({ deepseek: Boolean(deepseekKey()), sarvam: Boole
 // Sliding one-minute window per client. Per instance only — enough to stop a
 // runaway loop or casual abuse of a public demo, not a production limiter.
 const WINDOW_MS = 60_000;
-const LIMITS = { deepseek: 30, sarvam: 90 };
+// A translated reply costs ~10 Sarvam calls (one per line, speech batches,
+// language ID), so its limit is set per conversation turn, not per request.
+const LIMITS = { deepseek: 30, sarvam: 300 };
 const hits = new Map();
 export function rateLimited(client, bucket, now = Date.now()) {
   const key = `${bucket}:${client}`;

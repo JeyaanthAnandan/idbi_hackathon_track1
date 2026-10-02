@@ -301,12 +301,20 @@ export async function transcribe(blob, { lang = null, signal } = {}) {
 // 'modern-colloquial' is deliberate: it keeps SIP, equity fund, ELSS and ₹
 // figures in English inside a native-script sentence — which is exactly how
 // an Indian customer discusses money, and it keeps the numbers auditable.
-export async function translateSarvam(text, langCode, { signal, mode = 'modern-colloquial' } = {}) {
-  if (!text || langCode === 'en') return text;
+// Mayura accepts up to 1000 characters per call, joins every line of its
+// input into one paragraph, and its safety filter rejects any input
+// containing "=" ("6 months = ₹3,79,750"). So a reply is translated line by
+// line, in parallel, with "=" reworded and over-long lines split at sentence
+// boundaries. A piece that fails (or whose figures don't survive `check`)
+// stays in English rather than sinking the whole reply.
+const TRANSLATE_PIECE = 900;
+const translatable = (value) => value.replace(/\s*=\s*/g, ' is ');
+
+async function translateOnce(text, langCode, { signal, mode }) {
   const data = await sarvamFetch('/translate', {
     signal,
     body: {
-      input: speechify(text, 'en'),
+      input: speechify(translatable(text), 'en'),
       source_language_code: 'en-IN',
       target_language_code: toSarvamLang(langCode),
       model: TRANSLATE_MODEL,
@@ -316,7 +324,41 @@ export async function translateSarvam(text, langCode, { signal, mode = 'modern-c
       enable_preprocessing: true,
     },
   });
-  return (data.translated_text || '').trim() || text;
+  return (data.translated_text || '').trim();
+}
+
+// A line too long for one call, cut into sentence-aligned pieces.
+export function splitLong(line, limit = TRANSLATE_PIECE) {
+  if (line.length <= limit) return [line];
+  const pieces = [];
+  for (const sentence of line.match(/[^.!?]+[.!?]*\s*/g) || [line]) {
+    const last = pieces.at(-1);
+    if (last !== undefined && (last + sentence).length <= limit) pieces[pieces.length - 1] = last + sentence;
+    else pieces.push(sentence.slice(0, limit));
+  }
+  return pieces.map((piece) => piece.trim()).filter(Boolean);
+}
+
+export async function translateSarvam(text, langCode, { signal, mode = 'modern-colloquial', check = () => true } = {}) {
+  if (!text || langCode === 'en') return text;
+  const piece = async (value) => {
+    try {
+      const out = await translateOnce(value, langCode, { signal, mode });
+      if (out && check(value, out)) return out;
+      console.warn('[MITRA voice] kept a line in English: figures changed in translation', { line: value, translated: out });
+    } catch (error) {
+      console.warn('[MITRA voice] kept a line in English: translation failed', { line: value, error: error?.message });
+    }
+    return value;
+  };
+  const lines = await Promise.all(String(text).split('\n').map(async (line) => {
+    if (!line.trim()) return line;
+    // keep the bullet outside the translation so it can't be dropped or moved
+    const bullet = line.match(/^\s*•\s*/)?.[0] || '';
+    const parts = await Promise.all(splitLong(line.slice(bullet.length)).map(piece));
+    return bullet + parts.join(' ');
+  }));
+  return lines.join('\n');
 }
 
 // The reverse direction: a question asked in any Indian language, turned into
@@ -326,8 +368,10 @@ export async function translateSarvam(text, langCode, { signal, mode = 'modern-c
 // full round trip on the most common interaction while in vernacular mode.
 export const isLatinScript = (text) => !/[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF]/.test(text || '');
 
-export async function translateToEnglish(text, { signal } = {}) {
-  if (!text || isLatinScript(text)) return text;
+// `force` translates Latin-script text too — used for romanised Hindi and
+// other Indian languages typed in English letters.
+export async function translateToEnglish(text, { signal, force = false } = {}) {
+  if (!text || (isLatinScript(text) && !force)) return text;
   const data = await sarvamFetch('/translate', {
     signal,
     body: {
@@ -339,6 +383,13 @@ export async function translateToEnglish(text, { signal } = {}) {
     },
   });
   return (data.translated_text || '').trim() || text;
+}
+
+// Language identification for typed text (engine/languageDetect.js).
+// Recognises romanised Indian languages as well as native scripts.
+export async function identifyLanguage(text, { signal } = {}) {
+  const data = await sarvamFetch('/text-lid', { signal, retries: 0, body: { input: String(text).slice(0, 1000) } });
+  return { lang: fromSarvamLang(data.language_code), script: data.script_code || null };
 }
 
 // The model selects a narrowly-scoped financial tool; it never writes the

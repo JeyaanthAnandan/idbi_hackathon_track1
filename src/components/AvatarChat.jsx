@@ -25,7 +25,7 @@ import {
 import { applyAction } from '../engine/portfolioState.js';
 import { loadChatHistory, saveChatHistory } from '../engine/chatHistory.js';
 import {
-  hasSarvam, translateSarvam, translateToEnglish, selectSarvamAdvisorTool, toSarvamLang,
+  hasSarvam, translateSarvam, translateToEnglish, selectSarvamAdvisorTool, toSarvamLang, identifyLanguage, isLatinScript,
 } from '../engine/sarvam.js';
 import {
   validateAdvisorResponse, validateOfferAnalysis, figuresPreserved,
@@ -34,6 +34,9 @@ import { buildAdvicePassport } from '../engine/advicePassport.js';
 import { createAdviceReceipt } from '../engine/api.js';
 import { answerConversation } from '../engine/conversation.js';
 import { composeAnswer } from '../engine/composer.js';
+import { detectLanguage, scriptLanguage } from '../engine/languageDetect.js';
+
+const LANG_MODE_KEY = 'mitra_lang_mode';
 import { needsHumanReview, queueAdviceReview, submitHandoff } from '../engine/rmDesk.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
@@ -54,9 +57,21 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   const [listening, setListening] = useState(false);
   const [mood, setMood] = useState('happy');
   const [toast, setToast] = useState(null);
-  const [lang, setLang] = useState('en');
-  const langRef = useRef('en');
+  // `lang` is the language MITRA is replying in right now. `langMode` is the
+  // customer's choice: 'auto' follows whatever language each question is
+  // asked in; a language code pins every reply to that language.
+  const [langMode, setLangModeState] = useState(() => { try { return localStorage.getItem(LANG_MODE_KEY) || 'auto'; } catch { return 'auto'; } });
+  // A pinned language from an earlier visit is the reply language from the start.
+  const [lang, setLang] = useState(() => (langMode !== 'auto' && LANGUAGES.some((l) => l.code === langMode) ? langMode : 'en'));
+  const langRef = useRef(lang);
   langRef.current = lang;
+  const langModeRef = useRef(langMode);
+  langModeRef.current = langMode;
+  const setLangMode = (mode) => {
+    setLangModeState(mode);
+    langModeRef.current = mode;
+    try { localStorage.setItem(LANG_MODE_KEY, mode); } catch { /* preference only */ }
+  };
   const [langMenu, setLangMenu] = useState(false);
   const [offerMode, setOfferMode] = useState(false);
   // set while DeepSeek reasons over a free-text question (a few seconds)
@@ -143,10 +158,13 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setTimeout(() => setToast(null), 2600);
   };
 
-  // MITRA follows the customer's language instead of making them set it.
-  // Saaras hands back the language it heard; we switch and say so once.
+  // In Auto mode MITRA follows the customer's language instead of making them
+  // set it: Saaras reports the language it heard, and typed text is detected
+  // in sendMessage. A pinned language is never switched.
   const applyDetectedLang = (detected) => {
-    if (!detected || detected === langRef.current) return;
+    if (langModeRef.current !== 'auto' || !detected || detected === langRef.current) return;
+    // Without a translator only English and the hand-written Hindi exist.
+    if (!canTranslate && !['en', 'hi'].includes(detected)) return;
     setLang(detected);
     langRef.current = detected;
     showToast(`Heard ${langLabel(detected)} — replying in ${langLabel(detected)}`);
@@ -184,8 +202,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           }
           setCallHeard(t);
           setCallCaption('Checking that against your financial plan…');
-          applyDetectedLang(detected);
-          handleSend(t);
+          handleSend(t, { spokenLang: detected });
         },
         onEnd: () => {
           if (callSession !== callSessionRef.current) return;
@@ -298,7 +315,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       }
       speak(safeResp.text, {
         ...voiceOptions,
-        lang: langRef.current,
+        lang: voiceLangFor(safeResp.text),
         onFallback,
         onStart,
         onEnd: () => {
@@ -312,7 +329,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     if (voiceOn && !presenterActiveRef.current) {
       speak(safeResp.text, {
         ...voiceOptions,
-        lang: langRef.current,
+        lang: voiceLangFor(safeResp.text),
         onFallback,
         onStart,
         onEnd: () => setSpeaking(false),
@@ -384,11 +401,16 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   // Sarvam's Mayura is preferred: 'modern-colloquial' keeps SIP, ELSS and the
   // ₹ figures in English inside a native-script sentence — which is how Indian
   // customers actually discuss money, and it keeps every number auditable.
+  // Speak in the language the reply is actually written in. If a reply could
+  // not be translated it is still English, and a Tamil voice reading English
+  // sounds broken.
+  const voiceLangFor = (text) => (langRef.current !== 'en' && scriptLanguage(text) === 'latin' ? 'en' : langRef.current);
+
   const localise = async (resp) => {
     if (langRef.current === 'en' || !canTranslate) return resp;
     try {
       const text = hasSarvam()
-        ? await translateSarvam(resp.text, langRef.current)
+        ? await translateSarvam(resp.text, langRef.current, { check: figuresPreserved })
         : await translate(resp.text, langRef.current);
       return figuresPreserved(resp.text, text) ? { ...resp, text } : resp;
     } catch {
@@ -398,18 +420,21 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
 
   // `chip` marks a tapped suggestion: it is a known command, so it skips the
   // AI composer and answers instantly from the engine.
-  const handleSend = async (raw, { chip = false } = {}) => {
+  // `tapped` marks any button press — it never changes the reply language,
+  // since an English suggestion tapped mid-Tamil conversation isn't the
+  // customer switching to English.
+  const handleSend = async (raw, { chip = false, spokenLang = null, tapped = chip } = {}) => {
     if (requestBusy.current) return;
     if (!(raw ?? input).trim()) return;
     returnToConversation();
     requestBusy.current = true;
     const session = callSessionRef.current;
-    try { await sendMessage(raw, session, chip); }
+    try { await sendMessage(raw, session, chip, spokenLang, tapped); }
     catch { pushMitra(fallbackResponse(true), session); }
     finally { requestBusy.current = false; setTyping(false); }
   };
 
-  const sendMessage = async (raw, session, chip = false) => {
+  const sendMessage = async (raw, session, chip = false, spokenLang = null, tapped = chip) => {
     const text = (raw ?? input).trim();
     if (!text) return;
     if (inCallRef.current && callListeningRef.current) {
@@ -443,6 +468,18 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     setTyping(true);
     awardXP(10, 'first-chat');
 
+    // Which language was this asked in? Speech arrives with Saaras's answer;
+    // typed text is read from its script, with Sarvam's identifier for
+    // Hindi/Marathi and romanised text. A tapped chip keeps the current
+    // language. In Auto mode the reply switches to match.
+    let inputLang = spokenLang;
+    let romanized = false;
+    const mayBeVernacular = !isLatinScript(text) || langModeRef.current === 'auto' || langRef.current !== 'en';
+    if (!tapped && !inputLang && mayBeVernacular) {
+      ({ lang: inputLang, romanized } = await detectLanguage(text, { identify: voiceAI ? identifyLanguage : null }));
+    }
+    if (inputLang) applyDetectedLang(inputLang);
+
     // ── Offer Analyzer mode: the next message is the offer to inspect ──
     // The raw text goes through untranslated on purpose — a scam's URLs,
     // UPI handles and numbers are the evidence, and translating mangles them.
@@ -457,9 +494,9 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // all nine languages get the same audited numbers rather than nine forked
     // rule sets. The customer still sees their own words in their own script.
     let engineText = text;
-    if (langRef.current !== 'en' && voiceAI) {
+    if (voiceAI && (!isLatinScript(text) || romanized)) {
       try {
-        const translated = await translateToEnglish(text);
+        const translated = await translateToEnglish(text, { force: romanized });
         if (figuresPreserved(text, translated)) engineText = translated;
       } catch {
         /* translation down — let the engine try the raw text */
@@ -589,8 +626,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
       onLevel: setMicLevel,
       onTranscribing: updateTranscribing,
       onResult: (transcript, detected) => {
-        applyDetectedLang(detected);
-        handleSend(transcript);
+        handleSend(transcript, { spokenLang: detected });
       },
       onEnd: () => { setListening(false); setMicLevel(0); },
       onError: (e) => {
@@ -763,7 +799,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               ? `Analysing · ${toSarvamLang(lang)}`
               : speaking
               ? `Speaking · ${toSarvamLang(lang)}${voiceAI && !voiceDegraded ? ' · Bulbul v3' : voiceDegraded ? ' · device voice' : ''}`
-              : `Online · ${toSarvamLang(lang)}`}
+              : `Online · ${langMode === 'auto' ? `Auto · ${toSarvamLang(lang)}` : toSarvamLang(lang)}`}
           </div>
         </div>
         <button className="icon-btn" title="Explain with charts" aria-label="Explain with charts" disabled={typing || transcribing || inCall} onClick={() => openPresenter()}>
@@ -774,25 +810,40 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         </button>
         <div style={{ position: 'relative' }}>
           <button
-            className={`icon-btn ${lang !== 'en' ? 'active' : ''}`}
-            title="Language"
-            aria-label={`Language: ${langLabel(lang)}`}
+            className={`icon-btn ${langMode === 'auto' || lang !== 'en' ? 'active' : ''}`}
+            title={langMode === 'auto' ? `Language: Auto (replying in ${langLabel(lang)})` : 'Language'}
+            aria-label={langMode === 'auto' ? `Language: Auto, replying in ${langLabel(lang)}` : `Language: ${langLabel(lang)}`}
             aria-haspopup="menu"
             aria-expanded={langMenu}
             onClick={() => setLangMenu((v) => !v)}
           >
-            {LANGUAGES.find((l) => l.code === lang)?.short || 'A'}
+            {langMode === 'auto' ? <span className="lang-auto-badge">Auto</span> : (LANGUAGES.find((l) => l.code === lang)?.short || 'A')}
           </button>
           {langMenu && (
             <div className="lang-menu">
+              <button
+                className={`lang-item ${langMode === 'auto' ? 'active' : ''}`}
+                disabled={!canTranslate}
+                onClick={() => {
+                  setLangMenu(false);
+                  if (langMode === 'auto') return;
+                  setLangMode('auto');
+                  showToast('Auto: I’ll reply in the language you speak or type');
+                }}
+              >
+                <span>Auto</span>
+                <small>{canTranslate ? 'Reply in the language you use' : 'Auto · needs AI key'}</small>
+              </button>
               {LANGUAGES.map((l) => (
                 <button
                   key={l.code}
-                  className={`lang-item ${l.code === lang ? 'active' : ''}`}
+                  className={`lang-item ${langMode !== 'auto' && l.code === lang ? 'active' : ''}`}
                   disabled={l.code !== 'en' && l.code !== 'hi' && !canTranslate}
                   onClick={() => {
                     setLangMenu(false);
-                    if (l.code === lang) return;
+                    const wasAuto = langModeRef.current === 'auto';
+                    setLangMode(l.code);
+                    if (l.code === lang) { if (wasAuto) showToast(`Replies fixed to ${l.label}`); return; }
                     returnToConversation();
                     setLang(l.code);
                     langRef.current = l.code;
@@ -917,7 +968,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           <div className="chips">
             {last.chips.map((c) => (
               // AI follow-ups are free-form questions, so they go back to the AI.
-              <button className="chip" key={c} onClick={() => handleSend(c, { chip: last.engineMode !== 'AI_COMPOSED' })}>
+              <button className="chip" key={c} onClick={() => handleSend(c, { chip: last.engineMode !== 'AI_COMPOSED', tapped: true })}>
                 {c}
               </button>
             ))}

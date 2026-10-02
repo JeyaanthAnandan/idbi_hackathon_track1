@@ -43,7 +43,7 @@ export function buildFactSheet(riskProfile = 'Balanced') {
 
   add('Savings balance', fmt(customer.savingsBalance || 0));
   const target = safe(emergencyFundTarget);
-  if (hs && target) add('Emergency fund', `covers ${hs.emergencyMonths.toFixed(1)} months of spend; policy target ${POLICY.emergency.targetMonths} months = ${fmt(target)}; gap ${fmt(Math.max(target - (customer.savingsBalance || 0), 0))}`);
+  if (hs && target) add('Emergency fund', `covers ${hs.emergencyMonths.toFixed(1)} months of spend; policy target ${POLICY.emergency.targetMonths} months, which is ${fmt(target)}; gap ${fmt(Math.max(target - (customer.savingsBalance || 0), 0))}`);
 
   const wealth = totalWealth();
   add('Total holdings', `${fmt(wealth)} (${fmtCompact(wealth)})`);

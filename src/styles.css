@@ -715,6 +715,7 @@ body {
 .lang-item.active { background: rgba(15, 140, 126, 0.1); }
 .lang-item:disabled { opacity: 0.4; cursor: not-allowed; }
 .lang-item span { font-size: 14px; font-weight: 600; }
+.lang-auto-badge { font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em; }
 .lang-item small { font-size: 10.5px; color: var(--ink-soft); }
 
 .why-box { margin: 0 0 12px 0; max-width: 88%; }

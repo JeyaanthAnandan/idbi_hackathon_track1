@@ -66,7 +66,7 @@ export default function BankHome({ onOpenMitra, onAsk, riskProfile = 'Balanced' 
             <h1>IDBI GO+<sup style={{ fontSize: 8 }}>®</sup></h1>
             <span>bank aisa dost jaisa</span>
           </div>
-          <div className="xp-chip">Lv.{lvl.level} — {lvl.title}</div>
+          <div className="xp-chip">Lv.{lvl.level}<span className="xp-chip-title"> — {lvl.title}</span></div>
         </div>
       </div>
 

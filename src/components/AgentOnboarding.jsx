@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { runAgentOnboarding } from '../engine/agentClient.js';
 import { ONBOARDING_CUSTOMERS } from '../engine/agents/simulatedSources.js';
+import { loadOnboardingCustomers } from '../engine/agentClient.js';
 import { AGENTS } from '../engine/agents/onboardingFlow.js';
 import '../agents.css';
 
@@ -13,20 +14,13 @@ import '../agents.css';
 // customer's profile exactly as it was.
 // ─────────────────────────────────────────────────────────────
 
-const PACE = {
-  demo: { thought: 650, tool_call: 170, tool_result: 240, fact: 120, handoff: 320, agent: 120, gap: 260, insight: 200, contract: 40, brief: 400, rm_task: 160, flag: 80 },
-  fast: {},
-};
+// Events are replayed at a readable pace, whatever speed the run produced them.
+const PACE = { thought: 650, tool_call: 170, tool_result: 240, fact: 120, handoff: 320, agent: 120, gap: 260, insight: 200, contract: 40, brief: 400, rm_task: 160, flag: 80 };
 
 const AGENT_HUE = { orchestrator: 168, identity: 200, core: 172, aa: 260, portfolio: 32, protection: 340, gaps: 48, dialogue: 140, insights: 190, narrator: 290 };
 const agentName = Object.fromEntries(AGENTS.map((a) => [a.id, a.name]));
 const nameToId = Object.fromEntries(AGENTS.map((a) => [a.name, a.id]));
 
-const MODE_LABEL = {
-  live: 'Live IDBI sandbox · other sources simulated',
-  simulated: 'API server · simulated sources',
-  browser: 'In-browser · simulated sources',
-};
 
 function initial() {
   return {
@@ -91,11 +85,6 @@ function reduce(state, event) {
   return s;
 }
 
-function Tier({ tier }) {
-  if (!tier) return null;
-  return <span className={`ag-tier ag-tier-${tier.toLowerCase()}`}>{tier}</span>;
-}
-
 function AgentDot({ id }) {
   return <span className="ag-dot" style={{ '--h': AGENT_HUE[id] ?? 180 }} aria-hidden />;
 }
@@ -111,7 +100,6 @@ function ToolCall({ call, calls, depth = 0 }) {
         <code className="ag-call-tool">{call.tool}</code>
         {call.api && <span className="ag-api">API {call.api}</span>}
         <span className="ag-call-meta">
-          <Tier tier={call.tier} />
           {call.ms !== undefined && <span className="ag-ms">{call.ms} ms</span>}
         </span>
       </button>
@@ -151,7 +139,7 @@ function TraceItem({ item, calls }) {
     case 'tool':
       return <ToolCall call={calls[item.id]} calls={calls} />;
     case 'fact':
-      return <div className="ag-fact-line"><span className="ag-plus">+</span><span className="ag-fact-label">{item.label}</span><span className="ag-fact-value">{item.display}</span><Tier tier={item.tier} /></div>;
+      return <div className="ag-fact-line"><span className="ag-plus">+</span><span className="ag-fact-label">{item.label}</span><span className="ag-fact-value">{item.display}</span></div>;
     case 'gap':
       return <div className="ag-gap-line"><span className="ag-q">?</span><code>{item.field}</code><span className="ag-who">→ {item.who === 'rm' ? 'RM' : item.who === 'mitra' ? 'MITRA' : 'customer'}</span><span className="ag-gap-q">{item.question}</span></div>;
     default:
@@ -160,17 +148,22 @@ function TraceItem({ item, calls }) {
 }
 
 export default function AgentOnboarding({ onClose }) {
+  const [customers, setCustomers] = useState(ONBOARDING_CUSTOMERS);
   const [customer, setCustomer] = useState(ONBOARDING_CUSTOMERS[0].id);
-  const [pace, setPace] = useState('demo');
   const [state, dispatch] = useReducer(reduce, undefined, initial);
   const [running, setRunning] = useState(false);
   const [view, setView] = useState('trace'); // phone-width tabs
   const [now, setNow] = useState(Date.now());
   const abortRef = useRef(null);
-  const paceRef = useRef(pace);
   const traceRef = useRef(null);
   const stick = useRef(true);
-  paceRef.current = pace;
+
+  // The customers the IDBI sandbox actually holds, named as IDBI names them.
+  useEffect(() => {
+    let alive = true;
+    loadOnboardingCustomers().then((list) => { if (alive && list.length) setCustomers(list); });
+    return () => { alive = false; };
+  }, []);
 
   const start = async () => {
     abortRef.current?.abort();
@@ -195,7 +188,7 @@ export default function AgentOnboarding({ onClose }) {
         }
         const event = queue.shift();
         dispatch(event);
-        const delay = PACE[paceRef.current][event.type] || 0;
+        const delay = PACE[event.type] || 0;
         if (delay) await new Promise((r) => setTimeout(r, delay));
       }
     })();
@@ -235,7 +228,6 @@ export default function AgentOnboarding({ onClose }) {
   const elapsed = state.startedAt ? ((state.done ? state.startedAt + state.done.ms : running ? now : state.startedAt) - state.startedAt) / 1000 : 0;
   const contracts = state.contracts[2].length ? state.contracts[2] : state.contracts[1];
   const firstPassReady = useMemo(() => new Set(state.contracts[1].filter((c) => c.ready).map((c) => c.id)), [state.contracts]);
-  const tierCounts = state.facts.reduce((m, f) => ({ ...m, [f.tier]: (m[f.tier] || 0) + 1 }), {});
   const idle = !running && !state.mode;
 
   return createPortal(
@@ -249,12 +241,9 @@ export default function AgentOnboarding({ onClose }) {
           <label className="ag-select">
             <span>Customer</span>
             <select value={customer} onChange={(e) => setCustomer(e.target.value)} disabled={running}>
-              {ONBOARDING_CUSTOMERS.map((c) => <option key={c.id} value={c.id}>{c.label} · CIF {c.cifHint}</option>)}
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.label} · CIF {c.cifHint}</option>)}
             </select>
           </label>
-          <div className="ag-seg" role="group" aria-label="Playback pace">
-            {['demo', 'fast'].map((p) => <button key={p} className={pace === p ? 'on' : ''} onClick={() => setPace(p)}>{p === 'demo' ? 'Presenter pace' : 'Real time'}</button>)}
-          </div>
           {running
             ? <button className="ag-btn ag-btn-ghost" onClick={stop}>Stop</button>
             : <button className="ag-btn" onClick={start}>{state.mode ? 'Run again' : 'Start onboarding'}</button>}
@@ -263,11 +252,9 @@ export default function AgentOnboarding({ onClose }) {
       </header>
 
       <div className="ag-status">
-        {state.mode && <span className={`ag-mode ag-mode-${state.mode}`}>{MODE_LABEL[state.mode]}</span>}
         <span>{toolCount} tool calls{failed ? ` · ${failed} failed` : ''}</span>
         <span>{state.facts.length} facts</span>
         <span>{elapsed.toFixed(1)} s</span>
-        {Object.entries(tierCounts).map(([t, n]) => <span key={t} className="ag-tiercount"><Tier tier={t} /> {n}</span>)}
         <span className="ag-readonly">Read-only · the customer’s profile is not changed</span>
       </div>
 
@@ -293,14 +280,6 @@ export default function AgentOnboarding({ onClose }) {
               </div>
             </div>
           ))}
-          <div className="ag-legend">
-            <div className="ag-section-title">Source tiers</div>
-            <p><Tier tier="LIVE" /> IDBI sandbox, this run</p>
-            <p><Tier tier="SIMULATED" /> stand-in with the real API’s shape</p>
-            <p><Tier tier="DECLARED" /> the customer said it</p>
-            <p><Tier tier="DERIVED" /> computed by MITRA’s engine</p>
-            <p><Tier tier="ESTIMATED" /> default, to be confirmed</p>
-          </div>
         </aside>
 
         <section className="ag-col ag-trace" ref={traceRef} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
@@ -311,6 +290,7 @@ export default function AgentOnboarding({ onClose }) {
               <p className="ag-empty-note">Every tool call is shown, including each IDBI gateway request inside it. Click a call to see its arguments, with identifiers masked.</p>
             </div>
           )}
+          {running && !state.trace.length && <div className="ag-starting"><i className="ag-spin" /> Starting the agents…</div>}
           {state.trace.map((item) => <TraceItem key={item.key} item={item} calls={state.calls} />)}
           {state.error && <div className="ag-error">Run failed: {state.error}</div>}
           {state.done && <div className="ag-done">✓ Onboarding run complete in {(state.done.ms / 1000).toFixed(1)} s. {state.done.stats.insightsReady} of {state.done.stats.insightsTotal} insights ready.</div>}
@@ -319,13 +299,12 @@ export default function AgentOnboarding({ onClose }) {
         <aside className="ag-col ag-results">
           <div className="ag-panel">
             <div className="ag-section-title">Fact ledger <span className="ag-count">{state.facts.length}</span></div>
-            {!state.facts.length && <p className="ag-muted">Facts appear here as agents find them, each tagged with where it came from.</p>}
+            {!state.facts.length && <p className="ag-muted">Facts appear here as agents find them, with the system each came from.</p>}
             <div className="ag-ledger">
               {state.facts.map((f) => (
                 <div key={f.field} className="ag-ledger-row" title={`${f.field} · ${f.source}`}>
                   <span className="ag-ledger-label">{f.label}</span>
                   <span className="ag-ledger-value">{f.display}</span>
-                  <Tier tier={f.tier} />
                   <span className="ag-ledger-src">{f.source}</span>
                 </div>
               ))}
@@ -382,6 +361,6 @@ export default function AgentOnboarding({ onClose }) {
         </aside>
       </main>
     </div>,
-    document.body,
+    document.querySelector('.app-shell.framed') || document.body,
   );
 }

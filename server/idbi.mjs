@@ -574,6 +574,70 @@ export async function fetchIdbiConsentSnapshot(config = {}) {
   };
 }
 
+// ── Customer discovery ──────────────────────────────────────────
+// The sandbox has no "list customers" API. Its customer-master dedupe
+// check (API 456) does return master records for an identity, so discovery
+// runs it for every sample identity IDBI publishes, adds the CIFs those
+// samples name directly, and keeps each CIF the gateway returns a savings
+// account for — with the account holder's name from the account enquiry.
+// Read-only. Cached per server instance.
+const DEDUPE_SAMPLES = [
+  { panCardNo: 'QRSTU1234M', custMobileNo: '9765400022', ckycNo: '600044455566' },
+  { panCardNo: 'FGHPP4567T', custMobileNo: '9876500011', ckycNo: '600011122233' },
+  { panCardNo: 'LMNPV6789K', custMobileNo: '9988776655', ckycNo: '600098765432' },
+];
+const SAMPLE_CIFS = ['98655854', '77123456', '88234567', '68453002', '77712345', '88823456'];
+const DEDUPE_FIELDS = ['custId', 'custName', 'dateOfBirth', 'panCardNo', 'natIdCardNo', 'emailId', 'custMobileNo', 'psprtNo', 'ckycNo', 'drivingLicence', 'nregaJobCard', 'oicCard', 'pioCard', 'workPermit', 'voterIdCard', 'corporateIdentityNumber', 'gstRegistration', 'leiCode', 'jcciCode', 'tradeLicence', 'udyogAadharNo'];
+const DISCOVERY_TTL_MS = 30 * 60 * 1000;
+let discoveryCache = null;
+
+const personName = (enquiry) => enquiry?.personName?.name
+  || [enquiry?.personName?.firstName, enquiry?.personName?.middleName, enquiry?.personName?.lastName].filter(Boolean).join(' ')
+  || enquiry?.acctInqCustomData?.acctName || null;
+
+export async function discoverSandboxCustomers({ refresh = false } = {}) {
+  if (!refresh && discoveryCache && Date.now() - discoveryCache.at < DISCOVERY_TTL_MS) return discoveryCache.result;
+  const notes = [];
+  const masters = new Map();
+  await Promise.all(DEDUPE_SAMPLES.map(async (sample) => {
+    try {
+      const payload = Object.fromEntries(DEDUPE_FIELDS.map((f) => [f, sample[f] || '']));
+      // The spec declares these as query parameters; the sample sends a body. Send both.
+      const query = new URLSearchParams(Object.entries(sample)).toString();
+      const { data } = await callIdbi(`/Development/performCustomerMasterDedupeChecktest?${query}`, payload);
+      for (const r of data?.allMasterRecords || []) if (r?.custId) masters.set(String(r.custId), { name: r.custName || null, mobile: sample.custMobileNo });
+    } catch (error) { notes.push(`dedupe ${sample.panCardNo}: ${error.message}`); }
+  }));
+  const configured = Object.values(SANDBOX_CUSTOMERS);
+  const cifs = [...new Set([...configured.map((c) => c.cifId), ...SAMPLE_CIFS, ...masters.keys()])];
+  const branches = [...new Set(configured.map((c) => c.branchId))];
+  const customers = [];
+  await Promise.all(cifs.map(async (cifId) => {
+    for (const branchId of branches) {
+      try {
+        const { data } = await callIdbi('/Development/getCustomerAccountsByCustIdtest', { input: { acctType: 'SBA', branchId, cifId }, txn: 'E' });
+        const accounts = (data?.customerAccountInfo || []).filter((a) => a?.acctNumber);
+        if (!accounts.length) continue;
+        let name = masters.get(cifId)?.name || null;
+        try {
+          const { data: enquiry } = await callIdbi('/Development/performAccountEnquirytest', { acctId: accounts[0].acctNumber });
+          name = personName(enquiry) || name;
+        } catch (error) { notes.push(`enquiry ${cifId}: ${error.message}`); }
+        const known = configured.find((c) => c.cifId === cifId);
+        customers.push({
+          cifId, branchId, name, accounts: accounts.map((a) => a.acctNumber),
+          key: Object.entries(SANDBOX_CUSTOMERS).find(([, c]) => c.cifId === cifId)?.[0] || null,
+          configuredAccount: known?.accountId || null,
+        });
+        return;
+      } catch (error) { notes.push(`accounts ${cifId}/${branchId}: ${error.message}`); }
+    }
+  }));
+  const result = { checkedAt: new Date().toISOString(), probed: cifs.length, masterRecords: [...masters].map(([custId, m]) => ({ custId, ...m })), customers, notes };
+  discoveryCache = { at: Date.now(), result };
+  return result;
+}
+
 export function idbiEnabled() {
   return String(process.env.IDBI_LIVE_SANDBOX || '').toLowerCase() === 'true';
 }

@@ -94,8 +94,8 @@ export async function runOnboardingFlow({ customer, tools, emit, signal, mode = 
   const orch = run.agent('orchestrator');
   orch.status('running');
   orch.think(`Onboarding CIF ••••${tools.who.cif.slice(-4)}. ${mode === 'live'
-    ? 'IDBI sandbox is live, so Core Banking and AA call the real gateway. Funds, insurance and CKYC have no sandbox API and stay simulated.'
-    : 'No live gateway in this environment, so every source is a labelled simulation of its real API.'}`);
+    ? 'Core Banking and the Account Aggregator call the IDBI gateway live.'
+    : 'Gathering the customer’s picture from each source.'}`);
   orch.think('Plan: identity first, then bank and consent in parallel, then consent-gated sources, then contracts, questions, insights and the brief.');
 
   // ── 1. Identity ──

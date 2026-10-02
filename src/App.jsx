@@ -318,6 +318,9 @@ function Settings({ onConnect }) {
       <label className="settings-label">Financial data</label>
       <p className="settings-note">Fetch or refresh IDBI sandbox accounts and transactions. Review the response before using it with MITRA.</p>
       <button className="primary-btn" onClick={onConnect}>Connect / refresh data</button>
+      <label className="settings-label">Bank staff</label>
+      <p className="settings-note">The relationship manager's side of MITRA: handoffs, sign-offs and the customer book.</p>
+      <a className="ghost-btn settings-link" href="./?rm=1" target="_blank" rel="noreferrer">Open the RM console ↗</a>
       <label className="settings-label">Agentic onboarding · demo</label>
       <p className="settings-note">Watch ten agents build a customer's profile: KYC, IDBI core banking, Account Aggregator consent, funds and insurance, then the questions MITRA asks and the RM brief. Every tool call is shown. Your own profile is not changed.</p>
       <button className="ghost-btn" onClick={() => setAgentDemo(true)}>Onboard a customer with agents</button>
@@ -504,10 +507,16 @@ export default function App() {
   };
 
   if (manageData && session && !DEMO) return (
-    <div className="app-shell full" data-surface="night">
-      <LogoutButton className="shell-logout" compact />
-      <div className="screen"><ConnectAccounts onBack={closeData} /></div>
-    </div>
+    <>
+      <button className="frame-toggle" onClick={() => setFramed(!framed)}>
+        {framed ? 'Full window' : 'Phone demo'}
+      </button>
+      <div className={`app-shell ${framed ? 'framed' : 'full'}`} data-surface="night">
+        {framed && <><div className="notch" /><div className="statusbar"><span>1:47</span><span>5G</span></div></>}
+        <LogoutButton className="shell-logout" compact />
+        <div className="screen"><ConnectAccounts onBack={closeData} /></div>
+      </div>
+    </>
   );
 
   if (webShell) {
@@ -609,6 +618,8 @@ export default function App() {
         </div>
 
         {session && onboarded && <MitraCompanion onNavigate={setTab} onAsk={askMitra} enabled={tab !== 'mitra' && tab !== 'settings'} />}
+        {/* solid strip behind the floating nav so content never shows around it */}
+        {session && onboarded && <div className="nav-backdrop" aria-hidden="true" />}
         {session && onboarded && (
           <div className="bottom-nav">
             {[

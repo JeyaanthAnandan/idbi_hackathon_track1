@@ -182,12 +182,13 @@
 .ag-who { color: var(--ag-faint); font-size: 11.5px; }
 .ag-gap-q { flex-basis: 100%; padding-left: 16px; color: var(--ag-faint); font-size: 12px; }
 .ag-error { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(239, 98, 85, 0.12); color: var(--ag-red); font-size: 13.5px; }
+.ag-starting { display: flex; align-items: center; gap: 10px; padding: 14px 0; color: var(--ag-soft); font-size: 13.5px; }
 .ag-done { margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: rgba(53, 201, 138, 0.1); color: var(--ag-green); font-size: 13.5px; }
 
 /* results */
 .ag-panel { margin-bottom: 22px; }
 .ag-ledger-row {
-  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) auto; gap: 2px 8px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); gap: 2px 8px; align-items: center;
   padding: 7px 0; border-bottom: 1px solid var(--ag-line); font-size: 12.5px;
 }
 .ag-ledger-label { color: var(--ag-soft); }
@@ -244,3 +245,26 @@
   .ag-root, .ag-trace > *, .ag-ledger-row, .ag-brief { animation: none; }
   .ag-agent-running .ag-agent-orb::after, .ag-spin { animation: none; }
 }
+
+/* Phone-demo frame: the agent demo opens inside the frame, which is phone-sized
+   on a wide window, so the phone layout above ((max-width: 900px)) applies there too. */
+.app-shell.framed .ag-top { padding: 12px 16px 10px; position: relative; }
+.app-shell.framed .ag-title { padding-right: 44px; }
+.app-shell.framed .ag-title h2 { font-size: 20px; }
+.app-shell.framed .ag-controls { width: 100%; }
+.app-shell.framed .ag-select { flex-basis: 100%; min-width: 0; }
+.app-shell.framed .ag-seg { flex: 1; }
+.app-shell.framed .ag-seg button { flex: 1; }
+.app-shell.framed .ag-close { position: absolute; top: 12px; right: 16px; }
+.app-shell.framed .ag-call-head { flex-wrap: wrap; }
+.app-shell.framed .ag-call-tool { white-space: normal; word-break: break-all; flex: 1 1 60%; }
+.app-shell.framed .ag-select select { max-width: none; width: 100%; }
+.app-shell.framed .ag-status { padding: 8px 16px; }
+.app-shell.framed .ag-readonly { margin-left: 0; }
+.app-shell.framed .ag-tabs { display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--ag-line); }
+.app-shell.framed .ag-tabs button { flex: 1; background: none; border: 1px solid var(--ag-line); color: var(--ag-soft); border-radius: 999px; padding: 7px; font: inherit; font-size: 13px; }
+.app-shell.framed .ag-tabs button.on { background: var(--ag-panel-2); color: var(--ag-ink); }
+.app-shell.framed .ag-grid { display: block; overflow: hidden; }
+.app-shell.framed .ag-col { display: none; height: 100%; padding: 14px 16px 40px; border: 0; }
+.app-shell.framed .ag-view-agents .ag-agents, .app-shell.framed .ag-view-trace .ag-trace, .app-shell.framed .ag-view-results .ag-results { display: block; }
+.app-shell.framed .ag-call-agent { display: none; }

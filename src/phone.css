@@ -1,0 +1,60 @@
+/* ── Phone shell ─────────────────────────────────────────────────
+   Fixes for the app on a phone: the phone-demo frame on a wide window
+   (.app-shell.framed) and real phone screens (max-width media queries).
+   Selectors start with "body" so they win over component styles that load later. */
+
+/* The status bar and the floating nav sit on a solid surface, so content
+   scrolling under them never shows through. */
+body .statusbar { background: var(--bg); }
+body .nav-backdrop {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 108px; z-index: 39; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg) 18px);
+  transition: background 0.6s var(--ease);
+}
+
+/* Chat header status stays on one line. */
+body .chat-header .ch-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+body .settings-link { display: inline-block; text-decoration: none; text-align: center; }
+
+/* Full-screen moments inside the phone-demo frame cover the phone, under its notch. */
+body .app-shell.framed .mitra-call-room,
+body .app-shell.framed .ag-root { position: absolute; inset: 0; width: auto; height: auto; border-radius: 44px; }
+body .app-shell.framed .notch { z-index: 6000; }
+body .app-shell.framed .mitra-call-header,
+body .app-shell.framed .ag-top { padding-top: 46px; }
+body .app-shell.framed .ag-close { top: 46px; }
+
+/* The floating MITRA guide would sit on top of content on a phone-width
+   screen; MITRA is one tap away in the nav there, so the guide is desktop-only. */
+body .app-shell.framed .mitra-companion { display: none; }
+@media (max-width: 760px) {
+  body .mitra-companion { display: none; }
+  /* Desktop-only floating buttons ("Phone demo", "RM console") would sit on the nav. */
+  body .frame-toggle { display: none; }
+  /* On a phone the call's avatar is a small header image; a pointer line from
+  it would cut across the conversation. */
+  body .mitra-call-room .mitra-guide-line { display: none; }
+}
+body .app-shell.framed .mitra-call-room .mitra-guide-line { display: none; }
+
+/* Home header fits a phone's width. */
+body .app-shell.framed .bank-logo-img { height: 28px; }
+body .app-shell.framed .bank-brand { gap: 9px; }
+body .app-shell.framed .bank-brand span { letter-spacing: 0.06em; }
+body .app-shell.framed .xp-chip { padding: 5px 10px 5px 6px; }
+body .app-shell.framed .xp-chip-title { display: none; }
+@media (max-width: 480px) {
+  body .bank-logo-img { height: 28px; }
+  body .bank-brand { gap: 9px; }
+  body .bank-brand span { letter-spacing: 0.06em; }
+  body .xp-chip { padding: 5px 10px 5px 6px; }
+  body .xp-chip-title { display: none; }
+}
+
+/* Risk quiz header: the logo at header size, clear of the log-out button. */
+body .ob-top .bank-logo img { display: block; height: 30px; width: auto; border-radius: 6px; }
+body .ob-top { gap: 12px; padding-right: 104px; }
+@media (max-width: 420px) {
+  body .ob-top { padding-right: 52px; }
+}

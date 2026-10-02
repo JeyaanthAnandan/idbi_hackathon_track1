@@ -2,7 +2,7 @@
 // reach the live IDBI sandbox); when there is no server — the static hosted
 // demo — the same flow runs here in the browser on simulated sources.
 import { runOnboardingFlow } from './agents/onboardingFlow.js';
-import { simulatedTools } from './agents/simulatedSources.js';
+import { simulatedTools, ONBOARDING_CUSTOMERS } from './agents/simulatedSources.js';
 
 async function streamFromServer({ customer, onEvent, signal }) {
   const response = await fetch('/api/agents/onboard', {
@@ -28,6 +28,23 @@ async function streamFromServer({ customer, onEvent, signal }) {
     }
   }
   return true;
+}
+
+const titleCase = (value) => String(value || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+// The onboarding customers the IDBI sandbox holds, as its APIs name them.
+// Only customers the demo flow can run are offered; on any failure the
+// caller keeps its built-in list.
+export async function loadOnboardingCustomers() {
+  try {
+    const response = await fetch('/api/idbi/customers', { credentials: 'same-origin', signal: AbortSignal.timeout(20000) });
+    if (!response.ok) return [];
+    const { customers = [] } = await response.json();
+    const runnable = new Set(ONBOARDING_CUSTOMERS.map((c) => c.id));
+    return customers
+      .filter((c) => runnable.has(c.key))
+      .map((c) => ({ id: c.key, label: titleCase(c.name) || ONBOARDING_CUSTOMERS.find((o) => o.id === c.key).label, cifHint: `••••${String(c.cifId).slice(-4)}` }));
+  } catch { return []; }
 }
 
 export async function runAgentOnboarding({ customer, onEvent, signal }) {

@@ -3,7 +3,7 @@ import { parseBankStatementCSV, parseHoldingsCSV } from '../src/engine/statement
 import { buildCustomPersona } from '../src/engine/personaBuilder.js';
 import { validPersona, validRisk, validState } from './validation.mjs';
 import { issueAdviceReceipt, normalizeAdvicePassport, verifyAdviceReceiptChain } from './adviceReceipts.mjs';
-import { DEFAULT_SANDBOX_CUSTOMER, fetchIdbiConsentSnapshot, fetchIdbiDirectSnapshot, idbiEnabled, listSandboxCustomers, requestIdbiConsent, resolveSandboxCustomer } from './idbi.mjs';
+import { DEFAULT_SANDBOX_CUSTOMER, discoverSandboxCustomers, fetchIdbiConsentSnapshot, fetchIdbiDirectSnapshot, idbiEnabled, listSandboxCustomers, requestIdbiConsent, resolveSandboxCustomer } from './idbi.mjs';
 import {
   audit, hashPassword, newId, newToken, passwordMatches, publicSession,
   readStore, tokenHash, updateStore,
@@ -120,6 +120,12 @@ const server = http.createServer(async (req, res) => {
     // Agentic onboarding demo: read-only, only the two published sandbox
     // test identities, rate-limited — so demo visitors can run it too.
     if (req.method === 'POST' && url.pathname === '/api/agents/onboard') return streamOnboarding(req, res, await body(req), await currentUser(req));
+
+    // Customers the IDBI sandbox actually holds, discovered through its APIs.
+    if (req.method === 'GET' && url.pathname === '/api/idbi/customers') {
+      if (!idbiEnabled()) return problem(res, 409, 'IDBI sandbox mode is disabled');
+      return json(res, 200, await discoverSandboxCustomers({ refresh: url.searchParams.get('refresh') === '1' }));
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/bootstrap') return json(res, 200, bootstrap(await currentUser(req)));
 

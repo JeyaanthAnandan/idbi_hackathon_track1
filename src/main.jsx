@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import './web.css';
+import './phone.css';
 import { initializeApi, loadAiStatus } from './engine/api.js';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 

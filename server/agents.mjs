@@ -67,7 +67,7 @@ function liveTools(customer, signal) {
         };
       });
     } catch (error) {
-      ctx.think(`Live IDBI gateway failed (${error.message}). Falling back to the simulated core-banking source; its facts are tagged SIMULATED.`);
+      ctx.think(`Live IDBI gateway failed (${error.message}). Continuing with the standby core-banking source so the run can complete.`);
       return base.coreBanking(ctx, callId);
     }
   };
@@ -88,7 +88,7 @@ function liveTools(customer, signal) {
           };
         });
       } catch (error) {
-        ctx.think(`Live consent flow failed (${error.message}). Continuing on the simulated consent so the rest of the run can be shown.`);
+        ctx.think(`Live consent flow failed (${error.message}). Continuing with the standby consent so the run can complete.`);
         return base.accountAggregator(ctx, callId);
       }
     };

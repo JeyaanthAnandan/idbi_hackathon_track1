@@ -427,3 +427,12 @@ div.rm-history { cursor: default; }
   .rm-app { display: block; background: #fff; }
   .rm-card, .rm-kpi, .rm-360-head, .rm-hero { break-inside: avoid; }
 }
+
+/* Phone: the console's top nav fits the screen width instead of running off it. */
+@media (max-width: 480px) {
+  .rm-rail { gap: 0; padding: 6px 4px; overflow-x: visible; justify-content: space-between; }
+  .rm-rail-logo, .rm-rail-avatar, .rm-rail-foot .rm-rail-mini:first-child { display: none; }
+  .rm-rail-items { gap: 0; }
+  .rm-rail-items button, .rm-rail-mini { width: 51px; padding: 8px 0 6px; gap: 4px; font-size: 7.5px; letter-spacing: 0.03em; border-radius: 12px; }
+  .rm-rail-foot { margin-left: 0; }
+}

@@ -37,6 +37,10 @@ import { composeAnswer } from '../engine/composer.js';
 import { inputLanguage, nextReplyLanguage, questionInEnglish, replyInLanguage, voiceLanguageFor } from '../engine/multilingual.js';
 
 const LANG_MODE_KEY = 'mitra_lang_mode';
+
+// Full-screen moments (the live call) cover the phone, not the whole window,
+// when the app is shown inside the phone-demo frame.
+const takeoverRoot = () => document.querySelector('.app-shell.framed') || document.body;
 import { needsHumanReview, queueAdviceReview, submitHandoff } from '../engine/rmDesk.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
@@ -775,7 +779,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
               ? `Analysing · ${toSarvamLang(lang)}`
               : speaking
               ? `Speaking · ${toSarvamLang(lang)}${voiceAI && !voiceDegraded ? ' · Bulbul v3' : voiceDegraded ? ' · device voice' : ''}`
-              : `Online · ${langMode === 'auto' ? `Auto · ${toSarvamLang(lang)}` : toSarvamLang(lang)}`}
+              : `${langMode === 'auto' ? 'Auto' : 'Online'} · ${toSarvamLang(lang)}`}
           </div>
         </div>
         <button className="icon-btn" title="Explain with charts" aria-label="Explain with charts" disabled={typing || transcribing || inCall} onClick={() => openPresenter()}>
@@ -1022,7 +1026,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           voiceOnRef.current = next; setVoiceOn(next);
           if (!next) { stopSpeaking(); setSpeaking(false); setPreparingVoice(false); }
         }}
-      />, document.body)}
+      />, takeoverRoot())}
     </div>
   );
 }

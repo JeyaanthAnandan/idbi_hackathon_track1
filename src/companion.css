@@ -107,3 +107,29 @@
   .mitra-call-chart { padding: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .mitra-pet, .mitra-companion-bubble { animation: none; } .mitra-ui-highlight, .mitra-call-meter i { transition: none; } }
+
+/* Phone-demo frame: the live call opens inside the frame, which is phone-sized
+   on a wide window, so the phone layout above ((max-width: 760px)) applies there too. */
+.app-shell.framed .mitra-companion { left: 8px; bottom: 90px; gap: 0; }
+.app-shell.framed .mitra-pet { width: 82px; flex-basis: 82px; }
+.app-shell.framed .mitra-companion-bubble { width: min(290px, calc(100vw - 104px)); padding: 12px; }
+.app-shell.framed .mitra-companion-title strong { font-size: 14px; }
+.app-shell.framed .mitra-call-header { padding: 15px 16px; gap: 10px; }
+.app-shell.framed .mitra-call-header h1 { font-size: 18px; }
+.app-shell.framed .mitra-call-clock { display: none; }
+.app-shell.framed .mitra-call-end { padding: 10px 12px; font-size: 11px !important; }
+.app-shell.framed .mitra-call-workspace { display: block; }
+.app-shell.framed .mitra-call-guide { position: sticky; top: 0; z-index: 2; background: #0a241e; padding: 12px 16px; min-height: 130px; align-items: flex-start; padding-left: 138px; text-align: left; }
+.app-shell.framed .mitra-call-guide > div:first-child { position: absolute; width: 125px; height: 125px; left: 10px; top: 4px; overflow: hidden; }
+.app-shell.framed .mitra-call-guide > div:first-child > .mitra-avatar { width: 125px !important; height: 125px !important; }
+.app-shell.framed .mitra-call-guide h2 { font-size: 20px; margin-top: 10px; }
+.app-shell.framed .mitra-call-guide .mitra-call-hint, .app-shell.framed .mitra-call-guide .mitra-call-meter { display: none; }
+.app-shell.framed .mitra-call-guide .ghost-btn { padding: 7px 10px; margin-top: 10px; font-size: 10px; }
+.app-shell.framed .mitra-call-content { padding: 12px 16px 24px; }
+.app-shell.framed .mitra-call-your-words { padding: 16px; }
+.app-shell.framed .mitra-call-message { padding: 16px; }
+.app-shell.framed .mitra-call-message > p { font-size: 14px; }
+.app-shell.framed .mitra-call-footer { padding: 10px 12px max(12px, env(safe-area-inset-bottom)); }
+.app-shell.framed .mitra-call-footer input { font-size: 16px; }
+.app-shell.framed .mitra-call-footer form { gap: 2px; }
+.app-shell.framed .mitra-call-chart { padding: 14px; }

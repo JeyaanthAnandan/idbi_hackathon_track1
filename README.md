@@ -6,6 +6,16 @@
 > — **the customer's own transaction and investment behaviour** — into timely, personalized,
 > data-driven wealth guidance for every customer, not just HNIs.
 
+**Team Innovative Warriors** — Jeyaanth · Sudarssan
+
+| | |
+|---|---|
+| **Live prototype** | https://dtmbnabakdonb.cloudfront.net/ |
+| **Banker / RM console** | https://dtmbnabakdonb.cloudfront.net/?rm=1 |
+| **Demo video** | https://drive.google.com/file/d/12MKoCHzKiOfpEMHKgQIa1_rtnwv6_M6F/view?usp=sharing |
+| **Repository** | https://github.com/JeyaanthAnandan/idbi_hackathon_track1 |
+| **Pitch deck** | [`deck/MITRA-Prototype-Submission-Deck-IDBI-Innovate-2026.pdf`](deck/MITRA-Prototype-Submission-Deck-IDBI-Innovate-2026.pdf) (source: [`deck/index.html`](deck/index.html)) |
+
 **IDBI sandbox flow:** run `npm run dev:sandbox`, then open `http://localhost:5173/?connect=1`. Log in or sign up, choose **Fetch IDBI sandbox data**, review the returned accounts and transactions, and select **Use this data with MITRA**. Existing users can open **Connect / refresh data** from the dashboard or Settings.
 
 ---
@@ -85,6 +95,28 @@ SF Pro typography, gradient display headlines, and a full motion system: scroll-
 2. **Advice is computed, not canned** — change one number in the synthetic data and every score, nudge, projection and recommendation changes.
 3. **Hybrid AI a regulated bank can defend** — deterministic policy engine for numbers and narration; optional LLM only selects schema-validated tools. Every recommendation is receipt-backed.
 4. **Scales advisory to every customer** at near-zero marginal cost, in their language — democratizing what RMs do for HNIs.
+
+## Banker / Relationship Manager console — `?rm=1`
+
+MITRA has two sides. Customers talk to MITRA; the bank's relationship managers work in the **RM console**
+(`/?rm=1`, or **Bank staff? Open the Relationship Manager console** on the sign-in screen, or **RM view** in the desktop rail).
+It runs on a synthetic book of 8 customers, computed by the same policy engine the customer app uses.
+
+| Screen | What the RM does |
+|---|---|
+| **Overview** | Book AUM, MITRA engagement, open handoffs with SLA, pending sign-offs, high-risk customers, opportunity pipeline, reviews due |
+| **Handoff queue** | Customers who asked MITRA for a human arrive here with MITRA's briefing and recorded consent. Accept → schedule (phone / video / branch) → call notes → close with outcome, or escalate. Every step is sent back to the customer's MITRA chat in real time |
+| **My book → Customer 360** | Health score breakdown, allocation vs risk-profile target, 6-month cash flow, goals vs capacity, holdings & loans, suitability-ranked opportunities (each tied to its policy rule), risk flags, relationship history, printable meeting brief |
+| **Advice review (maker–checker)** | MITRA output above policy thresholds (SIP ≥ ₹25K/mo, lump sum ≥ ₹5L, customers 60+, protection gaps with dependents) waits for a human. The RM sees the Advice Passport and a live suitability check, then approves, approves with changes, or rejects with a reason |
+| **Compliance** | Book-wide flags (liquidity, debt burden, irregular income, protection, suitability, KYC, seniors) and a consent register |
+| **Audit trail** | Every customer-raised case, MITRA referral and RM decision, hash-chained so an edited entry breaks verification |
+
+**Try the end-to-end loop:** open the RM console in one tab and the customer app (`/?demo=1&screen=mitra`) in another.
+Ask MITRA *"Talk to a human advisor"* → **Send to my IDBI RM** → the case appears at the top of the RM's handoff queue →
+accept / schedule it → the customer's chat shows the RM's update live.
+
+> Prototype boundary: the RM desk is shared browser storage on the same origin, so the hosted static demo needs no server.
+> In production it is the bank's CRM / case-management service behind SSO with role-based access.
 
 ## 4. Architecture
 

@@ -33,6 +33,7 @@ import {
 import { buildAdvicePassport } from '../engine/advicePassport.js';
 import { createAdviceReceipt } from '../engine/api.js';
 import { answerConversation } from '../engine/conversation.js';
+import { needsHumanReview, queueAdviceReview, submitHandoff } from '../engine/rmDesk.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
 // ids already sitting in restored (persisted) history.
@@ -602,7 +603,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
   };
 
-  const handleCta = (cta) => {
+  const handleCta = (cta, source = null) => {
     const follow = (resp) => setTimeout(() => pushMitra(resp), 900);
     const simulated = (message, chips) => follow({
       mood: 'happy',
@@ -660,13 +661,54 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
         simulated(`The plan now models ${fmt(cta.amount)} moving to the emergency reserve.`, ["How's my financial health?", 'Invest my surplus']);
         return;
 
-      case 'rm-handoff':
+      case 'rm-handoff': {
+        // The customer pressed the button on the consent-labelled brief, so
+        // the brief MITRA prepared goes to the RM desk with that consent.
+        const brief = source?.widget?.type === 'handoff' ? source.widget.data.brief : [`${customer.name} asked to speak with a relationship manager`];
+        const recentQuestion = [...messagesRef.current].reverse().find((m) => m.from === 'user' && !/human|advisor|relationship manager|talk to/i.test(m.text || ''))?.text;
+        const handoff = submitHandoff({
+          customer,
+          riskProfile,
+          brief,
+          topic: recentQuestion ? `Follow-up on: “${recentQuestion.slice(0, 90)}”` : 'Wants a human review of the MITRA plan',
+          language: LANGUAGES.find((l) => l.code === langRef.current)?.label || 'English',
+          source: inCallRef.current ? 'MITRA live call' : 'MITRA chat',
+        });
         awardXP(10, 'rm-handoff');
-        showToast('Handoff brief prepared · +10 XP');
-        simulated('A review brief is ready to share with a relationship manager after you confirm contact consent.', ['Show my portfolio']);
+        showToast(`Sent to your IDBI RM · ${handoff.id}`);
+        follow({
+          mood: 'happy',
+          text: `Done — I've shared the briefing with your IDBI relationship manager as case ${handoff.id}, with your consent to be contacted. You'll see their reply right here. Nothing was booked or bought on your behalf.`,
+          widget: { type: 'rm-case', data: { caseId: handoff.id } },
+          chips: ['Show my portfolio', 'Continue with MITRA for now'],
+        });
         return;
+      }
 
-      case 'sip-setup':
+      case 'sip-setup': {
+        const trigger = needsHumanReview({ customer, type: 'sip', amount: cta.amount });
+        if (trigger) {
+          const passport = source?.passport;
+          const review = queueAdviceReview({
+            customer, type: 'sip', amount: cta.amount, trigger,
+            recommendation: `Start ${fmt(cta.amount)}/mo SIP into the ${riskProfile} model portfolio`,
+            passport: {
+              engineMode: passport?.engineMode || 'DETERMINISTIC',
+              policyVersion: passport?.policyVersion || 'wealth-policy',
+              confidence: passport?.confidence ?? 0.8,
+              formula: passport?.formula || 'monthly SIP future-value formula using the displayed scenario rate',
+              evidence: (passport?.evidence || []).map((e) => [e.field, e.value]),
+            },
+          });
+          showToast(`Sent for RM sign-off · ${review.id}`);
+          follow({
+            mood: 'thinking',
+            text: `A ${fmt(cta.amount)}/month SIP is above the amount I can recommend on my own, so I've sent it to your relationship manager for a second look (${review.id}). I'll keep it out of your plan until they sign off.`,
+            chips: ['Talk to a human advisor', 'Show my goals'],
+          });
+          return;
+        }
+      }
         applyAction('sip', cta.amount, { source: cta.source });
         awardXP(40, 'sip-setup');
         showToast(`SIP scenario of ${fmt(cta.amount)}/mo added · +40 XP`);
@@ -831,7 +873,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   id={`advice-action-${m.id}`}
                   className={`advice-focus-target advice-action-target ${m.id === last?.id && activeGuideTargetFor(m) === 'action' ? 'is-guided' : ''}`}
                 >
-                  <button className="cta-btn" onClick={() => handleCta(m.cta)}>
+                  <button className="cta-btn" onClick={() => handleCta(m.cta, m)}>
                     {m.cta.label}
                   </button>
                 </div>

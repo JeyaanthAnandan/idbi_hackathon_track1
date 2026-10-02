@@ -815,12 +815,12 @@ function respondCore(text, riskProfile = 'Balanced') {
       ].filter(Boolean).join(', ');
       return {
         mood: 'happy',
-        text: `Of course. I have prepared a reviewable briefing from the facts used in this conversation. Submit the sandbox request below to demonstrate how an IDBI wealth RM handoff would work; no real callback is booked by this prototype.`,
+        text: `Of course. I have prepared a reviewable briefing from the facts used in this conversation. Review it below — when you send it, it goes to your IDBI relationship manager's queue with your consent to be contacted, and their reply appears here. (Prototype RM desk with a synthetic banker.)`,
         widget: {
           type: 'handoff',
           data: {
-            rm: 'IDBI Wealth RM queue · sandbox',
-            slot: 'Not submitted',
+            rm: 'IDBI Wealth RM desk · prototype',
+            slot: 'Not sent yet',
             brief: [
               `${customer.name}, ${customer.age} · ${riskProfile} profile · Health score ${hsNow.total}/100`,
               `Wealth ${fmtCompact(totalWealth())} · surplus ${fmt(cashflow().surplus)}/mo idle`,
@@ -830,7 +830,7 @@ function respondCore(text, riskProfile = 'Balanced') {
           },
         },
         chips: ['Continue with MITRA for now', 'Show my goals'],
-        cta: { label: 'Submit simulated RM handoff', type: 'rm-handoff', amount: 0 },
+        cta: { label: 'Send to my IDBI RM (I consent to be contacted)', type: 'rm-handoff', amount: 0 },
       };
     }
 

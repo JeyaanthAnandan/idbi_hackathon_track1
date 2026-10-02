@@ -3,6 +3,11 @@ import React from 'react';
 // Elegant thin-stroke icon set (SF-Symbols style): 24-grid, 1.6px stroke,
 // round caps, currentColor. One consistent visual voice, no emoji.
 const PATHS = {
+  users: ['M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', 'M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5', 'M16 4.3a3.5 3.5 0 0 1 0 6.4', 'M18 14.8c1.9.7 3.2 2.5 3.5 5.2'],
+  inbox: ['M3.5 13.5 6 5.5h12l2.5 8', 'M3.5 13.5v5h17v-5', 'M3.5 13.5h5l1 2h5l1-2h5'],
+  check: ['M5 12.5 10 17.5 19 7'],
+  alert: ['M12 4 21 19.5H3L12 4z', 'M12 10v4.5', 'M12 17.2v.3'],
+  lock: ['M6.5 10.5h11v9.5h-11z', 'M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5'],
   home: ['M3 11.2 12 3.5l9 7.7', 'M5.5 9.8V20.5h13V9.8'],
   chart: ['M5 20.5v-7', 'M12 20.5V8', 'M19 20.5V4.5'],
   clock: ['M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z', 'M12 7.5V12l3.2 2'],

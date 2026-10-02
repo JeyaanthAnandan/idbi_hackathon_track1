@@ -41,6 +41,7 @@ function evidenceFor(response) {
 
 export function buildAdvicePassport({ question, response, riskProfile, engineMode = 'DETERMINISTIC' }) {
   if (!question || !response?.text || !(response.widget || response.why || response.cta || response.toolRouted)) return null;
+  if (response.widget?.type === 'rm-case') return null; // a service update, not advice
   const type = response.widget?.type || response.cta?.type || 'guidance';
   const connectedSources = getBootstrap().profile?.sources;
   const sources = connectedSources?.length ? connectedSources : dataQuality.sources?.length ? dataQuality.sources : ['synthetic:customer-360'];

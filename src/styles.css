@@ -333,6 +333,8 @@ body {
   transition: all 0.4s var(--ease);
 }
 .frame-toggle:hover { background: #0b6f63; }
+.frame-toggle.rm-entry { bottom: 68px; background: #f2761d; color: #fff; text-decoration: none; }
+.frame-toggle.rm-entry:hover { background: #d9620f; }
 .frame-toggle:active { transform: scale(0.96); }
 
 .shell-logout {

@@ -371,6 +371,10 @@ export default function WebApp({ riskProfile, tab, onTab, settingsPanel, onConne
           ))}
         </div>
         <div className="web-rail-foot">
+          <a className="web-rail-item web-rail-rm" href="./?rm=1" target="_blank" rel="noreferrer" title="Open the Relationship Manager console">
+            <Icon name="users" size={19} />
+            RM view
+          </a>
           <button
             className={`web-rail-item ${active === 'settings' ? 'is-on' : ''}`}
             aria-current={active === 'settings' ? 'page' : undefined}

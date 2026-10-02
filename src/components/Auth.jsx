@@ -118,6 +118,14 @@ export default function Auth({ onAuthed }) {
         Skip · try the demo as {customer.name.split(' ')[0]}
       </button>
 
+      <a
+        className="ghost-btn"
+        href="./?rm=1"
+        style={{ marginTop: 8, alignSelf: 'center', textDecoration: 'none' }}
+      >
+        Bank staff? Open the Relationship Manager console
+      </a>
+
       <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', lineHeight: 1.6 }}>
         Prototype account — password hashes and sessions are stored by the local MITRA API.
       </div>

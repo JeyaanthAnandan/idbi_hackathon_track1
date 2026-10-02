@@ -546,6 +546,7 @@ export default function App() {
 
   return (
     <>
+      <a className="frame-toggle rm-entry" href="./?rm=1" target="_blank" rel="noreferrer">Banker / RM console</a>
       {!DEMO && (
         <button className="frame-toggle" onClick={() => setFramed(!framed)}>
           {framed ? 'Full window' : 'Phone demo'}

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { getCase, subscribeDesk } from '../engine/rmDesk.js';
 import { Donut, Bars, GrowthCurve, ScoreRing, Sparkline } from './charts.jsx';
 import { fmt, fmtCompact } from '../engine/analytics.js';
 import Icon from './Icons.jsx';
@@ -328,6 +329,8 @@ export default function ChatWidget({ widget, onChip }) {
     );
   }
 
+  if (type === 'rm-case') return <RmCaseStatus caseId={data.caseId} />;
+
   if (type === 'handoff') {
     return (
       <div className="widget-card">
@@ -532,4 +535,38 @@ export default function ChatWidget({ widget, onChip }) {
   }
 
   return null;
+}
+
+// Live view of a handoff the customer sent to the RM desk. It re-reads the
+// shared desk whenever the RM console (in any tab) changes the case.
+const CASE_STEPS = [['NEW', 'Sent'], ['ACCEPTED', 'Picked up'], ['SCHEDULED', 'Booked'], ['CLOSED', 'Done']];
+
+function RmCaseStatus({ caseId }) {
+  const [item, setItem] = useState(() => getCase(caseId));
+  useEffect(() => subscribeDesk(() => setItem(getCase(caseId))), [caseId]);
+  if (!item) return null;
+  const reached = CASE_STEPS.findIndex(([s]) => s === item.status);
+  return (
+    <div className="widget-card">
+      <h4>Your request · {item.id}</h4>
+      <div style={{ display: 'flex', gap: 6, margin: '4px 0 10px' }}>
+        {CASE_STEPS.map(([s, label], i) => (
+          <div key={s} style={{ flex: 1 }}>
+            <div style={{ height: 4, borderRadius: 2, background: i <= reached ? 'var(--teal)' : 'var(--chart-track)' }} />
+            <div style={{ fontSize: 10.5, marginTop: 4, color: i <= reached ? 'var(--ink)' : 'var(--ink-soft)', fontWeight: i === reached ? 700 : 500 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      {item.customerMessage ? (
+        <div style={{ fontSize: 12.5, lineHeight: 1.5, borderLeft: '3px solid var(--orange)', paddingLeft: 10 }}>
+          {item.customerMessage}
+          <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 4 }}>— {item.assignedTo || 'IDBI Wealth RM desk'}</div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+          Waiting for a relationship manager to pick this up. Shared with your consent: the briefing above, nothing else.
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
-import { respond, fallbackResponse, parseSipQuery, capabilityAnswer } from './advisor.js';
+import { respond, fallbackResponse, parseSipQuery, capabilityAnswer, detectIntent, INTENT_PROMPTS } from './advisor.js';
 import { ADVISOR_TOOL_DEFINITIONS, executeAdvisorTool, validateAdvisorToolCall, validateAdvisorResponse, clarifyResponse } from './advisorTools.js';
 import { boundedChatMessages, ADVISOR_PROMPT_VERSION } from './advisorPrompt.js';
+import { COMPOSER_PROMPT_VERSION } from './composer.js';
 import { goals } from '../data/customer.js';
 import { goalPlan, sipRequired, sipFutureValue, fmt } from './analytics.js';
 import { POLICY, returnScenario } from '../data/policy.js';
@@ -14,7 +15,10 @@ const askedAlready = (history) => Boolean(history.filter((m) => m.from === 'mitr
 
 const ACKNOWLEDGEMENT = /^(?:thanks?|thank (?:you|u)|thx|ty|ok(?:ay)?|k|cool|nice|great|good|awesome|perfect|got it|understood|fine|alright|no|nope|nothing|that's all|thats all)[\s.!]*$/i;
 
-export function contextualResponse(text, history = [], riskProfile = 'Balanced', lang = 'en') {
+// Requests that are commands rather than questions: acknowledgements, safety
+// declines, follow-ups to the previous answer, and exact calculations. These
+// stay deterministic whether or not an AI composer is available.
+export function commandResponse(text, history = [], riskProfile = 'Balanced', lang = 'en') {
   const t = text.trim();
   // A bare "thanks" or "ok" carries no request. Routing it produced the
   // clarification prompt, which read as MITRA failing to understand a word it
@@ -29,7 +33,7 @@ export function contextualResponse(text, history = [], riskProfile = 'Balanced',
     };
   }
   if (/^(?:help|menu|options)[\s.!?]*$/i.test(t)) return capabilityAnswer();
-  if (/\b(?:ignore (?:all |previous |your )*instructions|reveal (?:your |the )?(?:system prompt|api key)|tax evasion|evade tax|(?:give|tell|share).*\b(?:otp|password)|(?:buy|sell|transfer|execute|place an? order)\b.*\b(?:now|for me|shares|stock|money)|which stock.*buy)\b/i.test(t)) return decline();
+  if (/\b(?:ignore (?:all |previous |your )*instructions|reveal (?:your |the )?(?:system prompt|api key)|tax evasion|evade tax|(?:give|tell|share).*\b(?:otp|password)|(?:buy|sell)\b.*\b(?:for me|shares|stocks?)\b|(?:transfer|execute|place an? order)\b.*\b(?:now|for me|money)|which stock.*buy)\b/i.test(t)) return decline();
   if (/^(?:what is|what's|explain|define|how does)\s+(?:a |an )?(?:sip|mutual fund|fixed deposit|diversification|risk|emergency fund)\b/i.test(t)) {
     const concept = /mutual fund/i.test(t) ? 'mutual_fund' : /fixed deposit/i.test(t) ? 'fixed_deposit' : /emergency fund/i.test(t) ? 'emergency_fund' : /diversification/i.test(t) ? 'diversification' : /\bsip\b/i.test(t) ? 'sip' : 'risk';
     return executeAdvisorTool({ name: 'explain_concept', arguments: { concept } }, riskProfile);
@@ -59,7 +63,10 @@ export function contextualResponse(text, history = [], riskProfile = 'Balanced',
       chips: ['Show my goals', 'Afford all my goals'],
     };
   }
-  if (/^(?:why|explain (?:that|this)|how did you (?:calculate|get|arrive))\b/i.test(t)) {
+  // "why?" / "how did you get that" asks about the previous answer. A full
+  // question that merely starts with "why" ("why is my spending so high?") is
+  // a new question and must not be read as a follow-up.
+  if (/^(?:why(?: is that| that| so)?|explain (?:that|this)|how did you (?:calculate|get|arrive)\b.*)[\s.!?]*$/i.test(t)) {
     if (!previous) return { mood: 'thinking', text: 'There is no earlier answer of mine to explain yet. Ask me for a review or a calculation first, and then “why?” will show the exact figures and formula behind it.', chips: ['Show my portfolio', 'Analyse my spending', 'What can you do?'] };
     const passport = previous.passport;
     const evidence = passport?.evidence?.map((item) => `${item.field}: ${item.value}`).join('; ');
@@ -79,13 +86,54 @@ export function contextualResponse(text, history = [], riskProfile = 'Balanced',
     const values = parseSipQuery(t);
     return respond(`calculate ₹${values.amount ?? prior.monthly} for ${values.years ?? prior.years} years`, riskProfile, lang);
   }
-  return respond(t, riskProfile, lang);
+  // Exact arithmetic ("calculate ₹5,000 for 10 years") is the engine's job.
+  if (detectIntent(t) === 'sipcalc') return respond(t, riskProfile, lang);
+  // The app's own suggested prompts, typed or tapped, are commands.
+  if (EXACT_PROMPTS.has(normalise(t))) return respond(t, riskProfile, lang);
+  return null;
 }
 
+const normalise = (value) => String(value).toLowerCase().replace(/[’']/g, "'").replace(/[\s.!?]+$/g, '').trim();
+const EXACT_PROMPTS = new Set(Object.values(INTENT_PROMPTS).map(normalise));
+
+export function contextualResponse(text, history = [], riskProfile = 'Balanced', lang = 'en') {
+  return commandResponse(text, history, riskProfile, lang) || respond(text.trim(), riskProfile, lang);
+}
+
+const withTimeout = (promise, ms, controller) => {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => { controller?.abort(); reject(new Error('timeout')); }, ms); }),
+  ]).finally(() => clearTimeout(timer));
+};
+
 // Shared by the chat UI and regression tests. Providers only choose tools.
-export async function answerConversation({ text, history = [], riskProfile = 'Balanced', lang = 'en', routers = [], timeoutMs = 8000 }) {
-  const direct = contextualResponse(text, history, riskProfile, lang);
-  if (direct) return { ...direct, engineMode: 'DETERMINISTIC', promptVersion: ADVISOR_PROMPT_VERSION };
+//
+// With a `composer` (DeepSeek), a free-text question is answered by the AI
+// from engine-computed facts; the keyword engine's answer for the closest
+// topic is passed along as a hint and is also the fallback if the composer
+// fails or its reply is rejected. Chip taps (`fromChip`) and commands stay
+// deterministic and instant.
+export async function answerConversation({ text, history = [], riskProfile = 'Balanced', lang = 'en', routers = [], composer = null, fromChip = false, timeoutMs = 8000, composeTimeoutMs = 35000 }) {
+  const deterministic = (response) => ({ ...response, engineMode: 'DETERMINISTIC', promptVersion: ADVISOR_PROMPT_VERSION });
+  const command = commandResponse(text, history, riskProfile, lang);
+  if (command) return deterministic(command);
+  const engine = respond(text.trim(), riskProfile, lang);
+  if (engine && (fromChip || !composer)) return deterministic(engine);
+  if (composer) {
+    const controller = new AbortController();
+    try {
+      const out = await withTimeout(composer({ text, history, riskProfile, engineHint: engine, signal: controller.signal }), composeTimeoutMs, controller);
+      if (out?.response) return { ...out.response, engineMode: 'AI_COMPOSED', promptVersion: COMPOSER_PROMPT_VERSION };
+      if (out?.rejected && typeof console !== 'undefined') console.warn('[MITRA] AI reply rejected:', out.rejected);
+    } catch (error) {
+      if (typeof console !== 'undefined') console.warn('[MITRA] AI composer unavailable:', error?.message || error);
+    }
+    if (engine) return deterministic(engine);
+  }
+  const direct = engine;
+  if (direct) return deterministic(direct);
   const context = { text, repeated: askedAlready(history) };
   // A router that gives up is not an answer. Earlier this returned the first
   // clarify_request it received, so a weak first provider could veto a second

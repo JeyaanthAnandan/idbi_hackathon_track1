@@ -17,7 +17,7 @@ import {
 } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
-import { getDeepSeekKey, setDeepSeekKey, LANGUAGES } from './engine/deepseek.js';
+import { getDeepSeekKey, setDeepSeekKey, hasDeepSeek, deepSeekViaServer, LANGUAGES } from './engine/deepseek.js';
 import {
   hasSarvam, getSarvamKey, setSarvamKey, clearSarvamKey, sarvamKeyFromEnv,
   SARVAM_SPEAKERS, getSarvamSpeaker, setSarvamSpeaker, verifySarvamKey,
@@ -204,7 +204,7 @@ function SarvamSection() {
       <p className="settings-note">
         Bulbul v3 speaks all 9 languages with a real Indian voice, and Saaras v3 works out
         which language you spoke — so you can just talk, in whatever you're comfortable in.
-        {fromEnv && ' Configured for this build.'}
+        {fromEnv && ' Provided by the MITRA server.'}
       </p>
 
       <div className="settings-row">
@@ -249,7 +249,7 @@ function SarvamSection() {
       <div className="settings-row">
         <input
           type="password"
-          placeholder={fromEnv ? 'Using the built-in key — paste to override' : 'sk_… Sarvam API key'}
+          placeholder={fromEnv ? 'Using the server key — paste one to override' : 'sk_… Sarvam API key'}
           value={key}
           onChange={(e) => setKey(e.target.value)}
         />
@@ -360,17 +360,17 @@ function Settings({ onConnect }) {
       )}
 
       <label className="settings-label">
-        MITRA AI · DeepSeek {key ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span> : ''}
+        MITRA AI · DeepSeek {hasDeepSeek() ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active{deepSeekViaServer() ? ' (server)' : ''}</span> : ''}
       </label>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        MITRA's advisory engine runs fully on-device. Add a DeepSeek key to unlock schema-validated
-        intent routing, Offer X-Ray classification, and natural-language goal extraction. The model
-        selects tools; dated policy rules calculate and narrate personalized advice.
+        With DeepSeek on, MITRA thinks through questions you type or speak and answers them in her own
+        words. The engine still computes every figure, and a reply quoting a number that isn't in your
+        computed facts is discarded. Suggested-question buttons answer instantly from the engine.
       </p>
       <div className="settings-row">
         <input
           type="password"
-          placeholder="sk-… DeepSeek API key"
+          placeholder={deepSeekViaServer() ? 'Using the server key — paste one to override' : 'sk-… DeepSeek API key'}
           value={key}
           onChange={(e) => setKey(e.target.value)}
         />
@@ -386,8 +386,8 @@ function Settings({ onConnect }) {
         {saved ? 'Saved' : 'Save key'}
       </button>
       <div style={{ marginTop: 12, fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        Prototype stores the key in your browser for a zero-backend demo. In production it must live
-        server-side — the app never ships the key to a real bank build.
+        The MITRA server holds the DeepSeek key, so it is never sent to your browser. A key pasted here
+        overrides it for this browser only — useful for testing another account.
       </div>
 
       <div className="app-footnote" style={{ paddingLeft: 0, paddingRight: 0, marginTop: 14 }}>

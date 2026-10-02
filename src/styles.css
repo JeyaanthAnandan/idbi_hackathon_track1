@@ -663,7 +663,7 @@ body {
 .msg-row { display: flex; margin-bottom: 12px; gap: 8px; align-items: flex-end; }
 .msg-row.user { justify-content: flex-end; }
 .bubble {
-  max-width: 88%; padding: 16px 18px; border-radius: 24px; font-size: 15px; line-height: 1.6;
+  max-width: 88%; padding: 16px 18px; border-radius: 24px; font-size: 15px; line-height: 1.6; white-space: pre-line;
   animation: rise 0.55s var(--ease) both;
 }
 .bubble.mitra { background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 8px; }
@@ -810,6 +810,7 @@ body {
 
 .typing { display: inline-flex; gap: 4px; padding: 2px; }
 .typing i { width: 6px; height: 6px; background: var(--orange); border-radius: 50%; animation: blinkDot 1.2s infinite; }
+.typing-label { margin-left: 8px; font-size: 12px; color: var(--ink-soft); vertical-align: middle; }
 .typing i:nth-child(2) { animation-delay: 0.2s; }
 .typing i:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blinkDot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }

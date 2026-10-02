@@ -1,3 +1,4 @@
+import { setAiStatus } from './aiTransport.js';
 const emptyBoot = () => ({ available: false, session: null, profile: null, onboarded: false, riskProfile: null, appState: null, chat: [], xp: null });
 let boot = emptyBoot();
 let stateWriteQueue = Promise.resolve();
@@ -24,7 +25,17 @@ async function request(path, options = {}) {
   return data;
 }
 
+// Provider availability is public (no session needed), so it is fetched in
+// demo mode too — the demo personas use the same server-side AI.
+async function loadAiStatus() {
+  try {
+    const response = await fetch('/api/ai/status', { signal: AbortSignal.timeout(5000) });
+    if (response.ok) setAiStatus(await response.json());
+  } catch { setAiStatus(null); }
+}
+
 export async function initializeApi() {
+  await loadAiStatus();
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1') {
     clearCustomerCache();
     boot = emptyBoot();

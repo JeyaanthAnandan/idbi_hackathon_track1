@@ -16,14 +16,14 @@
 // Everything degrades gracefully: no key → speech.js falls straight back to
 // the Web Speech API, exactly as before.
 //
-// Prototype note: the key is read from VITE_SARVAM_API_KEY (or a Settings
-// override in localStorage) and called from the browser. Sarvam sends
-// `access-control-allow-origin: *`, so this works with zero backend — but a
-// production bank build must proxy these calls server-side.
+// Calls go through the MITRA API (/api/ai/sarvam/*), which holds the key; a
+// key pasted in Settings is used directly from the browser instead.
 // ─────────────────────────────────────────────────────────────
 
 import { ADVISOR_SYSTEM_PROMPT } from './advisorPrompt.js';
+import { serverAi } from './aiTransport.js';
 const BASE = 'https://api.sarvam.ai';
+const PROXY = '/api/ai/sarvam';
 const KEY_STORAGE = 'mitra_sarvam_key';
 const SPEAKER_STORAGE = 'mitra_sarvam_speaker';
 
@@ -37,28 +37,21 @@ const MAX_CHARS_PER_INPUT = 500;
 const MAX_INPUTS_PER_CALL = 3; // the 3 chunks come back merged as ONE wav
 
 // ── key handling ─────────────────────────────────────────────
-// A key saved in Settings wins over the build-time env var, so a judge can
-// paste their own key on a deployed build without a rebuild.
-const envKey = (import.meta.env?.VITE_SARVAM_API_KEY || '').trim();
-
+// The MITRA API holds the production key and proxies Sarvam at
+// /api/ai/sarvam/*, so the browser bundle never contains it. A key a tester
+// pastes in Settings wins and is used directly from that browser.
 export function getSarvamKey() {
   try {
-    return (localStorage.getItem(KEY_STORAGE) || '').trim() || envKey;
+    return (localStorage.getItem(KEY_STORAGE) || '').trim();
   } catch {
-    return envKey;
+    return '';
   }
 }
 export const setSarvamKey = (k) => localStorage.setItem(KEY_STORAGE, (k || '').trim());
 export const clearSarvamKey = () => localStorage.removeItem(KEY_STORAGE);
-export const hasSarvam = () => !!getSarvamKey();
-// true when the key shipped with the build rather than being pasted in Settings
-export const sarvamKeyFromEnv = () => {
-  try {
-    return !localStorage.getItem(KEY_STORAGE) && !!envKey;
-  } catch {
-    return !!envKey;
-  }
-};
+export const hasSarvam = () => !!getSarvamKey() || serverAi().sarvam;
+// true when the voice runs on the server's key rather than one pasted in Settings
+export const sarvamKeyFromEnv = () => !getSarvamKey() && serverAi().sarvam;
 
 // ── language mapping ─────────────────────────────────────────
 // MITRA's short app codes ↔ the BCP-47 tags Sarvam speaks.
@@ -119,8 +112,8 @@ function requestSignal(signal) {
 
 async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
   const key = getSarvamKey();
-  if (!key) throw new Error('no-sarvam-key');
-  const headers = { 'api-subscription-key': key };
+  if (!key && !serverAi().sarvam) throw new Error('no-sarvam-key');
+  const headers = key ? { 'api-subscription-key': key } : {};
   if (body) headers['content-type'] = 'application/json';
 
   const effectiveSignal = requestSignal(signal);
@@ -128,8 +121,9 @@ async function sarvamFetch(path, { body, form, signal, retries = RETRIES }) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt) await wait(250 * 2 ** (attempt - 1)); // 250ms, 500ms
     try {
-      const res = await fetch(BASE + path, {
+      const res = await fetch((key ? BASE : PROXY) + path, {
         method: 'POST',
+        credentials: 'same-origin',
         headers,
         signal: effectiveSignal,
         // FormData is single-use, so a retried multipart body must be rebuilt

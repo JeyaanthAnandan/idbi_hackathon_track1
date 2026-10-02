@@ -1,26 +1,44 @@
 // ─────────────────────────────────────────────────────────────
 // DeepSeek engine — constrained AI utilities for MITRA.
-// Personalized narration is deterministic. The model is limited to advisor
-// tool selection, translation, and schema-validated extraction/classification.
+// The model writes replies to open questions from engine-computed facts
+// (engine/composer.js), selects advisor tools, translates, and does
+// schema-validated extraction/classification. It never computes a figure.
 //
-// The whole app works WITHOUT a key (rule engine + hardcoded Hindi). Paste
-// a key in Settings and these light up. Prototype note: for a real bank the
-// key must live server-side — here it's client-side for a zero-backend demo.
+// The whole app works WITHOUT a key (rule engine + hardcoded Hindi). The
+// MITRA API holds the production key and proxies calls at /api/ai/deepseek,
+// so no key is ever bundled into the browser. A key pasted in Settings is
+// used directly from that browser (handy for testing a different account).
 // ─────────────────────────────────────────────────────────────
 import { POLICY } from '../data/policy.js';
 import { ADVISOR_SYSTEM_PROMPT, boundedChatMessages } from './advisorPrompt.js';
+import { serverAi } from './aiTransport.js';
 
 const KEY_STORAGE = 'mitra_deepseek_key';
 const BASE = 'https://api.deepseek.com/chat/completions';
-const ENV_KEY = (import.meta.env?.VITE_DEEPSEEK_API_KEY || '').trim();
-export const MODEL_CHAT = (import.meta.env?.VITE_DEEPSEEK_MODEL || 'deepseek-v4-flash').trim();
+const PROXY = '/api/ai/deepseek';
+export const MODEL_CHAT = 'deepseek-v4-flash';
 export const MODEL_VERSION = 'deepseek-v4-flash';
 
 export const getDeepSeekKey = () => {
-  try { return localStorage.getItem(KEY_STORAGE) || ENV_KEY; } catch { return ENV_KEY; }
+  try { return localStorage.getItem(KEY_STORAGE) || ''; } catch { return ''; }
 };
 export const setDeepSeekKey = (k) => localStorage.setItem(KEY_STORAGE, (k || '').trim());
-export const hasDeepSeek = () => !!getDeepSeekKey();
+export const hasDeepSeek = () => !!getDeepSeekKey() || serverAi().deepseek;
+export const deepSeekViaServer = () => !getDeepSeekKey() && serverAi().deepseek;
+
+async function deepSeekRequest(body, signal) {
+  const key = getDeepSeekKey();
+  if (!key && !serverAi().deepseek) throw new Error('no-key');
+  const res = await fetch(key ? BASE : PROXY, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) },
+    signal,
+    body: JSON.stringify(key ? { model: MODEL_CHAT, ...body } : body),
+  });
+  if (!res.ok) throw new Error(`DeepSeek ${res.status} ${(await res.text()).slice(0, 240)}`);
+  return res.json();
+}
 
 // 8 languages — the accessibility story for a public-sector bank.
 export const LANGUAGES = [
@@ -43,56 +61,29 @@ export const SPEECH_LANG = {
 };
 
 // ── low-level: non-streaming completion ──────────────────────
-export async function complete({ system, messages, model = MODEL_CHAT, json = false, temperature = 0.4, maxTokens = 700, signal }) {
-  const key = getDeepSeekKey();
-  if (!key) throw new Error('no-key');
-  const body = {
-    model,
+// `thinking` turns on DeepSeek's reasoning pass. It is used for composing
+// answers to open questions; short utility calls keep it off for speed.
+export async function complete({ system, messages, json = false, thinking = false, temperature = 0.4, maxTokens = 700, signal }) {
+  const data = await deepSeekRequest({
     messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
-    // Routine app tasks use non-thinking mode: lower latency/cost and required
-    // for tool_choice on DeepSeek V4 Flash.
-    thinking: { type: 'disabled' },
+    thinking: { type: thinking ? 'enabled' : 'disabled' },
     temperature,
     max_tokens: maxTokens,
-  };
-  if (json) body.response_format = { type: 'json_object' };
-  const res = await fetch(BASE, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    signal: signal || AbortSignal.timeout(12000),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error('DeepSeek ' + res.status + ' ' + (await res.text()).slice(0, 200));
-  const data = await res.json();
+    ...(json ? { response_format: { type: 'json_object' } } : {}),
+  }, signal || AbortSignal.timeout(thinking ? 30000 : 12000));
   const msg = data.choices?.[0]?.message || {};
   return { content: msg.content || '', reasoning: msg.reasoning_content || '' };
 }
 
 export async function selectDeepSeekAdvisorTool({ messages, tools, signal, system = ADVISOR_SYSTEM_PROMPT }) {
-  const key = getDeepSeekKey();
-  if (!key) throw new Error('no-key');
-  const res = await fetch(BASE, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    signal,
-    body: JSON.stringify({
-      model: MODEL_CHAT,
-      messages: [
-        {
-          role: 'system',
-          content: system,
-        },
-        ...messages,
-      ],
-      tools,
-      tool_choice: 'required',
-      thinking: { type: 'disabled' },
-      temperature: 0.1,
-      max_tokens: 220,
-    }),
-  });
-  if (!res.ok) throw new Error(`DeepSeek ${res.status} ${(await res.text()).slice(0, 240)}`);
-  const data = await res.json();
+  const data = await deepSeekRequest({
+    messages: [{ role: 'system', content: system }, ...messages],
+    tools,
+    tool_choice: 'required',
+    thinking: { type: 'disabled' },
+    temperature: 0.1,
+    max_tokens: 220,
+  }, signal);
   const call = data.choices?.[0]?.message?.tool_calls?.[0]?.function;
   if (!call?.name) throw new Error('DeepSeek returned no advisor tool');
   let args = {};

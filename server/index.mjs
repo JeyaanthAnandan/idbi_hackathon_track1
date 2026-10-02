@@ -8,6 +8,7 @@ import {
   audit, hashPassword, newId, newToken, passwordMatches, publicSession,
   readStore, tokenHash, updateStore,
 } from './store.mjs';
+import { aiStatus, proxyDeepSeek, proxySarvam } from './aiProxy.mjs';
 
 const PORT = Number(process.env.MITRA_API_PORT || 8787);
 const COOKIE = 'mitra_session';
@@ -108,6 +109,12 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { status: 'ok', service: 'mitra-api' });
+
+    // AI providers, proxied so their keys stay on the server. Open to demo
+    // visitors (no customer session) and bounded inside aiProxy.mjs.
+    if (req.method === 'GET' && url.pathname === '/api/ai/status') return json(res, 200, aiStatus());
+    if (req.method === 'POST' && url.pathname === '/api/ai/deepseek') return proxyDeepSeek(req, res);
+    if (req.method === 'POST' && url.pathname.startsWith('/api/ai/sarvam/')) return proxySarvam(req, res, url.pathname.slice('/api/ai/sarvam'.length));
 
     if (req.method === 'GET' && url.pathname === '/api/bootstrap') return json(res, 200, bootstrap(await currentUser(req)));
 

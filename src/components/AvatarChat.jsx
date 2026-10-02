@@ -33,6 +33,7 @@ import {
 import { buildAdvicePassport } from '../engine/advicePassport.js';
 import { createAdviceReceipt } from '../engine/api.js';
 import { answerConversation } from '../engine/conversation.js';
+import { composeAnswer } from '../engine/composer.js';
 import { needsHumanReview, queueAdviceReview, submitHandoff } from '../engine/rmDesk.js';
 
 // Seeded from wall-clock time so ids from a fresh mount never collide with
@@ -58,6 +59,8 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   langRef.current = lang;
   const [langMenu, setLangMenu] = useState(false);
   const [offerMode, setOfferMode] = useState(false);
+  // set while DeepSeek reasons over a free-text question (a few seconds)
+  const [deepThinking, setDeepThinking] = useState(false);
   const offerRef = useRef(false);
   offerRef.current = offerMode;
   // Sarvam turns the mic into a real Indian-language ear: it transcribes after
@@ -393,18 +396,20 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     }
   };
 
-  const handleSend = async (raw) => {
+  // `chip` marks a tapped suggestion: it is a known command, so it skips the
+  // AI composer and answers instantly from the engine.
+  const handleSend = async (raw, { chip = false } = {}) => {
     if (requestBusy.current) return;
     if (!(raw ?? input).trim()) return;
     returnToConversation();
     requestBusy.current = true;
     const session = callSessionRef.current;
-    try { await sendMessage(raw, session); }
+    try { await sendMessage(raw, session, chip); }
     catch { pushMitra(fallbackResponse(true), session); }
     finally { requestBusy.current = false; setTyping(false); }
   };
 
-  const sendMessage = async (raw, session) => {
+  const sendMessage = async (raw, session, chip = false) => {
     const text = (raw ?? input).trim();
     if (!text) return;
     if (inCallRef.current && callListeningRef.current) {
@@ -468,13 +473,17 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
     // added back when the rule engine answered instantly; stacked on top of real
     // translation and synthesis latency it just made MITRA feel slow.
 
-    // Deterministic intents own both the numbers and the narration. An LLM is
-    // used only to select a validated tool when keyword routing has no answer.
+    // The engine computes every figure. For a free-text question DeepSeek
+    // thinks it through and writes the reply from those computed facts (every
+    // figure re-checked); chips and commands answer straight from the engine.
+    setDeepThinking(aiKey && !chip);
     const response = await answerConversation({
       text: engineText, history: messagesRef.current.filter((m) => m.text), riskProfile,
       lang: canTranslate ? 'en' : langRef.current,
+      composer: aiKey ? composeAnswer : null,
+      fromChip: chip,
       routers: [voiceAI && selectSarvamAdvisorTool, aiKey && selectDeepSeekAdvisorTool].filter(Boolean),
-    });
+    }).finally(() => setDeepThinking(false));
     pushMitra(await localise(response), session);
   };
 
@@ -514,7 +523,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
   useEffect(() => {
     if (initialPrompt) {
       if (!startedRef.current) startedRef.current = true;
-      handleSend(initialPrompt);
+      handleSend(initialPrompt, { chip: true });
       onConsumeInitial?.();
       return;
     }
@@ -789,7 +798,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                     langRef.current = l.code;
                     stopSpeaking();
                     setSpeaking(false);
-                    setTimeout(() => handleSend(l.code === 'en' ? 'hello' : l.code === 'hi' ? 'नमस्ते' : 'hello'), 150);
+                    setTimeout(() => handleSend(l.code === 'en' ? 'hello' : l.code === 'hi' ? 'नमस्ते' : 'hello', { chip: true }), 150);
                   }}
                 >
                   <span>{l.native}</span>
@@ -823,7 +832,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           initialSpending={showPresenter.spending}
           initialVoice={showPresenter.voice ?? voiceOn}
           onClose={() => setShowPresenter(null)}
-          onAsk={handleSend}
+          onAsk={(q) => handleSend(q, { chip: true })}
         /> : <>
         {messages.map((m) =>
           m.from === 'user' ? (
@@ -843,7 +852,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
                   id={`advice-result-${m.id}`}
                   className={`advice-focus-target ${m.id === last?.id && activeGuideTargetFor(m) === 'result' ? 'is-guided' : ''}`}
                 >
-                  <ChatWidget widget={m.widget} onChip={handleSend} />
+                  <ChatWidget widget={m.widget} onChip={(c) => handleSend(c, { chip: true })} />
                   {presentationForWidget(m.widget) && <button type="button" className="chart-explain-btn" disabled={typing || transcribing || inCall} onClick={() => openPresenter(presentationForWidget(m.widget))}>
                     <Icon name="chart" size={15} />{presentationForWidget(m.widget).label}<span aria-hidden="true">↗</span>
                   </button>}
@@ -900,13 +909,15 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           <div className="msg-row">
             <div className="bubble mitra">
               <span className="typing"><i /><i /><i /></span>
+              {deepThinking && <span className="typing-label">Thinking it through…</span>}
             </div>
           </div>
         )}
         {!typing && last?.from === 'mitra' && last.chips && (
           <div className="chips">
             {last.chips.map((c) => (
-              <button className="chip" key={c} onClick={() => handleSend(c)}>
+              // AI follow-ups are free-form questions, so they go back to the AI.
+              <button className="chip" key={c} onClick={() => handleSend(c, { chip: last.engineMode !== 'AI_COMPOSED' })}>
                 {c}
               </button>
             ))}

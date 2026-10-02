@@ -66,20 +66,22 @@
 **Why this matters for a public-sector bank**: the mandate is reaching customers who *aren't* served today.
 Those customers don't type English. Voice in their own language is the access mechanism, not a garnish.
 
-### AI layer — constrained routing, with deterministic financial narration
+### AI layer — DeepSeek reasons and writes, the engine owns every number
 
 | # | Capability | What it does |
 |---|---|---|
-| 24 | **Structured tool routing** | For open-ended requests, Sarvam/DeepSeek must select one allow-listed tool with schema-validated arguments; the model never writes personalized financial narration |
+| 24 | **Grounded AI answers** | A question the customer types or speaks goes to DeepSeek in thinking mode with a fact sheet the engine computed from their data. DeepSeek answers the actual question (job loss, marriage, rent vs buy, bitcoin…) and picks the engine card to show with it. Every figure in the reply must already be in the fact sheet or the customer's own words, or the reply is rewritten once and otherwise dropped for the engine's answer. Suggested-question chips stay instant and deterministic |
 | 25 | **Vernacular AI** | Translation fallback when Sarvam is off — see the Voice layer above, which now owns this end to end |
 | 26 | **Offer X-Ray** | Paste any WhatsApp forward / scheme pitch / insurance line → DeepSeek returns a Safe/Caution/Avoid verdict, safety score, red flags, hidden costs and a reality-check vs SEBI/RBI norms. Turns the static Fraud Shield into a real analyzer |
 | 27 | **Natural-language goals** | *"I want a MacBook next year"* → DeepSeek extracts a schema-validated amount + timeframe → policy-based SIP simulation. No forms, no fabricated mandate |
 
 Money-adjacent CTAs are explicitly labelled simulations. They update the what-if plan but never claim that a mandate, trade, policy, cancellation, or callback was executed.
 
-**Hybrid AI architecture** — a dated policy engine computes and narrates every personalized number. Optional
-Sarvam/DeepSeek models route unknown intents to allow-listed tools; runtime schemas and policy filters reject
-unsupported execution or guarantee claims. Translation is accepted only when every numeric figure is preserved.
+**Hybrid AI architecture** — a dated policy engine computes every personalized number. DeepSeek writes the reply to
+free-form questions from those computed figures and may not introduce a figure of its own; the same policy filters
+reject execution or guaranteed-return claims, and chips, exact calculations and safety declines never touch the model.
+Translation is accepted only when every numeric figure is preserved. **AI keys live on the server:** the browser
+calls `/api/ai/deepseek` and `/api/ai/sarvam/*`, which add the key, fix the model, cap tokens and rate-limit.
 
 **Voice:** with Sarvam configured, MITRA speaks and hears all 9 languages. Speech falls back to the device voice for English and Hindi.
 
@@ -166,13 +168,13 @@ npm run dev        # → http://localhost:5173
 13. Ask: *"Talk to a human advisor"* → review the prepared RM brief and explicit "not submitted" state.
 14. Toggle **📱 Phone demo** to show it living inside the mobile banking shell.
 
-> Copy `.env.example` to `.env` and add a Sarvam key for MITRA's voice and all 9 languages. Optionally paste a DeepSeek key in **Settings** for open-ended reasoning.
+> Copy `.env.example` to `.env` and add `SARVAM_API_KEY` (voice and all 9 languages) and `DEEPSEEK_API_KEY` (answers to open questions). `npm run dev` passes them to the API server only — they are never bundled into the web app. A key pasted in **Settings** overrides the server key for that browser.
 
 ## 6. Production roadmap
 
 - **Data**: RBI Account Aggregator + core-banking feeds for true 360° (other-bank assets included)
 - **Avatar & voice**: 3D lip-synced avatar (MetaHuman / Ready Player Me). Neural TTS/STT in 9 Indian languages is
-  **already live via Sarvam AI**; production moves the key server-side and adds Punjabi + Odia (Bulbul supports both)
+  **already live via Sarvam AI** (key held server-side); production adds Punjabi + Odia (Bulbul supports both)
 - **Compliance**: extend the implemented hash-linked advice receipts with managed append-only/WORM storage, SEBI IA review, and approved RM escalation
 - **Execution**: live MF/FD/SGB order APIs, NPCI e-mandates, nudges as push notifications
 - **Learning loop**: accepted/rejected-nudge feedback trains per-customer personalization; cohort benchmarks from real anonymised segments
@@ -180,7 +182,7 @@ npm run dev        # → http://localhost:5173
 ## 7. Tech stack
 
 React 18 + Vite · local authenticated Node API · hash-linked advice receipts · hand-rolled SVG charts ·
-**Sarvam AI** (Bulbul v3 TTS, Saaras v3 STT, Mayura translation) · optional DeepSeek structured routing.
+**Sarvam AI** (Bulbul v3 TTS, Saaras v3 STT, Mayura translation) · DeepSeek V4 Flash (thinking mode) for grounded answers, via a server-side proxy.
 
 ---
 *All financial figures are computed live from synthetic data. Illustrative only — not investment advice.*

@@ -117,7 +117,7 @@ export async function proxyDeepSeek(req, res) {
 // Same fixed model and token cap as the proxy; returns the reply text.
 export async function deepseekComplete({ messages, maxTokens = 700, json = false }) {
   const key = deepseekKey();
-  if (!key) throw new Error('DeepSeek is not configured on the server');
+  if (!key) throw new Error('The AI is not configured on the server');
   const body = sanitizeDeepSeekBody({ messages, max_tokens: maxTokens, temperature: 0.3, ...(json ? { response_format: { type: 'json_object' } } : {}) });
   const upstream = await fetch(DEEPSEEK_URL, {
     method: 'POST',
@@ -125,7 +125,7 @@ export async function deepseekComplete({ messages, maxTokens = 700, json = false
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(25_000),
   });
-  if (!upstream.ok) throw new Error(`DeepSeek returned ${upstream.status}`);
+  if (!upstream.ok) throw new Error(`The AI returned ${upstream.status}`);
   const data = await upstream.json();
   return data.choices?.[0]?.message?.content || '';
 }

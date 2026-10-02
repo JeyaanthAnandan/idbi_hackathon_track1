@@ -591,9 +591,10 @@ const DEDUPE_FIELDS = ['custId', 'custName', 'dateOfBirth', 'panCardNo', 'natIdC
 const DISCOVERY_TTL_MS = 30 * 60 * 1000;
 let discoveryCache = null;
 
-const personName = (enquiry) => enquiry?.personName?.name
-  || [enquiry?.personName?.firstName, enquiry?.personName?.middleName, enquiry?.personName?.lastName].filter(Boolean).join(' ')
-  || enquiry?.acctInqCustomData?.acctName || null;
+// The enquiry's `name` field runs the parts together ("PRIYAPATIL"), so the
+// separate first/middle/last fields are preferred when IDBI fills them.
+const personName = (enquiry) => [enquiry?.personName?.firstName, enquiry?.personName?.middleName, enquiry?.personName?.lastName].filter(Boolean).join(' ')
+  || enquiry?.personName?.name || enquiry?.acctInqCustomData?.acctName || null;
 
 export async function discoverSandboxCustomers({ refresh = false } = {}) {
   if (!refresh && discoveryCache && Date.now() - discoveryCache.at < DISCOVERY_TTL_MS) return discoveryCache.result;

@@ -28,7 +28,8 @@ export const aiStatus = () => ({ llm: Boolean(deepseekKey()), sarvam: Boolean(sa
 const WINDOW_MS = 60_000;
 // A translated reply costs ~10 Sarvam calls (one per line, speech batches,
 // language ID), so its limit is set per conversation turn, not per request.
-const LIMITS = { deepseek: 30, sarvam: 300 };
+// An onboarding run makes ~20 gateway calls and one DeepSeek call.
+const LIMITS = { deepseek: 30, sarvam: 300, agents: 10 };
 const hits = new Map();
 export function rateLimited(client, bucket, now = Date.now()) {
   const key = `${bucket}:${client}`;
@@ -110,6 +111,23 @@ export async function proxyDeepSeek(req, res) {
   } catch {
     return problem(res, 504, 'The AI did not respond in time');
   }
+}
+
+// Server-side completion for MITRA's own agents (the onboarding Narrator).
+// Same fixed model and token cap as the proxy; returns the reply text.
+export async function deepseekComplete({ messages, maxTokens = 700, json = false }) {
+  const key = deepseekKey();
+  if (!key) throw new Error('DeepSeek is not configured on the server');
+  const body = sanitizeDeepSeekBody({ messages, max_tokens: maxTokens, temperature: 0.3, ...(json ? { response_format: { type: 'json_object' } } : {}) });
+  const upstream = await fetch(DEEPSEEK_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!upstream.ok) throw new Error(`DeepSeek returned ${upstream.status}`);
+  const data = await upstream.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // Byte-for-byte forward so the multipart speech-to-text upload works too.

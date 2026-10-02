@@ -11,7 +11,7 @@ import { POLICY } from '../data/policy.js';
 
 const FALLBACK_MONTHLY_SUMMARY = [{ month: 'This month', income: 0, spend: 0, invested: 0 }];
 
-function defaultGoals({ monthlyIncome, savingsBalance, age }) {
+export function defaultGoals({ monthlyIncome, savingsBalance, age }) {
   const income = monthlyIncome || 30000;
   const emergencyTarget = Math.round(income * 6);
   return [

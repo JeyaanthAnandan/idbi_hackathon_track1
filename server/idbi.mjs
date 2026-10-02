@@ -1,5 +1,10 @@
 // IDBI sandbox adapter. All gateway calls stay server-side; the browser only
 // receives the normalized shape consumed by buildCustomPersona().
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+// Lets a caller watch every gateway request made on its behalf (the agent
+// onboarding demo draws them as tool calls). Unset for every other route.
+export const idbiTrace = new AsyncLocalStorage();
 
 const DEFAULT_BASE_URL = 'https://sandboxpocgatewayprod.idbi.bank.in';
 const DEFAULTS = {
@@ -72,6 +77,19 @@ function transaction(row) {
 }
 
 async function callIdbi(path, payload, options = {}) {
+  const trace = idbiTrace.getStore();
+  const started = Date.now();
+  try {
+    const result = await sendIdbi(path, payload, options);
+    trace?.({ path, payload, ok: true, ms: Date.now() - started, data: result.data, requestId: result.requestId });
+    return result;
+  } catch (error) {
+    trace?.({ path, payload, ok: false, ms: Date.now() - started, error: error.message });
+    throw error;
+  }
+}
+
+async function sendIdbi(path, payload, options) {
   const base = (process.env.IDBI_SANDBOX_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
   const response = await fetch(`${base}${path}`, {
     method: 'POST',

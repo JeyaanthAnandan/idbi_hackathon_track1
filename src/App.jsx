@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import BankHome from './components/BankHome.jsx';
 import MitraCompanion from './components/MitraCompanion.jsx';
 import WealthDashboard from './components/WealthDashboard.jsx';
@@ -11,6 +11,7 @@ import WebApp from './components/WebApp.jsx';
 import DataStatus from './components/DataStatus.jsx';
 import TalkingHeadAvatar from './components/TalkingHeadAvatar.jsx';
 import LogoutButton from './components/LogoutButton.jsx';
+const AgentOnboarding = lazy(() => import('./components/AgentOnboarding.jsx'));
 import {
   listVoices, getPreferredVoiceName, setPreferredVoiceName, speak,
   SPEECH_PACES, getSpeechPace, setSpeechPace,
@@ -294,6 +295,7 @@ function SarvamSection() {
 }
 
 function Settings({ onConnect }) {
+  const [agentDemo, setAgentDemo] = useState(false);
   const [voices, setVoices] = useState([]);
   const [voiceName, setVoiceName] = useState(getPreferredVoiceName());
   const sarvamActive = hasSarvam();
@@ -316,6 +318,14 @@ function Settings({ onConnect }) {
       <label className="settings-label">Financial data</label>
       <p className="settings-note">Fetch or refresh IDBI sandbox accounts and transactions. Review the response before using it with MITRA.</p>
       <button className="primary-btn" onClick={onConnect}>Connect / refresh data</button>
+      <label className="settings-label">Agentic onboarding · demo</label>
+      <p className="settings-note">Watch ten agents build a customer's profile: KYC, IDBI core banking, Account Aggregator consent, funds and insurance, then the questions MITRA asks and the RM brief. Every tool call is shown. Your own profile is not changed.</p>
+      <button className="ghost-btn" onClick={() => setAgentDemo(true)}>Onboard a customer with agents</button>
+      {agentDemo && (
+        <Suspense fallback={null}>
+          <AgentOnboarding onClose={() => setAgentDemo(false)} />
+        </Suspense>
+      )}
       <ThemePicker />
       <AvatarModePicker />
       <PersonaPicker />

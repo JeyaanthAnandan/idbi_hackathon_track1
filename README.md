@@ -120,6 +120,29 @@ accept / schedule it → the customer's chat shows the RM's update live.
 > Prototype boundary: the RM desk is shared browser storage on the same origin, so the hosted static demo needs no server.
 > In production it is the bank's CRM / case-management service behind SSO with role-based access.
 
+## Agentic onboarding demo — Settings → *Onboard a customer with agents*
+
+A read-only demo of how MITRA would build a customer's picture from the bank's systems. Ten agents run as a fixed DAG
+(`src/engine/agents/onboardingFlow.js`). The console shows each hand-off, every tool call with the IDBI gateway
+requests nested inside it (masked arguments, latency, request id), and each fact tagged with where it came from:
+**LIVE** (IDBI sandbox, this run), **SIMULATED** (a stand-in with the real API's shape), **DECLARED** (the customer
+said it), **DERIVED** (computed by the engine) or **ESTIMATED** (a default to confirm).
+
+| Agent | Does |
+|---|---|
+| Identity & KYC | CIF and CKYC status. The run stops here if KYC fails |
+| Core Banking ∥ Account Aggregator | IDBI accounts, statement, lien and loans (APIs 394/365/393/362/402) in parallel with AA consent (590/592/591) |
+| Portfolio, Protection | CAS / demat and the insurance repository. Called **only** when the AA consent covers that FI type |
+| Gap Analyzer | Checks each insight's data contract (`contracts.js`). Missing inputs are never guessed |
+| MITRA Dialogue | Asks the customer only what no system holds (dependents, tax regime, 80C outside IDBI) |
+| Insight Engine | The same `rmInsights.js` policy engine the RM console uses |
+| Narrator | RM brief. MITRA AI (the server-side model) when configured, rejected if it adds any figure not in the fact sheet; the engine's talking points otherwise |
+
+`POST /api/agents/onboard` streams the run as NDJSON. With `npm run dev:sandbox`, Core Banking and AA call the real
+sandbox gateway; a failed call stays red on the trace and the run falls back to the simulated source. With no API
+server (the static hosted demo), the same flow runs in the browser on simulated sources. Nothing is written to the
+customer's profile, so the existing connect and onboarding flows are unchanged.
+
 ## 4. Architecture
 
 ```

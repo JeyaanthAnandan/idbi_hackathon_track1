@@ -9,6 +9,7 @@ import {
   readStore, tokenHash, updateStore,
 } from './store.mjs';
 import { aiStatus, proxyDeepSeek, proxySarvam } from './aiProxy.mjs';
+import { streamOnboarding } from './agents.mjs';
 
 const PORT = Number(process.env.MITRA_API_PORT || 8787);
 const COOKIE = 'mitra_session';
@@ -115,6 +116,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/ai/status') return json(res, 200, aiStatus());
     if (req.method === 'POST' && url.pathname === '/api/ai/complete') return proxyDeepSeek(req, res);
     if (req.method === 'POST' && url.pathname.startsWith('/api/ai/sarvam/')) return proxySarvam(req, res, url.pathname.slice('/api/ai/sarvam'.length));
+
+    // Agentic onboarding demo: read-only, only the two published sandbox
+    // test identities, rate-limited — so demo visitors can run it too.
+    if (req.method === 'POST' && url.pathname === '/api/agents/onboard') return streamOnboarding(req, res, await body(req), await currentUser(req));
 
     if (req.method === 'GET' && url.pathname === '/api/bootstrap') return json(res, 200, bootstrap(await currentUser(req)));
 

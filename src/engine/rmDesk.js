@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────
 import { RM_PROFILE } from '../data/rmBook.js';
 
-const KEY = 'mitra_rm_desk_v1';
+const KEY = 'mitra_rm_desk_v2';
 const EVENT = 'mitra-rm-desk';
 const HOUR = 3600 * 1000;
 
@@ -116,6 +116,7 @@ function seed() {
   mk({
     ageH: 0.7, customerId: 'CUST-77031', customerName: 'Arjun Mehta', priority: 'High', status: 'NEW', language: 'Marathi', source: 'MITRA live call',
     topic: 'Loan is squeezing savings — wants help on prepay vs protection',
+    question: 'Should I prepay my business loan or buy insurance first?',
     riskProfile: 'Conservative',
     brief: [
       'Asked MITRA "should I prepay my business loan or buy insurance first?" twice this week',
@@ -128,6 +129,7 @@ function seed() {
   const lakshmi = mk({
     ageH: 5, customerId: 'CUST-61402', customerName: 'Lakshmi Iyer', priority: 'Normal', status: 'SCHEDULED', language: 'Tamil', channel: 'Branch visit',
     topic: '₹12 L FD matures on 14 Oct — wants to discuss reinvestment',
+    question: 'Should I renew my FD or move to the Senior Citizen Savings Scheme?',
     riskProfile: 'Conservative',
     brief: [
       'FD of ₹12 L maturing 14 Oct 2026 · pension ₹48K/mo covers expenses',
@@ -142,6 +144,7 @@ function seed() {
   const fatima = mk({
     ageH: 26, customerId: 'CUST-55871', customerName: 'Dr. Fatima Shaikh', priority: 'Normal', status: 'CLOSED', channel: 'Video call',
     topic: 'Portfolio X-Ray flagged Regular-plan ELSS fees',
+    question: 'Am I paying too much in fund fees?',
     riskProfile: 'Balanced',
     brief: ['ELSS in Regular plan at 1.74% vs 0.68% Direct', 'Wants to understand switching and the exit-load / lock-in rules'],
     preferredSlot: 'Lunch hour', assignedTo: rm, scheduledFor: iso(-22 * HOUR),
@@ -207,14 +210,14 @@ export function subscribeDesk(fn) {
 }
 
 // ── Customer side ─────────────────────────────────────────────
-export function submitHandoff({ customer, riskProfile, brief, topic, language = 'English', source = 'MITRA chat', preferredSlot = 'Any time today', channel = 'Phone call' }) {
+export function submitHandoff({ customer, riskProfile, brief, topic, question = null, language = 'English', source = 'MITRA chat', preferredSlot = 'Any time today', channel = 'Phone call' }) {
   return mutate((desk) => {
     const priority = customer.age >= REVIEW_RULES.seniorAge || /fraud|scam|loan|emi/i.test(`${topic} ${brief.join(' ')}`) ? 'High' : 'Normal';
     const createdAt = iso();
     const item = {
       id: nextId('HND', desk.cases), customerId: customer.id, customerName: customer.name,
       snapshot: { age: customer.age, segment: customer.segment, city: customer.city },
-      source, channel, language, topic, brief, riskProfile, priority, status: 'NEW', preferredSlot,
+      source, channel, language, topic, question, brief, riskProfile, priority, status: 'NEW', preferredSlot,
       consent: { contact: true, dataShare: true, at: createdAt },
       createdAt, slaDueAt: new Date(Date.now() + SLA_HOURS[priority] * HOUR).toISOString(),
       assignedTo: null, scheduledFor: null, notes: [], outcome: null, customerMessage: null,
@@ -260,11 +263,16 @@ export const acceptCase = (id) => updateCase(id, (c) => {
   c.customerMessage = `${RM_PROFILE.name.split(' ')[0]}, your IDBI relationship manager, has picked up your request and will confirm a time shortly.`;
 }, 'case.accepted', '');
 
-export const scheduleCase = (id, { when, channel }) => updateCase(id, (c) => {
+export const slotLabel = (when) => new Date(when).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+export const defaultBookingMessage = ({ when, channel, language }) =>
+  `${RM_PROFILE.name.split(' ')[0]} from IDBI has booked a ${channel.toLowerCase()} with you on ${slotLabel(when)}${language && language !== 'English' ? `, in ${language}` : ''}.`;
+
+export const scheduleCase = (id, { when, channel, language, message }) => updateCase(id, (c) => {
   c.status = 'SCHEDULED'; c.scheduledFor = when; c.channel = channel; c.assignedTo ||= RM_PROFILE.name;
-  const label = new Date(when).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  stamp(c, `${channel} booked · ${label}`);
-  c.customerMessage = `${RM_PROFILE.name.split(' ')[0]} from IDBI has booked a ${channel.toLowerCase()} with you on ${label}.`;
+  if (language) c.language = language;
+  stamp(c, `${channel} booked · ${slotLabel(when)}${language ? ` · ${language}` : ''}`);
+  c.customerMessage = message?.trim() || defaultBookingMessage({ when, channel, language });
 }, 'case.scheduled', `${channel} · ${when}`);
 
 export const addCaseNote = (id, text) => updateCase(id, (c) => {

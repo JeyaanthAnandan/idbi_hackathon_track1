@@ -141,12 +141,44 @@ const RELATIONSHIP = {
   'CUST-24690': { language: 'Hindi', phone: '+91 94•••• 1187', lastContact: '2026-05-20', mitraSessions30d: 3, lastMitraTopic: 'Is my FD beating inflation?', nextReview: '2026-11-28' },
 };
 
+// What each customer recently did with MITRA — the conversation summary a
+// customer agreed to share with their RM. Synthetic, like the rest.
+const MITRA_LOG = {
+  'CUST-88214': [
+    { when: 'Today', lang: 'English', tool: 'Idle surplus', q: 'What should I do with the money sitting in savings?', a: 'Modelled a ₹25,125/mo SIP in the Balanced portfolio. Simulation only; nothing was invested.' },
+    { when: 'Last week', lang: 'English', tool: 'Protection gap', q: 'Am I protected?', a: 'Life cover is short of the 15× income rule. Indicative premium shown in the Advice Passport.' },
+  ],
+  'CUST-77031': [
+    { when: '42 min ago', lang: 'Marathi', tool: 'Live call', q: 'Should I prepay my business loan or buy insurance first?', a: 'Compared prepayment with investing, then raised HND-1401 at his request.' },
+    { when: 'Tuesday', lang: 'Marathi', tool: 'Prepay vs invest', q: 'Is it better to close the loan early?', a: 'Showed the 15.5% loan against a conservative return band. Flagged the 0.6-month reserve first.' },
+  ],
+  'CUST-61402': [
+    { when: 'Today, 07:02', lang: 'Tamil', tool: 'FD maturity', q: 'Should I renew my FD or move to Senior Citizen Savings Scheme?', a: 'Compared rates and lock-ins in Tamil. Suggested discussing with the RM before maturity on 14 Oct.' },
+  ],
+  'CUST-90318': [
+    { when: 'Today, 08:30', lang: 'English', tool: 'SIP', q: 'Start ₹60,000 a month into my aggressive plan.', a: 'Above ₹25,000/mo, so sent to the RM for sign-off as ADV-1401. Kept out of the plan until approved.' },
+  ],
+  'CUST-55871': [
+    { when: 'June', lang: 'Hindi', tool: 'Portfolio X-Ray', q: 'Am I paying too much in fund fees?', a: 'Found the ELSS on a Regular plan at 1.74% vs 0.68% Direct.' },
+  ],
+  'CUST-38044': [
+    { when: 'Last week', lang: 'Punjabi', tool: 'Fraud Shield', q: 'A scheme says guaranteed 24% a year. Is it safe?', a: 'Guaranteed high returns fail the SEBI/RBI 5-point check. No regulated product promises 24%.', verdict: 'Avoid', tip: 'He is being targeted by high-return pitches. Mention it gently at the review and point him to Fraud Shield for the next one.' },
+    { when: 'August', lang: 'Punjabi', tool: 'Goals', q: "Can I afford my son's wedding in 3 years?", a: 'Showed goals need ₹1.55 L/mo against ₹69K capacity, and proposed priority-ordered funding.' },
+  ],
+  'CUST-97215': [
+    { when: 'Yesterday', lang: 'Bengali', tool: 'Goals', q: 'I want to do an MBA in four years.', a: 'Created the goal by voice. Needs ₹30,625/mo against ₹19,200 capacity.' },
+  ],
+  'CUST-24690': [
+    { when: 'May', lang: 'Hindi', tool: 'Market Pulse', q: 'Is my FD beating inflation?', a: 'After tax, the FD return is close to inflation. Suggested reviewing allocation with the RM.' },
+  ],
+};
+
 const withRisk = (persona, riskProfile) => ({ ...persona, riskProfile });
 
 export const BOOK = [
   withRisk(PERSONAS.priya, 'Balanced'),
   withRisk(PERSONAS.arjun, 'Conservative'),
   ...SYNTHETIC,
-].map((p) => ({ ...p, relationship: RELATIONSHIP[p.customer.id] || { language: 'English', mitraSessions30d: 0 } }));
+].map((p) => ({ ...p, relationship: RELATIONSHIP[p.customer.id] || { language: 'English', mitraSessions30d: 0 }, mitraLog: MITRA_LOG[p.customer.id] || [] }));
 
 export const findInBook = (customerId) => BOOK.find((p) => p.customer.id === customerId) || null;

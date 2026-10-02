@@ -146,12 +146,12 @@ export function customerInsights(p, riskProfile = p.riskProfile || 'Balanced') {
   const termSuitable = (pg.dependents || 0) > 0 && p.customer.age < 60;
   if (pg.available && pg.termGap > 0 && termSuitable) opportunities.push({
     id: 'term', product: 'Term life cover', rule: `${POLICY.insurance.termIncomeMultiple}× annual income`, value: pg.termGap,
-    detail: `Cover ${fmtL(pg.termCover)} vs ${fmtL(pg.termNeeded)} needed · ${pg.dependents ?? 0} dependents`, monthly: pg.monthly, priority: 1,
+    detail: `Cover ${fmtL(pg.termCover)} vs ${fmtL(pg.termNeeded)} needed · ${pg.dependents ?? 0} dependents`, monthly: pg.monthly, priority: 2,
   });
   if (hs.emergencyMonths < POLICY.emergency.targetMonths && cf.avgSpend > 0) opportunities.push({
     id: 'emergency', product: 'Sweep-in FD (emergency reserve)', rule: `${POLICY.emergency.targetMonths} months of expenses`,
     value: Math.max(Math.round(cf.avgSpend * POLICY.emergency.targetMonths) - p.customer.savingsBalance, 0),
-    detail: `${hs.emergencyMonths.toFixed(1)} of ${POLICY.emergency.targetMonths} months covered`, priority: 2,
+    detail: `${hs.emergencyMonths.toFixed(1)} of ${POLICY.emergency.targetMonths} months covered`, priority: 1,
   });
   if (tg.available && tg.gap > 0) opportunities.push({
     id: 'elss', product: 'ELSS SIP (80C)', rule: `Sec 80C · ${fmtL(POLICY.tax.section80CLimit)} limit`, value: tg.gap,
@@ -165,6 +165,8 @@ export function customerInsights(p, riskProfile = p.riskProfile || 'Balanced') {
     id: 'direct', product: 'Regular → Direct plan review', rule: 'Expense-ratio drag', value: 0,
     detail: `${drag.fund}: ${drag.er}% vs ${drag.directEr}% direct (${drag.dragPct}% / yr)`, priority: 5,
   });
+
+  opportunities.sort((a, b) => a.priority - b.priority);
 
   // ── Risk & compliance flags ──
   const flags = [];
@@ -194,7 +196,33 @@ export function customerInsights(p, riskProfile = p.riskProfile || 'Balanced') {
 
 function fmtR(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
 function fmtL(n) {
-  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.00$/, '') + ' Cr';
-  if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + ' L';
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.00$/, '') + '\u00a0Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + '\u00a0L';
   return fmtR(n);
+}
+
+// The order MITRA follows for every customer — cash buffer, then
+// protection, then tax, then invest — turned into the three things an RM should say
+// first. Each point is built from the same insight figures above.
+export function talkingPoints(p, ins = customerInsights(p)) {
+  const points = [];
+  const reserveGap = Math.max(Math.round(ins.cf.avgSpend * POLICY.emergency.targetMonths) - p.customer.savingsBalance, 0);
+  if (ins.hs.emergencyMonths < POLICY.emergency.targetMonths && reserveGap >= 10000) {
+    points.push({ title: 'Liquidity first.', text: `${ins.hs.emergencyMonths.toFixed(1)} of ${POLICY.emergency.targetMonths} months covered. A sweep-in FD closes the ${fmtL(reserveGap)} reserve gap and keeps earning.` });
+  }
+  const termOpp = ins.opportunities.find((o) => o.id === 'term');
+  if (termOpp) points.push({ title: 'Protection next.', text: `Life cover ${fmtL(ins.pg.termGap)} short with ${ins.pg.dependents} dependent${ins.pg.dependents === 1 ? '' : 's'}.` });
+  if (ins.emiRatio > 35) points.push({ title: 'Debt load.', text: `EMI is ${ins.emiRatio.toFixed(0)}% of income, above the 35% ceiling. No new commitments until it eases.` });
+  else if (p.loans?.length && (points.length || ins.hs.emergencyMonths < 3)) {
+    const loan = p.loans[0];
+    points.push({ title: 'Prepay only after that.', text: `The ${loan.rate}% ${loan.name.toLowerCase()} costs more than safe returns, but prepaying now would drain the buffer.` });
+  }
+  if (ins.tg.available && ins.tg.gap > 0) points.push({ title: 'Tax.', text: `${fmtL(ins.tg.gap)} of 80C unused, about ${fmtR(ins.tg.estSaving)} saving if filled by March.` });
+  if (ins.cf.surplus > 5000) {
+    const profile = ins.riskProfile.toLowerCase();
+    const article = /^[aeiou]/.test(profile) ? 'An' : 'A';
+    points.push({ title: 'Invest the surplus.', text: `${fmtR(ins.cf.surplus)}/mo idle. ${article} ${profile} model-portfolio SIP${points.length ? ' once the steps above are settled' : ''}.` });
+  }
+  if (ins.drag) points.push({ title: 'Fees.', text: `${ins.drag.fund} costs ${ins.drag.dragPct}% a year more than its Direct plan.` });
+  return points.slice(0, 4);
 }

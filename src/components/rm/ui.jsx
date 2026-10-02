@@ -7,8 +7,8 @@ import React, { useEffect, useState } from 'react';
 export const fmt = (n) => '₹' + Math.round(n || 0).toLocaleString('en-IN');
 export const fmtL = (n) => {
   n = Number(n || 0);
-  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.00$/, '') + ' Cr';
-  if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + ' L';
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2).replace(/\.00$/, '') + '\u00a0Cr';
+  if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + '\u00a0L';
   if (n >= 1000) return '₹' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return '₹' + Math.round(n);
 };
@@ -95,6 +95,9 @@ export function Meter({ value, max = 100, tone = 'teal' }) {
   );
 }
 
-export function Avatar({ name, size = 36 }) {
-  return <span className="rm-avatar" style={{ width: size, height: size, fontSize: size * 0.36 }}>{initials(name)}</span>;
+// Soft-tinted initials, as on the customer app's cards. `tone` follows the
+// customer's worst flag; `ring` adds MITRA's orange highlight ring.
+export function Avatar({ name, size = 36, tone, ring }) {
+  const cls = `rm-avatar ${tone === 'high' ? 'is-high' : tone === 'medium' ? 'is-med' : ''} ${ring ? 'is-ring' : ''}`;
+  return <span className={cls} style={{ width: size, height: size, fontSize: size * 0.34 }}>{initials(name)}</span>;
 }

@@ -671,6 +671,7 @@ export default function AvatarChat({ riskProfile, initialPrompt, onConsumeInitia
           riskProfile,
           brief,
           topic: recentQuestion ? `Follow-up on: “${recentQuestion.slice(0, 90)}”` : 'Wants a human review of the MITRA plan',
+          question: recentQuestion || null,
           language: LANGUAGES.find((l) => l.code === langRef.current)?.label || 'English',
           source: inCallRef.current ? 'MITRA live call' : 'MITRA chat',
         });

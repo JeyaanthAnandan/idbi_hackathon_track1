@@ -2,7 +2,8 @@ import { respond, fallbackResponse, parseSipQuery, capabilityAnswer, detectInten
 import { ADVISOR_TOOL_DEFINITIONS, executeAdvisorTool, validateAdvisorToolCall, validateAdvisorResponse, clarifyResponse } from './advisorTools.js';
 import { boundedChatMessages, ADVISOR_PROMPT_VERSION } from './advisorPrompt.js';
 import { COMPOSER_PROMPT_VERSION } from './composer.js';
-import { goals } from '../data/customer.js';
+import { goals, customer } from '../data/customer.js';
+import { relationshipManagerFor } from '../data/rmBook.js';
 import { goalPlan, sipRequired, sipFutureValue, fmt } from './analytics.js';
 import { POLICY, returnScenario } from '../data/policy.js';
 
@@ -33,6 +34,7 @@ export function commandResponse(text, history = [], riskProfile = 'Balanced', la
     };
   }
   if (/^(?:help|menu|options)[\s.!?]*$/i.test(t)) return capabilityAnswer();
+  if (RM_QUESTION.test(t)) return rmAnswer();
   if (/\b(?:ignore (?:all |previous |your )*instructions|reveal (?:your |the )?(?:system prompt|api key)|tax evasion|evade tax|(?:give|tell|share).*\b(?:otp|password)|(?:buy|sell)\b.*\b(?:for me|shares|stocks?)\b|(?:transfer|execute|place an? order)\b.*\b(?:now|for me|money)|which stock.*buy)\b/i.test(t)) return decline();
   if (/^(?:what is|what's|explain|define|how does)\s+(?:a |an )?(?:sip|mutual fund|fixed deposit|diversification|risk|emergency fund)\b/i.test(t)) {
     const concept = /mutual fund/i.test(t) ? 'mutual_fund' : /fixed deposit/i.test(t) ? 'fixed_deposit' : /emergency fund/i.test(t) ? 'emergency_fund' : /diversification/i.test(t) ? 'diversification' : /\bsip\b/i.test(t) ? 'sip' : 'risk';
@@ -95,6 +97,24 @@ export function commandResponse(text, history = [], riskProfile = 'Balanced', la
 
 const normalise = (value) => String(value).toLowerCase().replace(/[’']/g, "'").replace(/[\s.!?]+$/g, '').trim();
 const EXACT_PROMPTS = new Set(Object.values(INTENT_PROMPTS).map(normalise));
+
+// "Who is my RM?" and its close variants — a lookup, answered instantly.
+// Anything more involved ("can my RM help with a loan?") goes to the AI,
+// whose fact sheet carries the same RM details.
+const RM_QUESTION = /^(?:(?:who(?:'s| is)|what(?:'s| is)|tell me)\s+(?:the\s+name\s+of\s+)?my\s+(?:rm|r\.m\.?|relationship\s+manager|banker|wealth\s+manager|bank\s+manager|personal\s+banker)(?:'s\s+name|\s+name)?|(?:my\s+)?(?:rm|relationship\s+manager)(?:'s)?\s+(?:name|details|contact)|(?:do i have|have i got) an? (?:rm|relationship manager)|how (?:do|can) i (?:contact|reach|talk to|speak to) my (?:rm|relationship manager))[\s.!?]*$/i;
+
+function rmAnswer() {
+  const rm = relationshipManagerFor(customer.id);
+  const first = rm.name.split(' ')[0];
+  const history = rm.lastContact ? ` You last spoke on ${rm.lastContact}${rm.nextReview ? `, and your next review is due on ${rm.nextReview}` : ''}.` : rm.nextReview ? ` Your next review is due on ${rm.nextReview}.` : '';
+  return {
+    mood: 'happy',
+    text: rm.assigned
+      ? `Your IDBI relationship manager is ${rm.name}, ${rm.role} at the ${rm.branch} branch.${history} ${first} is available ${rm.availability}. The quickest way to reach her is to ask me to talk to a human — I send her a briefing with your consent, so you won't have to repeat yourself.`
+      : `You haven't been assigned a personal relationship manager yet, so you're looked after by the wealth desk at the ${rm.branch} branch, led by ${rm.name}. Ask me to talk to a human and I'll send the desk a briefing with your consent — an RM is assigned when they pick it up.`,
+    chips: ['Talk to a human advisor', 'Show my portfolio'],
+  };
+}
 
 export function contextualResponse(text, history = [], riskProfile = 'Balanced', lang = 'en') {
   return commandResponse(text, history, riskProfile, lang) || respond(text.trim(), riskProfile, lang);

@@ -7,6 +7,7 @@
 // Every response: { text, meta?, widget?, chips?, mood? }
 // `meta` is the provenance stamp — what the engine computed to say this.
 // ─────────────────────────────────────────────────────────────
+import { relationshipManagerFor } from '../data/rmBook.js';
 import {
   customer,
   holdings,
@@ -819,7 +820,7 @@ function respondCore(text, riskProfile = 'Balanced') {
         widget: {
           type: 'handoff',
           data: {
-            rm: 'IDBI Wealth RM desk · prototype',
+            rm: `${relationshipManagerFor(customer.id).name} · your IDBI wealth RM`,
             slot: 'Not sent yet',
             brief: [
               `${customer.name}, ${customer.age} · ${riskProfile} profile · Health score ${hsNow.total}/100`,

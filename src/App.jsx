@@ -17,7 +17,7 @@ import {
 } from './engine/speech.js';
 import { awardXP } from './engine/xp.js';
 import Icon from './components/Icons.jsx';
-import { getDeepSeekKey, setDeepSeekKey, hasDeepSeek, deepSeekViaServer, LANGUAGES } from './engine/deepseek.js';
+import { hasDeepSeek, LANGUAGES } from './engine/deepseek.js';
 import {
   hasSarvam, getSarvamKey, setSarvamKey, clearSarvamKey, sarvamKeyFromEnv,
   SARVAM_SPEAKERS, getSarvamSpeaker, setSarvamSpeaker, verifySarvamKey,
@@ -294,8 +294,6 @@ function SarvamSection() {
 }
 
 function Settings({ onConnect }) {
-  const [key, setKey] = useState(getDeepSeekKey());
-  const [saved, setSaved] = useState(false);
   const [voices, setVoices] = useState([]);
   const [voiceName, setVoiceName] = useState(getPreferredVoiceName());
   const sarvamActive = hasSarvam();
@@ -360,35 +358,13 @@ function Settings({ onConnect }) {
       )}
 
       <label className="settings-label">
-        MITRA AI · DeepSeek {hasDeepSeek() ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active{deepSeekViaServer() ? ' (server)' : ''}</span> : ''}
+        MITRA AI {hasDeepSeek() ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>· active</span> : <span>· offline</span>}
       </label>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        With DeepSeek on, MITRA thinks through questions you type or speak and answers them in her own
-        words. The engine still computes every figure, and a reply quoting a number that isn't in your
-        computed facts is discarded. Suggested-question buttons answer instantly from the engine.
+        MITRA thinks through questions you type or speak and answers them in her own words. Her engine
+        computes every figure from your data, and a reply quoting a number that isn't in your computed
+        facts is discarded. Suggested-question buttons answer instantly.
       </p>
-      <div className="settings-row">
-        <input
-          type="password"
-          placeholder={deepSeekViaServer() ? 'Using the server key — paste one to override' : 'sk-… DeepSeek API key'}
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-        />
-      </div>
-      <button
-        className="ghost-btn"
-        onClick={() => {
-          setDeepSeekKey(key);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 1500);
-        }}
-      >
-        {saved ? 'Saved' : 'Save key'}
-      </button>
-      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-        The MITRA server holds the DeepSeek key, so it is never sent to your browser. A key pasted here
-        overrides it for this browser only — useful for testing another account.
-      </div>
 
       <div className="app-footnote" style={{ paddingLeft: 0, paddingRight: 0, marginTop: 14 }}>
         Hybrid AI · deterministic engine + optional LLM

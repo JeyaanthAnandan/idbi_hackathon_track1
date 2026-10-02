@@ -16,6 +16,7 @@ import {
   subscriptionWaste, unusedSubscriptions, taxGap, protectionGap, drift, allGoalPlans, goalCollision, xray,
 } from './analytics.js';
 import { POLICY, returnScenario } from '../data/policy.js';
+import { relationshipManagerFor } from '../data/rmBook.js';
 
 const pct = (n) => `${Math.round(n)}%`;
 const safe = (fn) => { try { return fn(); } catch { return null; } };
@@ -27,6 +28,8 @@ export function buildFactSheet(riskProfile = 'Balanced') {
 
   add('Customer', `${customer.name}, age ${customer.age}, ${customer.segment || 'segment unknown'}, ${customer.city || 'city unknown'}`);
   add('Risk profile', `${riskProfile} (policy return scenarios ${scenario.bear}% bear / ${scenario.base}% base / ${scenario.bull}% bull a year, not guaranteed)`);
+  const rm = relationshipManagerFor(customer.id);
+  add('Your IDBI relationship manager (RM)', `${rm.name}, ${rm.role}, ${rm.branch} branch; ${rm.certifications.join(', ')}; ${rm.assigned ? 'assigned to you' : 'leads the branch wealth desk that serves you until an RM is assigned'}; available ${rm.availability}; ${rm.reach}${rm.lastContact ? `; you last spoke on ${rm.lastContact}` : rm.assigned ? '; you have not spoken yet' : ''}${rm.nextReview ? `; next review due ${rm.nextReview}` : ''}`);
   add('Data', `${dataQuality.transactionMonths || 0} months of transactions; data as of ${dataQuality.dataAsOf || 'demo fixture'}; sources ${(dataQuality.sources || []).join(', ') || 'demo'}`);
 
   const cf = safe(cashflow);

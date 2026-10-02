@@ -4,39 +4,29 @@
 // (engine/composer.js), selects advisor tools, translates, and does
 // schema-validated extraction/classification. It never computes a figure.
 //
-// The whole app works WITHOUT a key (rule engine + hardcoded Hindi). The
-// MITRA API holds the production key and proxies calls at /api/ai/deepseek,
-// so no key is ever bundled into the browser. A key pasted in Settings is
-// used directly from that browser (handy for testing a different account).
+// The whole app works without the AI (rule engine + hand-written Hindi).
+// The model runs behind the MITRA API at /api/ai/complete, which holds the
+// key and picks the model; the browser never sees either, and nothing in the
+// web bundle names the provider.
 // ─────────────────────────────────────────────────────────────
 import { POLICY } from '../data/policy.js';
 import { ADVISOR_SYSTEM_PROMPT, boundedChatMessages } from './advisorPrompt.js';
 import { serverAi } from './aiTransport.js';
 
-const KEY_STORAGE = 'mitra_deepseek_key';
-const BASE = 'https://api.deepseek.com/chat/completions';
-const PROXY = '/api/ai/deepseek';
-export const MODEL_CHAT = 'deepseek-v4-flash';
-export const MODEL_VERSION = 'deepseek-v4-flash';
+const ENDPOINT = '/api/ai/complete';
 
-export const getDeepSeekKey = () => {
-  try { return localStorage.getItem(KEY_STORAGE) || ''; } catch { return ''; }
-};
-export const setDeepSeekKey = (k) => localStorage.setItem(KEY_STORAGE, (k || '').trim());
-export const hasDeepSeek = () => !!getDeepSeekKey() || serverAi().deepseek;
-export const deepSeekViaServer = () => !getDeepSeekKey() && serverAi().deepseek;
+export const hasDeepSeek = () => serverAi().llm;
 
 async function deepSeekRequest(body, signal) {
-  const key = getDeepSeekKey();
-  if (!key && !serverAi().deepseek) throw new Error('no-key');
-  const res = await fetch(key ? BASE : PROXY, {
+  if (!serverAi().llm) throw new Error('no-ai');
+  const res = await fetch(ENDPOINT, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) },
+    headers: { 'content-type': 'application/json' },
     signal,
-    body: JSON.stringify(key ? { model: MODEL_CHAT, ...body } : body),
+    body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`DeepSeek ${res.status} ${(await res.text()).slice(0, 240)}`);
+  if (!res.ok) throw new Error(`AI ${res.status} ${(await res.text()).slice(0, 240)}`);
   return res.json();
 }
 
@@ -61,7 +51,7 @@ export const SPEECH_LANG = {
 };
 
 // ── low-level: non-streaming completion ──────────────────────
-// `thinking` turns on DeepSeek's reasoning pass. It is used for composing
+// `thinking` turns on the model's reasoning pass. It is used for composing
 // answers to open questions; short utility calls keep it off for speed.
 export async function complete({ system, messages, json = false, thinking = false, temperature = 0.4, maxTokens = 700, signal }) {
   const data = await deepSeekRequest({
@@ -85,9 +75,9 @@ export async function selectDeepSeekAdvisorTool({ messages, tools, signal, syste
     max_tokens: 220,
   }, signal);
   const call = data.choices?.[0]?.message?.tool_calls?.[0]?.function;
-  if (!call?.name) throw new Error('DeepSeek returned no advisor tool');
+  if (!call?.name) throw new Error('AI returned no advisor tool');
   let args = {};
-  try { args = JSON.parse(call.arguments || '{}'); } catch { throw new Error('DeepSeek returned invalid tool arguments'); }
+  try { args = JSON.parse(call.arguments || '{}'); } catch { throw new Error('AI returned invalid tool arguments'); }
   return { name: call.name, arguments: args };
 }
 

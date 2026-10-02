@@ -1,6 +1,6 @@
 // AI provider proxy — the only place DeepSeek and Sarvam keys exist.
 //
-// The browser calls /api/ai/deepseek and /api/ai/sarvam/<path>; this module
+// The browser calls /api/ai/complete and /api/ai/sarvam/<path>; this module
 // adds the key and forwards the request. Keys come from the server
 // environment (DEEPSEEK_API_KEY / SARVAM_API_KEY; the older VITE_* names are
 // accepted so an existing .env keeps working locally). They are never sent
@@ -19,7 +19,9 @@ const SARVAM_CHAT_MODEL = 'sarvam-105b';
 const deepseekKey = () => (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY || '').trim();
 const sarvamKey = () => (process.env.SARVAM_API_KEY || process.env.VITE_SARVAM_API_KEY || '').trim();
 
-export const aiStatus = () => ({ deepseek: Boolean(deepseekKey()), sarvam: Boolean(sarvamKey()) });
+// Provider-neutral names: what the browser can see never says which model
+// vendor sits behind /api/ai/complete.
+export const aiStatus = () => ({ llm: Boolean(deepseekKey()), sarvam: Boolean(sarvamKey()) });
 
 // Sliding one-minute window per client. Per instance only — enough to stop a
 // runaway loop or casual abuse of a public demo, not a production limiter.
@@ -83,7 +85,7 @@ export function sanitizeDeepSeekBody(input) {
 
 export async function proxyDeepSeek(req, res) {
   const key = deepseekKey();
-  if (!key) return problem(res, 503, 'DeepSeek is not configured on the server');
+  if (!key) return problem(res, 503, 'The AI is not configured on the server');
   if (rateLimited(clientId(req), 'deepseek')) return problem(res, 429, 'Too many AI requests — try again in a minute');
   let input;
   try { input = JSON.parse((await rawBody(req, 200_000)).toString('utf8') || '{}'); }
@@ -97,9 +99,16 @@ export async function proxyDeepSeek(req, res) {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(25_000), // under the 30 s API Gateway / Lambda limit
     });
-    return send(res, upstream.status, Buffer.from(await upstream.arrayBuffer()), upstream.headers.get('content-type') || 'application/json');
+    const raw = Buffer.from(await upstream.arrayBuffer());
+    let out = raw;
+    try {
+      // The browser only needs the message; drop fields that name the model.
+      const { model, system_fingerprint: fingerprint, ...rest } = JSON.parse(raw.toString('utf8'));
+      out = JSON.stringify(rest);
+    } catch { /* not JSON — pass through */ }
+    return send(res, upstream.status, out, 'application/json; charset=utf-8');
   } catch {
-    return problem(res, 504, 'DeepSeek did not respond in time');
+    return problem(res, 504, 'The AI did not respond in time');
   }
 }
 

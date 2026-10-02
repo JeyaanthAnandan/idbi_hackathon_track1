@@ -182,3 +182,29 @@ export const BOOK = [
 ].map((p) => ({ ...p, relationship: RELATIONSHIP[p.customer.id] || { language: 'English', mitraSessions30d: 0 }, mitraLog: MITRA_LOG[p.customer.id] || [] }));
 
 export const findInBook = (customerId) => BOOK.find((p) => p.customer.id === customerId) || null;
+
+// How a customer reaches their RM. Prototype contact route: the consented
+// handoff inside MITRA, or the branch — no personal numbers are shown.
+const RM_AVAILABILITY = 'Monday to Saturday, 10:00 am to 6:00 pm';
+const longDate = (iso) => (iso ? new Date(`${iso}T00:00:00+05:30`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+
+// The customer → RM mapping, as the customer app sees it. Every customer in
+// this branch's wealth book is assigned to RM_PROFILE; a customer who joined
+// through MITRA and isn't in the book yet is served by the same branch RM
+// desk until they are assigned. Relationship dates come from the CRM context
+// above when the customer is in the book.
+export function relationshipManagerFor(customerId) {
+  const entry = findInBook(customerId);
+  const rel = entry?.relationship || {};
+  return {
+    name: RM_PROFILE.name,
+    role: RM_PROFILE.role,
+    branch: RM_PROFILE.branch,
+    certifications: RM_PROFILE.certifications,
+    availability: RM_AVAILABILITY,
+    reach: 'Ask MITRA to "talk to a human" to send your RM a consented briefing, or visit the branch',
+    assigned: Boolean(entry),
+    lastContact: longDate(rel.lastContact),
+    nextReview: longDate(rel.nextReview),
+  };
+}

@@ -113,7 +113,7 @@ const server = http.createServer(async (req, res) => {
     // AI providers, proxied so their keys stay on the server. Open to demo
     // visitors (no customer session) and bounded inside aiProxy.mjs.
     if (req.method === 'GET' && url.pathname === '/api/ai/status') return json(res, 200, aiStatus());
-    if (req.method === 'POST' && url.pathname === '/api/ai/deepseek') return proxyDeepSeek(req, res);
+    if (req.method === 'POST' && url.pathname === '/api/ai/complete') return proxyDeepSeek(req, res);
     if (req.method === 'POST' && url.pathname.startsWith('/api/ai/sarvam/')) return proxySarvam(req, res, url.pathname.slice('/api/ai/sarvam'.length));
 
     if (req.method === 'GET' && url.pathname === '/api/bootstrap') return json(res, 200, bootstrap(await currentUser(req)));

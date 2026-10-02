@@ -146,7 +146,7 @@ export async function composeAnswer({ text, history = [], riskProfile = 'Balance
     ...(cardResponse?.widget ? { widget: cardResponse.widget } : {}),
     ...(cardResponse?.cta ? { cta: cardResponse.cta } : {}),
     chips: cleanFollowups(parsed.followups, cardResponse?.chips || ['Show my portfolio', 'Talk to a human advisor']),
-    why: ['Reply written by DeepSeek in thinking mode from the engine-computed fact sheet; every figure was checked against it before display'],
+    why: ['Reply written by MITRA’s AI from the engine-computed fact sheet; every figure was checked against it before display'],
     toolRouted: true,
     reasoned: Boolean(reasoning),
   };

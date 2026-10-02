@@ -242,7 +242,7 @@ export function CopilotRail({ book, desk, now, onOpenCase, onOpenCustomer, onGo 
           <div className="mr-title">MITRA<sup>®</sup></div>
           <div className="mr-eyebrow">
             {transcribing ? 'Understanding…' : listening ? 'Listening…' : thinking ? 'Thinking it through…'
-              : `for ${RM_PROFILE.name.split(' ')[0]} · ${langMode === 'auto' ? `Auto · ${langLabel(lang)}` : langLabel(lang)}${ai ? ' · DeepSeek' : ''}`}
+              : `for ${RM_PROFILE.name.split(' ')[0]} · ${langMode === 'auto' ? `Auto · ${langLabel(lang)}` : langLabel(lang)}${ai ? ' · AI' : ''}`}
           </div>
         </div>
         <div className="mr-tools">
@@ -290,7 +290,7 @@ export function CopilotRail({ book, desk, now, onOpenCase, onOpenCustomer, onGo 
           ? <div key={i} className="mr-user">{m.text}</div>
           : (
             <div key={i} className="mr-bubble">
-              {m.ai && <div className="mr-eyebrow">MITRA · DeepSeek · every figure from your book</div>}
+              {m.ai && <div className="mr-eyebrow">MITRA · every figure from your book</div>}
               {m.eyebrow && <div className="mr-eyebrow">{m.eyebrow}</div>}
               {m.text && <p className="mr-text">{m.text}</p>}
               {m.points && <Points points={m.points} />}

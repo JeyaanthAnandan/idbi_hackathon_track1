@@ -102,3 +102,17 @@ test('AI proxy fixes the model, bounds the request and rate-limits', () => {
   assert.equal(rateLimited('1.2.3.4', 'deepseek', now), true);
   assert.equal(rateLimited('1.2.3.4', 'deepseek', now + 61_000), false, 'the window slides');
 });
+
+test('"who is my RM?" names the assigned relationship manager, and the AI facts carry the same mapping', async () => {
+  const { relationshipManagerFor } = await import('../src/data/rmBook.js');
+  const rm = relationshipManagerFor('CUST-88214');
+  assert.equal(rm.assigned, true);
+  assert.equal(rm.lastContact, '18 July 2026');
+  for (const q of ['Who is my RM?', "who's my relationship manager", 'What is my RM name?', 'How do I contact my RM?']) {
+    const r = await answerConversation({ text: q, composer: async () => { throw new Error('should not be called'); } });
+    assert.equal(r.engineMode, 'DETERMINISTIC', q);
+    assert.match(r.text, new RegExp(rm.name), q);
+  }
+  assert.match(buildFactSheet('Balanced'), new RegExp(`Your IDBI relationship manager \\(RM\\): ${rm.name}`));
+  assert.equal(relationshipManagerFor('CUST-UNKNOWN').assigned, false, 'a customer outside the book is served by the branch desk');
+});
